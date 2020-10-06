@@ -33,7 +33,7 @@
                          :output-dir "public/js/out"
                          :asset-path   "js/out"
                          :source-map true
-                         :foreign-libs [{:file "node_modules/codemirror/lib/codemirror.js"
+                         :foreign-libs [{:file "public/js/bundle.js"
                                          :provides ["webpack.bundle"]}]
                          :optimizations :none
                          :pretty-print  true}
@@ -45,7 +45,7 @@
                         :compiler
                         {:output-to "public/js/app.js"
                          :output-dir "target/release"
-                         :foreign-libs [{:file "node_modules/codemirror/lib/codemirror.js"
+                         :foreign-libs [{:file "public/js/bundle.js"
                                          :provides ["webpack.bundle"]}]
                          :optimizations :advanced
                          :infer-externs true

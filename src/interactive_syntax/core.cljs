@@ -23,7 +23,7 @@
 
 (defn editor-did-mount [input]
   (fn [this]
-    (let [cm (.fromTextArea js/CodeMirror
+    (let [cm (.fromTextArea (aget js/window "deps" "CodeMirror")
                             (d/dom-node this)
                             #js {:mode "clojure"
                                  :lineNumbers true})]
@@ -54,7 +54,7 @@
 (defn home-page []
   (let [input (atom nil)
         output (atom nil)]
-    (println code-mirror)
+    ;(println (.-modes js/CodeMirror))
     (fn []
       [:div
        [editor input]
