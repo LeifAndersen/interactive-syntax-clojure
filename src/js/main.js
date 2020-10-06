@@ -5,3 +5,5 @@ import {} from 'codemirror/mode/clojure/clojure'
 window.deps = {
     'CodeMirror' : CodeMirror,
 }
+
+window.CodeMirror = CodeMirror;

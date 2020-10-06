@@ -23,7 +23,7 @@
 
 (defn editor-did-mount [input]
   (fn [this]
-    (let [cm (.fromTextArea (aget js/window "deps" "CodeMirror")
+    (let [cm (.fromTextArea js/CodeMirror
                             (d/dom-node this)
                             #js {:mode "clojure"
                                  :lineNumbers true})]
