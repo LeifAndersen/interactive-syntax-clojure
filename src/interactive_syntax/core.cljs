@@ -26,6 +26,9 @@
     (let [cm (.fromTextArea js/CodeMirror
                             (d/dom-node this)
                             #js {:mode "clojure"
+                                 :keyMap "vim"
+                                 :matchBrackets true
+                                 :showCursorWhenSelecting true
                                  :lineNumbers true})]
       (.on cm "change" #(reset! input (.getValue %))))))
 
