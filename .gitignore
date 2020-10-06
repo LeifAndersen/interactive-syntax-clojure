@@ -14,3 +14,5 @@ pom.xml.asc
 /.repl
 *.log
 /.env
+node_modules
+.rebel_readline_history

@@ -1,8 +1,9 @@
 (defproject interactive-syntax "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :description "Enables Interactive-Syntax Extensions in ClojureScript"
+  :url "http://lang.video"
+  :license {:name "Apache 2.0"
+            :url "http://www.apache.org/licenses/LICENSE-2.0"}
+
 
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.773"]
@@ -32,6 +33,8 @@
                          :output-dir "public/js/out"
                          :asset-path   "js/out"
                          :source-map true
+                         :foreign-libs [{:file "node_modules/codemirror/lib/codemirror.js"
+                                         :provides ["webpack.bundle"]}]
                          :optimizations :none
                          :pretty-print  true}
                         :figwheel
@@ -42,6 +45,8 @@
                         :compiler
                         {:output-to "public/js/app.js"
                          :output-dir "target/release"
+                         :foreign-libs [{:file "node_modules/codemirror/lib/codemirror.js"
+                                         :provides ["webpack.bundle"]}]
                          :optimizations :advanced
                          :infer-externs true
                          :pretty-print false}}}}

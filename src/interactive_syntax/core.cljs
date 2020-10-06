@@ -4,7 +4,8 @@
       [reagent.dom :as d]
       [cljs.tools.reader :refer [read read-string]]
       [cljs.js :as cljs :refer [empty-state eval js-eval]]
-      [cljs.pprint :refer [pprint]]))
+      [cljs.pprint :refer [pprint]]
+      [webpack.bundle]))
 
 ;; -------------------------
 ;; Evaluator
@@ -53,6 +54,7 @@
 (defn home-page []
   (let [input (atom nil)
         output (atom nil)]
+    (println code-mirror)
     (fn []
       [:div
        [editor input]
