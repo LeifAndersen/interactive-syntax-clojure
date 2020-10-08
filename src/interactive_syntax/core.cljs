@@ -56,16 +56,21 @@
 
 (defn home-page []
   (let [input (atom nil)
-        output (atom nil)]
+        output (atom nil)
+        split-pane (.-default (aget js/ReactComponents "react-split-pane"))]
     (fn []
-      [:div
+      [:> split-pane {:split "horizontal"
+                      :allowresize false}
        [:div.btn-row
         [:div>button
          {:on-click #(reset! output (:value (eval-str @input)))}
          "Run"]
         [:div>button
          "Stop"]]
-       [:div
+       [:> split-pane {:split "horizontal"
+                       :allowresize true
+                       :minSize 100
+                       :defaultSize 300}
         [editor input]
         [result-view output]]])))
 
