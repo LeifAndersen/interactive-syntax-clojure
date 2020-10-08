@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "codemirror": "^5.58.1",
-    "highlight.js": "^10.2.1"
+    "highlight.js": "^10.2.1",
+    "react": "^16.13.1"
   }
 }
