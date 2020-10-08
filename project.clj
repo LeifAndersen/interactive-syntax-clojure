@@ -7,7 +7,9 @@
 
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.773"]
-                 [reagent "0.10.0"]]
+                 [reagent "0.10.0"
+                  ;;:exclusions [cljsjs/react cljsjs/react-dom]
+                  ]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.20"]]
@@ -34,7 +36,9 @@
                          :asset-path   "js/out"
                          :source-map true
                          :foreign-libs [{:file "public/js/bundle.js"
-                                         :provides ["webpack.bundle"]}]
+                                         :provides [;"cljsjs.react"
+                                                    ;"cljsjs.react.dom"
+                                                    "webpack.bundle"]}]
                          :optimizations :none
                          :pretty-print  true}
                         :figwheel
@@ -46,7 +50,9 @@
                         {:output-to "public/js/app.js"
                          :output-dir "target/release"
                          :foreign-libs [{:file "public/js/bundle.js"
-                                         :provides ["webpack.bundle"]}]
+                                         :provides [;"cljsjs.react"
+                                                    ;"cljsjs.react.dom"
+                                                    "webpack.bundle"]}]
                          :optimizations :advanced
                          :infer-externs true
                          :pretty-print false}}}}

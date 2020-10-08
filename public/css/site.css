@@ -32,3 +32,7 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+.btn-row {
+  display: flex
+}

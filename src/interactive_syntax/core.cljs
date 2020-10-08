@@ -57,14 +57,17 @@
 (defn home-page []
   (let [input (atom nil)
         output (atom nil)]
-    ;(println (.-modes js/CodeMirror))
     (fn []
       [:div
-       [editor input]
-       [:div>button
-        {:on-click #(reset! output (:value (eval-str @input)))}
-        "Evaluate"]
-       [result-view output]])))
+       [:div.btn-row
+        [:div>button
+         {:on-click #(reset! output (:value (eval-str @input)))}
+         "Run"]
+        [:div>button
+         "Stop"]]
+       [:div
+        [editor input]
+        [result-view output]]])))
 
 ;; -------------------------
 ;; Initialize app
