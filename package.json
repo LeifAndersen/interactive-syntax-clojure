@@ -23,6 +23,7 @@
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
+    "@cljs-oss/module-deps": "^1.1.1",
     "codemirror": "^5.58.1",
     "highlight.js": "^10.2.1",
     "react": "^16.13.1",

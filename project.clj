@@ -6,7 +6,7 @@
 
 
   :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/clojurescript "1.10.439"]
+                 [org.clojure/clojurescript "1.10.741"]
                  [reagent "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
@@ -29,14 +29,13 @@
                        {:source-paths ["src" "env/dev/cljs"]
                         :compiler
                         {:main "interactive-syntax.dev"
-                         :output-to "public/js/app.js"
+                         :output-to "public/js/out/app.js"
                          :output-dir "public/js/out"
                          :asset-path   "js/out"
+                         :target :bundle
+                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
+                                      :default ["npx" "webpack"]}
                          :source-map true
-                         :foreign-libs [{:file "public/js/bundle.js"
-                                         :provides ["react"
-                                                    "react-dom"
-                                                    "webpack.bundle"]}]
                          :optimizations :none
                          :pretty-print  true}
                         :figwheel
@@ -45,12 +44,11 @@
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
-                        {:output-to "public/js/app.js"
+                        {:output-to "public/js/out/app.js"
                          :output-dir "target/release"
-                         :foreign-libs [{:file "public/js/bundle.js"
-                                         :provides ["react"
-                                                    "react-dom"
-                                                    "webpack.bundle"]}]
+                         :target :bundle
+                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
+                                      :default ["npx" "webpack"]}
                          :optimizations :advanced
                          :infer-externs true
                          :pretty-print false}}}}

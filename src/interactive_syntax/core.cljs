@@ -5,7 +5,11 @@
       [cljs.tools.reader :refer [read read-string]]
       [cljs.js :as cljs :refer [empty-state eval js-eval]]
       [cljs.pprint :refer [pprint]]
-      [webpack.bundle]))
+      [codemirror :as CodeMirror]
+      ["codemirror/mode/clojure/clojure"]
+      ["codemirror/mode/clojure/clojure"]
+      ["codemirror/keymap/vim"]
+      [react-split-pane]))
 
 ;; -------------------------
 ;; Evaluator
@@ -23,7 +27,7 @@
 
 (defn editor-did-mount [input]
   (fn [this]
-    (let [cm (.fromTextArea js/CodeMirror
+    (let [cm (.fromTextArea CodeMirror
                             (d/dom-node this)
                             #js {:mode "clojure"
                                  :keyMap "vim"
@@ -56,25 +60,20 @@
 
 (defn home-page []
   (let [input (atom nil)
-        output (atom nil)
-        split-pane (.-default (aget js/ReactComponents "react-split-pane"))]
+        output (atom nil)]
     (fn []
-      [:> split-pane {:split "horizontal"
-                      :allowresize false}
+      [:div
        [:div.btn-row
         [:div>button
          {:on-click #(reset! output (:value (eval-str @input)))}
          "Run"]
         [:div>button
          "Stop"]]
-       [:> split-pane {:split "horizontal"
-                       :allowresize true
-                       :minSize 100
-                       :defaultSize 300}
+       [:div
         [editor input]
         [result-view output]]])))
 
-;; -------------------------
+;; ---i----------------------
 ;; Initialize app
 
 (defn mount-root []
