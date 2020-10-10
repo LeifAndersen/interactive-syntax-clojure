@@ -1,10 +1,6 @@
 {
   "name": "interactive-syntax",
   "version": "1.0.0",
-  "scripts": {
-    "watch": "webpack -d --watch",
-    "build": "webpack -p"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LeifAndersen/interactive-syntax-clojure.git"

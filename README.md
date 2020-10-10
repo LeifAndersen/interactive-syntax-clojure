@@ -3,8 +3,7 @@
 To start the Figwheel compiler, navigate to the project folder and run the following command in the terminal:
 
 ```
-npm install
-npm run build
+npm ci
 lein figwheel
 ```
 
@@ -19,8 +18,7 @@ Once you connect to the nREPL, run `(cljs)` to switch to the ClojureScript REPL.
 ### Building for production
 
 ```
+npm ci
 lein clean
-npm install
-npm run build
 lein package
 ```
