@@ -16,3 +16,5 @@ pom.xml.asc
 /.env
 node_modules
 .rebel_readline_history
+\.#*
+*~
