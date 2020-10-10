@@ -30,7 +30,7 @@
     (let [cm (.fromTextArea CodeMirror
                             (d/dom-node this)
                             #js {:mode "clojure"
-                                 :keyMap "vim"
+                                 ;:keyMap "vim"
                                  :matchBrackets true
                                  :showCursorWhenSelecting true
                                  :lineNumbers true})]
@@ -60,16 +60,30 @@
 
 (defn home-page []
   (let [input (atom nil)
-        output (atom nil)]
+        output (atom nil)
+        orientation (atom "horizontal")
+        pane (.-Pane react-split-pane)
+        split-pane (.-default react-split-pane)]
     (fn []
-      [:div
+      (println pane)
+      [:> split-pane {:split "horizontal"
+                      :defaultSize 50
+                      :allowResize false}
        [:div.btn-row
         [:div>button
          {:on-click #(reset! output (:value (eval-str @input)))}
          "Run"]
         [:div>button
-         "Stop"]]
-       [:div
+         "Stop"]
+        [:div>button
+         {:on-click #(swap! orientation (fn [x]
+                                          (if (= x "horizontal")
+                                            "vertical"
+                                            "horizontal")))}
+         "Options"]]
+       [:> split-pane {:split @orientation
+                       :minSize 300
+                       :defaultSize 300}
         [editor input]
         [result-view output]]])))
 
