@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@cljs-oss/module-deps": "^1.1.1",
+    "@stopify/stopify": "^0.7.2",
     "bootstrap": "^4.5.2",
     "codemirror": "^5.58.1",
     "highlight.js": "^10.2.1",

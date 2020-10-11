@@ -6,6 +6,7 @@ const APP_DIR = path.resolve(__dirname, 'src', 'js');
 
 const config = {
     entry: `${APP_DIR}/bundle.js`,
+    target: 'web',
     output: {
         path: BUILD_DIR,
         filename: 'main.js'
@@ -32,6 +33,13 @@ const config = {
                 ],
             },
         ],
+    },
+    node: {
+        // For stopify
+        'fs': 'empty',
+        'child_process': 'empty',
+        'net': 'empty',
+        'module': 'empty'
     },
 };
 

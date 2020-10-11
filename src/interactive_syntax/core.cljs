@@ -7,8 +7,8 @@
       [cljs.pprint :refer [pprint]]
       [codemirror :as CodeMirror]
       ["codemirror/mode/clojure/clojure"]
-      ["codemirror/mode/clojure/clojure"]
       ["codemirror/keymap/vim"]
+      ["@stopify/stopify" :as stopify]
       [react-split-pane]))
 
 ;; -------------------------
@@ -30,7 +30,7 @@
     (let [cm (.fromTextArea CodeMirror
                             (d/dom-node this)
                             #js {:mode "clojure"
-                                 ;:keyMap "vim"
+                                 ;;:keyMap "vim"
                                  :matchBrackets true
                                  :showCursorWhenSelecting true
                                  :lineNumbers true})]
@@ -65,7 +65,7 @@
         pane (.-Pane react-split-pane)
         split-pane (.-default react-split-pane)]
     (fn []
-      (println pane)
+      (println stopify)
       [:> split-pane {:split "horizontal"
                       :defaultSize 50
                       :allowResize false}
