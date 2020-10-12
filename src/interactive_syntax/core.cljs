@@ -6,7 +6,7 @@
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
       [codemirror]
-      [react-codemirror2 :rename [uncontrolled CodeMirror]]
+      [react-codemirror2 :as CodeMirror]
       ["codemirror/mode/clojure/clojure"]
       ["codemirror/keymap/vim"]
       ["@stopify/stopify" :as stopify]
@@ -35,16 +35,16 @@
 ;; Editor
 
 (defn editor [input]
-  (r/create-class
-   {:render (fn []
-              [CodeMirror
-               :value "(+ 1 2)"
-               :options #js {:mode "clojure"
-                             ;;:keyMap "vim"
-                             :matchBrackets true
-                             :showCursorWhenSelecting true
-                             :lineNumbers true}
-               :onChange #(reset! input %3)])}))
+  (let [CM (.-UnControlled CodeMirror)]
+    (fn []
+      [:> CM
+       {:value ""
+        :options {:mode "clojure"
+                  ;;:keyMap "vim"
+                  :matchBrackets true
+                  :showCursorWhenSelecting true
+                  :lineNumbers true}
+        :onChange #(reset! input %3)}])))
 
 (defn render-code [this]
   (->> this d/dom-node (.highlightBlock js/hljs)))
@@ -62,7 +62,7 @@
 ;; Views
 
 (defn home-page []
-  (let [input (atom nil)
+  (let [input (atom "")
         output (atom nil)
         orientation (atom "horizontal")
         pane (.-Pane react-split-pane)
