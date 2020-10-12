@@ -5,6 +5,10 @@
       [cljs.tools.reader :refer [read read-string]]
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
+      [jquery]
+      [popper.js]
+      [bootstrap]
+      [react-bootstrap]
       [codemirror]
       [react-codemirror2 :as CodeMirror]
       ["codemirror/mode/clojure/clojure"]
@@ -65,30 +69,36 @@
   (let [input (atom "")
         output (atom nil)
         orientation (atom "horizontal")
+        ;; UI Components
         pane (.-Pane react-split-pane)
-        split-pane (.-default react-split-pane)]
+        split-pane (.-default react-split-pane)
+        Container (.-Container react-bootstrap)
+        Button (.-Button react-bootstrap)
+        Row (.-Row react-bootstrap)]
     (fn []
       (set! (.-stopify js/window) stopify)
-      [:> split-pane {:split "horizontal"
-                      :defaultSize 50
-                      :allowResize false}
-       [:div.btn-row
-        [:div>button
-         {:on-click #(reset! output (:value (eval-str @input)))}
-         "Run"]
-        [:div>button
-         "Stop"]
-        [:div>button
-         {:on-click #(swap! orientation (fn [x]
-                                          (if (= x "horizontal")
-                                            "vertical"
-                                            "horizontal")))}
-         "Options"]]
-       [:> split-pane {:split @orientation
-                       :minSize 300
-                       :defaultSize 300}
-        [editor input]
-        [result-view output]]])))
+      [:main {:role "main"}
+       [:> Container
+        [:> split-pane {:split "horizontal"
+                        :defaultSize 50
+                        :allowResize false}
+         [:> Row
+          [:> Button
+           {:on-click #(reset! output (:value (eval-str @input)))}
+           "Run"]
+          [:> Button
+           "Stop"]
+          [:> Button
+           {:on-click #(swap! orientation (fn [x]
+                                            (if (= x "horizontal")
+                                              "vertical"
+                                              "horizontal")))}
+           "Options"]]
+         [:> split-pane {:split @orientation
+                         :minSize 300
+                         :defaultSize 300}
+          [editor input]
+          [result-view output]]]]])))
 
 ;; ---i----------------------
 ;; Initialize app

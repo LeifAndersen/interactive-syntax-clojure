@@ -33,10 +33,6 @@ a:hover {
   text-decoration: underline;
 }
 
-.btn-row {
-  display: flex
-}
-
 .Resizer {
   background: #000;
   opacity: 0.2;
