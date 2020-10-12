@@ -3,7 +3,7 @@
       [reagent.core :as r :refer [atom]]
       [reagent.dom :as d]
       [cljs.tools.reader :refer [read read-string]]
-      [cljs.js :as cljs :refer [empty-state eval js-eval]]
+      [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
       [codemirror :as CodeMirror]
       ["codemirror/mode/clojure/clojure"]
@@ -15,12 +15,20 @@
 ;; Evaluator
 
 (defn eval-str [s]
-  (eval (empty-state)
-        (read-string s)
-        {:eval js-eval
-         :source-map true
-         :context :expr}
-        (fn [x] x)))
+  (compile-str (empty-state)
+               s
+               "UNTITLED.cljs"
+               {:eval js-eval
+                :source-map true}
+               (fn [program]
+                 (println program)
+                 (cond
+                   (contains? program :value)
+                   (let [runner (.stopifyLocally stopify (:value program))]
+                     (set! (.-g runner) #{js/cljs})
+                     (.run runner
+                           (fn []
+                             (println "Who needs results?"))))))))
 
 ;; -------------------------
 ;; Editor
@@ -65,7 +73,7 @@
         pane (.-Pane react-split-pane)
         split-pane (.-default react-split-pane)]
     (fn []
-      (println stopify)
+      (set! (.-stopify js/window) stopify)
       [:> split-pane {:split "horizontal"
                       :defaultSize 50
                       :allowResize false}
