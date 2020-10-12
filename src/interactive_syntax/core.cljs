@@ -5,7 +5,8 @@
       [cljs.tools.reader :refer [read read-string]]
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
-      [codemirror :as CodeMirror]
+      [codemirror]
+      [react-codemirror2 :rename [uncontrolled CodeMirror]]
       ["codemirror/mode/clojure/clojure"]
       ["codemirror/keymap/vim"]
       ["@stopify/stopify" :as stopify]
@@ -33,23 +34,17 @@
 ;; -------------------------
 ;; Editor
 
-(defn editor-did-mount [input]
-  (fn [this]
-    (let [cm (.fromTextArea CodeMirror
-                            (d/dom-node this)
-                            #js {:mode "clojure"
-                                 ;;:keyMap "vim"
-                                 :matchBrackets true
-                                 :showCursorWhenSelecting true
-                                 :lineNumbers true})]
-      (.on cm "change" #(reset! input (.getValue %))))))
-
 (defn editor [input]
   (r/create-class
-   {:render (fn [] [:textarea
-                    {:default-value ""
-                     :auto-complete "off"}])
-    :component-did-mount (editor-did-mount input)}))
+   {:render (fn []
+              [CodeMirror
+               :value "(+ 1 2)"
+               :options #js {:mode "clojure"
+                             ;;:keyMap "vim"
+                             :matchBrackets true
+                             :showCursorWhenSelecting true
+                             :lineNumbers true}
+               :onChange #(reset! input %3)])}))
 
 (defn render-code [this]
   (->> this d/dom-node (.highlightBlock js/hljs)))
