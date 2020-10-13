@@ -77,7 +77,7 @@ a:hover {
   border-right: 5px solid rgba(0, 0, 0, 0.5);
 }
 .Resizer.disabled {
-  cursor: not-allowed;
+    cursor: auto;
 }
 .Resizer.disabled:hover {
   border-color: transparent;

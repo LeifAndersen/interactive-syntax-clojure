@@ -17,6 +17,14 @@
       [react-split-pane]))
 
 ;; -------------------------
+;; Components
+(def ^:private Button (.-Button react-bootstrap))
+(def ^:private Row (.-Row react-bootstrap))
+(def ^:private Container (.-Container react-bootstrap))
+(def ^:private Pane (.-Pane react-split-pane))
+(def ^:private SplitPane (.-default react-split-pane))
+
+;; -------------------------
 ;; Evaluator
 
 (defn eval-str [s]
@@ -37,6 +45,22 @@
 
 ;; -------------------------
 ;; Editor
+
+(defn button-row [input output orientation]
+  (let []
+    (fn []
+      [:> Row
+       [:> Button
+        {:on-click #(reset! output (:value (eval-str @input)))}
+        "Run"]
+       [:> Button
+        "Stop"]
+       [:> Button
+        {:on-click #(swap! orientation (fn [x]
+                                         (if (= x "horizontal")
+                                           "vertical"
+                                           "horizontal")))}
+        "Options"]])))
 
 (defn editor [input]
   (let [CM (.-UnControlled CodeMirror)]
@@ -68,39 +92,23 @@
 (defn home-page []
   (let [input (atom "")
         output (atom nil)
-        orientation (atom "horizontal")
-        ;; UI Components
-        pane (.-Pane react-split-pane)
-        split-pane (.-default react-split-pane)
-        Container (.-Container react-bootstrap)
-        Button (.-Button react-bootstrap)
-        Row (.-Row react-bootstrap)]
+        orientation (atom "horizontal")]
     (fn []
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
-       [:> Container
-        [:> split-pane {:split "horizontal"
+       [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
+        [:> SplitPane {:split "horizontal"
                         :defaultSize 50
                         :allowResize false}
-         [:> Row
-          [:> Button
-           {:on-click #(reset! output (:value (eval-str @input)))}
-           "Run"]
-          [:> Button
-           "Stop"]
-          [:> Button
-           {:on-click #(swap! orientation (fn [x]
-                                            (if (= x "horizontal")
-                                              "vertical"
-                                              "horizontal")))}
-           "Options"]]
-         [:> split-pane {:split @orientation
-                         :minSize 300
-                         :defaultSize 300}
-          [editor input]
-          [result-view output]]]]])))
+         [button-row input output orientation]
+         [:> Container
+          [:> SplitPane {:split @orientation
+                          :minSize 300
+                          :defaultSize 300}
+           [editor input]
+           [result-view output]]]]]])))
 
-;; ---i----------------------
+  ;; ---i----------------------
 ;; Initialize app
 
 (defn mount-root []
