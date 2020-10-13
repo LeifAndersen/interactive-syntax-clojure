@@ -2,6 +2,7 @@
     (:require
       [reagent.core :as r :refer [atom]]
       [reagent.dom :as d]
+      [clojure.string :as string]
       [cljs.tools.reader :refer [read read-string]]
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
@@ -23,21 +24,23 @@
 ;; -------------------------
 ;; Evaluator
 
-(defn eval-str [s]
+(defn eval-str [s output]
   (compile-str (empty-state)
                s
                "UNTITLED.cljs"
                {:eval js-eval
                 :source-map true}
                (fn [program]
-                 (println program)
                  (cond
                    (contains? program :value)
                    (let [runner (.stopifyLocally stopify (:value program))]
-                     (set! (.-g runner) #{js/cljs})
-                     (.run runner
-                           (fn []
-                             (println "Who needs results?"))))))))
+                     (set! (.-g runner) #js {:cljs js/cljs})
+                     (binding [*print-fn*
+                               #(swap! output (fn [x]
+                                                (conj x %)))]
+                       (.run runner
+                             #(swap! output (fn [x]
+                                              (conj x nil))))))))))
 
 ;; -------------------------
 ;; Editor
@@ -47,7 +50,9 @@
     (fn []
       [:> Row
        [:> Button
-        {:on-click #(reset! output (:value (eval-str @input)))}
+        {:on-click #(let []
+                      (reset! output #queue [])
+                      (eval-str @input output))}
         "Run"]
        [:> Button
         "Stop"]
@@ -59,27 +64,28 @@
         "Options"]])))
 
 (defn editor [input]
-  (let [CM UnControlled]
+  (let []
     (fn []
-      [:> CM
+      [:> UnControlled
        {:value ""
         :options {:mode "clojure"
                   ;;:keyMap "vim"
+                  :theme "material"
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
         :onChange #(reset! input %3)}])))
 
-(defn render-code [this]
-  (->> this d/dom-node (.highlightBlock js/hljs)))
-
 (defn result-view [output]
-  (r/create-class
-   {:render (fn []
-              [:pre>code.clj
-               (with-out-str (pprint @output))])
-    ;;:component-did-update render-code
-    }))
+  (let []
+    (fn []
+      [:> Controlled
+          {:value (string/join "\n" @output)
+           :options {:mode "clojure"
+                     :theme "material"
+                     :matchBrackets true
+                     :showCursorWhenSelecting true
+                     :lineNumbers false}}])))
 
 
 ;; -------------------------
@@ -88,11 +94,8 @@
 (defn home-page []
   (let [input (atom "")
         output (atom nil)
-        orientation (atom "horizontal")]
+        orientation (atom "vertical")]
     (fn []
-      (println "Hi")
-      (println SplitPane)
-      (println "There")
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
