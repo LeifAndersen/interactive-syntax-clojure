@@ -96,18 +96,14 @@
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
-        [:> SplitPane {:split "horizontal"
-                        :defaultSize 50
-                        :allowResize false}
-         [button-row input output orientation]
-         [:> Container
-          [:> SplitPane {:split @orientation
-                          :minSize 300
-                          :defaultSize 300}
-           [editor input]
-           [result-view output]]]]]])))
+        [button-row input output orientation]
+        [:> SplitPane {:split @orientation
+                       :minSize 300
+                       :defaultSize 300}
+         [editor input]
+         [result-view output]]]])))
 
-  ;; ---i----------------------
+;; -------------------------
 ;; Initialize app
 
 (defn mount-root []
