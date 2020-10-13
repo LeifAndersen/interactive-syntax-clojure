@@ -8,20 +8,16 @@
       [jquery]
       [popper.js]
       [bootstrap]
-      [react-bootstrap]
+      [react-bootstrap :refer [Button Row Container]]
       [codemirror]
-      [react-codemirror2 :as CodeMirror]
+      [react-codemirror2 :refer [Controlled UnControlled]]
       ["codemirror/mode/clojure/clojure"]
       ["codemirror/keymap/vim"]
       ["@stopify/stopify" :as stopify]
-      [react-split-pane]))
+      [react-split-pane :refer [Pane]]))
 
 ;; -------------------------
 ;; Components
-(def ^:private Button (.-Button react-bootstrap))
-(def ^:private Row (.-Row react-bootstrap))
-(def ^:private Container (.-Container react-bootstrap))
-(def ^:private Pane (.-Pane react-split-pane))
 (def ^:private SplitPane (.-default react-split-pane))
 
 ;; -------------------------
@@ -63,7 +59,7 @@
         "Options"]])))
 
 (defn editor [input]
-  (let [CM (.-UnControlled CodeMirror)]
+  (let [CM UnControlled]
     (fn []
       [:> CM
        {:value ""
@@ -94,6 +90,9 @@
         output (atom nil)
         orientation (atom "horizontal")]
     (fn []
+      (println "Hi")
+      (println SplitPane)
+      (println "There")
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
