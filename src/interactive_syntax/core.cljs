@@ -9,7 +9,7 @@
       [jquery]
       [popper.js]
       [bootstrap]
-      [react-bootstrap :refer [Button Row Container]]
+      [react-bootstrap :refer [Button Row Container Modal]]
       [codemirror]
       [react-codemirror2 :refer [Controlled UnControlled]]
       ["codemirror/mode/clojure/clojure"]
@@ -31,21 +31,25 @@
                {:eval js-eval
                 :source-map true}
                (fn [program]
-                 (cond
-                   (contains? program :value)
-                   (let [runner (.stopifyLocally stopify (:value program))]
-                     (set! (.-g runner) #js {:cljs js/cljs})
-                     (binding [*print-fn*
-                               #(swap! output (fn [x]
-                                                (conj x %)))]
+                 (binding [*print-fn*
+                           #(swap! output (fn [x]
+                                            (conj x %)))]
+                   (cond
+                     ;;
+                     (contains? program :value)
+                     (let [runner (.stopifyLocally stopify (:value program))]
+                       (set! (.-g runner) #js {:cljs js/cljs})
                        (.run runner
                              #(swap! output (fn [x]
-                                              (conj x nil))))))))))
+                                              (conj x nil)))))
+                     ;;
+                     (contains? program :error)
+                     (pprint (-> program :error)))))))
 
 ;; -------------------------
 ;; Editor
 
-(defn button-row [input output orientation]
+(defn button-row [input output options]
   (let []
     (fn []
       [:> Row
@@ -57,10 +61,10 @@
        [:> Button
         "Stop"]
        [:> Button
-        {:on-click #(swap! orientation (fn [x]
-                                         (if (= x "horizontal")
-                                           "vertical"
-                                           "horizontal")))}
+        {:on-click #(swap! options (fn [x]
+                                     (if (= (:orientation x) "horizontal")
+                                       (conj x {:orientation "vertical"})
+                                       (conj x {:orientation "horizontal"}))))}
         "Options"]])))
 
 (defn editor [input]
@@ -80,12 +84,12 @@
   (let []
     (fn []
       [:> Controlled
-          {:value (string/join "\n" @output)
-           :options {:mode "clojure"
-                     :theme "material"
-                     :matchBrackets true
-                     :showCursorWhenSelecting true
-                     :lineNumbers false}}])))
+       {:value (string/join "\n" @output)
+        :options {:mode "clojure"
+                  :theme "material"
+                  :matchBrackets true
+                  :showCursorWhenSelecting true
+                  :lineNumbers false}}])))
 
 
 ;; -------------------------
@@ -94,13 +98,13 @@
 (defn home-page []
   (let [input (atom "")
         output (atom nil)
-        orientation (atom "vertical")]
+        options (atom {:orientation "vertical"})]
     (fn []
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
-        [button-row input output orientation]
-        [:> SplitPane {:split @orientation
+        [button-row input output options]
+        [:> SplitPane {:split (:orientation @options)
                        :minSize 300
                        :defaultSize 300}
          [editor input]
