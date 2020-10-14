@@ -9,7 +9,10 @@
       [jquery]
       [popper.js]
       [bootstrap]
-      [react-bootstrap :refer [Button Row Container Modal]]
+      [react-bootstrap :refer [Button ButtonGroup
+                               Row Col
+                               Container
+                               Modal Modal.Header Modal.Body Modal.Footer]]
       [codemirror]
       [react-codemirror2 :refer [Controlled UnControlled]]
       ["codemirror/mode/clojure/clojure"]
@@ -47,6 +50,37 @@
                      (pprint (-> program :error)))))))
 
 ;; -------------------------
+;; Options
+
+(defn- close-options-dialog [options]
+  (swap! options #(assoc % :options-menu false)))
+
+
+(defn orientation-button [options type]
+  [:> Button {:variant (if (= (:orientation @options) type) "primary" "secondary")
+              :on-click
+              #(swap! options (fn [x] (assoc x :orientation type)))}
+   (if (= type "horizontal")
+     "Horizontal"
+     "vertical")])
+
+(defn options-dialog [options]
+  [:> Modal {:show (:options-menu @options)
+             :on-hide #(close-options-dialog options)}
+   [:> Modal.Header {:close-button true}]
+   [:> Modal.Body
+    [:> Row
+     [:> Col [:h3 "Split:"]]
+     [:> Col
+      [:> ButtonGroup {:aria-label "Split"}
+       [orientation-button options "horizontal"]
+       [orientation-button options "vertical"]]]]]
+   [:> Modal.Footer
+    [:> Button {:variant "primary"
+                :on-click #(close-options-dialog options)}
+     "Close"]]])
+
+;; -------------------------
 ;; Editor
 
 (defn button-row [input output options]
@@ -61,10 +95,7 @@
        [:> Button
         "Stop"]
        [:> Button
-        {:on-click #(swap! options (fn [x]
-                                     (if (= (:orientation x) "horizontal")
-                                       (conj x {:orientation "vertical"})
-                                       (conj x {:orientation "horizontal"}))))}
+        {:on-click #(swap! options (fn [x] (assoc x :options-menu true)))}
         "Options"]])))
 
 (defn editor [input]
@@ -98,10 +129,12 @@
 (defn home-page []
   (let [input (atom "")
         output (atom nil)
-        options (atom {:orientation "vertical"})]
+        options (atom {:options-menu false
+                       :orientation "vertical"})]
     (fn []
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
+       [options-dialog options]
        [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
         [button-row input output options]
         [:> SplitPane {:split (:orientation @options)
