@@ -34,17 +34,14 @@
                {:eval js-eval
                 :source-map true}
                (fn [program]
-                 (binding [*print-fn*
-                           #(swap! output (fn [x]
-                                            (conj x %)))]
+                 (binding [*print-fn* #(swap! output conj %)]
                    (cond
                      ;;
                      (contains? program :value)
                      (let [runner (.stopifyLocally stopify (:value program))]
                        (set! (.-g runner) #js {:cljs js/cljs})
                        (.run runner
-                             #(swap! output (fn [x]
-                                              (conj x nil)))))
+                             #(swap! output conj nil)))
                      ;;
                      (contains? program :error)
                      (pprint (-> program :error)))))))
@@ -52,21 +49,17 @@
 ;; -------------------------
 ;; Options
 
-(defn- close-options-dialog [options]
-  (swap! options #(assoc % :options-menu false)))
-
-
 (defn orientation-button [options type]
   [:> Button {:variant (if (= (:orientation @options) type) "primary" "secondary")
               :on-click
-              #(swap! options (fn [x] (assoc x :orientation type)))}
+              #(swap! options assoc :orientation type)}
    (if (= type "horizontal")
      "Horizontal"
      "vertical")])
 
 (defn options-dialog [options]
   [:> Modal {:show (:options-menu @options)
-             :on-hide #(close-options-dialog options)}
+             :on-hide #(swap! options assoc :options-menu false)}
    [:> Modal.Header {:close-button true}]
    [:> Modal.Body
     [:> Row
@@ -77,7 +70,7 @@
        [orientation-button options "vertical"]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
-                :on-click #(close-options-dialog options)}
+                :on-click #(swap! options assoc :options-menu false)}
      "Close"]]])
 
 ;; -------------------------
@@ -95,7 +88,7 @@
        [:> Button
         "Stop"]
        [:> Button
-        {:on-click #(swap! options (fn [x] (assoc x :options-menu true)))}
+        {:on-click #(swap! options assoc :options-menu true)}
         "Options"]])))
 
 (defn editor [input]
