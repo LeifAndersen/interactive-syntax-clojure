@@ -6,6 +6,7 @@
       [cljs.tools.reader :refer [read read-string]]
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
+      [cljs.core.match :refer [match]]
       [jquery]
       [popper.js]
       [bootstrap]
@@ -17,6 +18,8 @@
       [react-codemirror2 :refer [Controlled UnControlled]]
       ["codemirror/mode/clojure/clojure"]
       ["codemirror/keymap/vim"]
+      ["codemirror/keymap/emacs"]
+      ["codemirror/keymap/sublime"]
       ["@stopify/stopify" :as stopify]
       [react-split-pane :refer [Pane]]))
 
@@ -49,13 +52,15 @@
 ;; -------------------------
 ;; Options
 
-(defn orientation-button [options type]
+(defn orientation-button [options type display]
   [:> Button {:variant (if (= (:orientation @options) type) "primary" "secondary")
-              :on-click
-              #(swap! options assoc :orientation type)}
-   (if (= type "horizontal")
-     "Horizontal"
-     "vertical")])
+              :on-click #(swap! options assoc :orientation type)}
+   display])
+
+(defn keymap-button [options type display]
+  [:> Button {:variant (if (= (:keymap @options) type) "primary" "secondary")
+              :on-click #(swap! options assoc :keymap type)}
+   display])
 
 (defn options-dialog [options]
   [:> Modal {:show (:options-menu @options)
@@ -66,8 +71,24 @@
      [:> Col [:h3 "Split:"]]
      [:> Col
       [:> ButtonGroup {:aria-label "Split"}
-       [orientation-button options "horizontal"]
-       [orientation-button options "vertical"]]]]]
+       [orientation-button options "horizontal" "Horizontal"]
+       [orientation-button options "vertical" "Vertical"]]]]
+    [:> Row
+     [:> Col [:h3 "Keymap:"]]
+     [:> Col
+      [:> ButtonGroup {:aria-label "Keyamp"}
+       [keymap-button options "vim" "Vim"]
+       [keymap-button options "emacs" "Emacs"]
+       [keymap-button options "sublime" "Sublime"]]]]
+    [:> Row
+     [:> Col [:h3 "Font Size:"]]
+     [:> Col
+      [:> Button {:on-click #(swap! options update :font-size dec)}
+       "-"]
+      (:font-size @options)
+      [:> Button {:on-click #(swap! options update :font-size inc)}
+       "+"]]
+     ]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
                 :on-click #(swap! options assoc :options-menu false)}
@@ -91,29 +112,39 @@
         {:on-click #(swap! options assoc :options-menu true)}
         "Options"]])))
 
-(defn editor [input]
-  (let []
+(defn editor [input options]
+  (let [edit (atom nil)]
     (fn []
+      (when (not= @edit nil)
+        (set! (-> @edit .getWrapperElement .-style .-fontSize)
+              (str (:font-size @options) "px"))
+        (-> @edit .refresh))
       [:> UnControlled
        {:value ""
         :options {:mode "clojure"
-                  ;;:keyMap "vim"
+                  :keyMap (:keymap @options)
                   :theme "material"
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
-        :onChange #(reset! input %3)}])))
+        :onChange #(reset! input %3)
+        :editorDidMount #(reset! edit %)}])))
 
-(defn result-view [output]
-  (let []
+(defn result-view [output options]
+  (let [edit (atom nil)]
     (fn []
+      (when (not= @edit nil)
+        (set! (-> @edit .getWrapperElement .-style .-fontSize)
+              (str (:font-size @options) "px"))
+        (-> @edit .refresh))
       [:> Controlled
        {:value (string/join "\n" @output)
         :options {:mode "clojure"
                   :theme "material"
                   :matchBrackets true
                   :showCursorWhenSelecting true
-                  :lineNumbers false}}])))
+                  :lineNumbers false}
+        :editorDidMount #(reset! edit %)}])))
 
 
 ;; -------------------------
@@ -123,18 +154,19 @@
   (let [input (atom "")
         output (atom nil)
         options (atom {:options-menu false
-                       :orientation "vertical"})]
+                       :orientation "horizontal"
+                       :keymap "sublime"
+                       :font-size 12})]
     (fn []
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [options-dialog options]
-       [:> Container {:style {:borderBottom "5px solid rgba(255, 255, 255, 0)"}}
-        [button-row input output options]
-        [:> SplitPane {:split (:orientation @options)
-                       :minSize 300
-                       :defaultSize 300}
-         [editor input]
-         [result-view output]]]])))
+       [button-row input output options]
+       [:> SplitPane {:split (:orientation @options)
+                      :minSize 300
+                      :defaultSize 300}
+        [editor input options]
+        [result-view output options]]])))
 
 ;; -------------------------
 ;; Initialize app

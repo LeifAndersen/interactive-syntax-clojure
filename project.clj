@@ -7,6 +7,7 @@
 
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.741"]
+                 [org.clojure/core.match "1.0.0"]
                  [reagent "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]]]
 
   :plugins [[lein-cljsbuild "1.1.7"]

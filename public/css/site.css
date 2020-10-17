@@ -1,14 +1,3 @@
-body {
-  font-family: 'Helvetica Neue', Verdana, Helvetica, Arial, sans-serif;
-  max-width: 600px;
-  margin: 0 auto;
-  padding-top: 72px;
-  -webkit-font-smoothing: antialiased;
-  font-size: 1.125em;
-  color: #333;
-  line-height: 1.5em;
-}
-
 h1, h2, h3 {
   color: #000;
 }
@@ -33,3 +22,13 @@ a:hover {
   text-decoration: underline;
 }
 
+.react-codemirror2 {
+    height: 100%;
+}
+.CodeMirror {
+    height: 100% !important;
+}
+
+main, #app, body, html {
+    height: 100%;
+}
