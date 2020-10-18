@@ -54,14 +54,9 @@
 ;; -------------------------
 ;; Options
 
-(defn orientation-button [options type display]
-  [:> Button {:variant (if (= (:orientation @options) type) "primary" "secondary")
-              :on-click #(swap! options assoc :orientation type)}
-   display])
-
-(defn keymap-button [options type display]
-  [:> Button {:variant (if (= (:keymap @options) type) "primary" "secondary")
-              :on-click #(swap! options assoc :keymap type)}
+(defn option-button [options key type display]
+  [:> Button {:variant (if (= (key @options "") type) "primary" "secondary")
+              :on-click #(swap! options assoc key type)}
    display])
 
 (defn options-dialog [options]
@@ -73,15 +68,15 @@
      [:> Col [:h3 "Split:"]]
      [:> Col
       [:> ButtonGroup {:aria-label "Split"}
-       [orientation-button options "horizontal" "Horizontal"]
-       [orientation-button options "vertical" "Vertical"]]]]
+       [option-button options :orientation "horizontal" "Horizontal"]
+       [option-button options :orientation "vertical" "Vertical"]]]]
     [:> Row
      [:> Col [:h3 "Keymap:"]]
      [:> Col
       [:> ButtonGroup {:aria-label "Keyamp"}
-       [keymap-button options "vim" "Vim"]
-       [keymap-button options "emacs" "Emacs"]
-       [keymap-button options "sublime" "Sublime"]]]]
+       [option-button options :key "vim" "Vim"]
+       [option-button options :key "emacs" "Emacs"]
+       [option-button options :key "sublime" "Sublime"]]]]
     [:> Row
      [:> Col [:h3 "Font Size:"]]
      [:> Col
@@ -89,8 +84,13 @@
        "-"]
       (:font-size @options)
       [:> Button {:on-click #(swap! options update :font-size inc)}
-       "+"]]
-     ]]
+       "+"]]]
+    [:> Row
+     [:> Col [:h3 "Theme:"]]
+     [:> Col
+      [:> ButtonGroup {:aria-label "Theme"}
+       [option-button options :theme "neat" "Light"]
+       [option-button options :theme "material" "Dark"]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
                 :on-click #(swap! options assoc :options-menu false)}
@@ -124,8 +124,8 @@
       [:> UnControlled
        {:value ""
         :options {:mode "clojure"
-                  :keyMap (:keymap @options)
-                  :theme "material"
+                  :keyMap (:keymap @options "sublime")
+                  :theme (:theme @options "material")
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
@@ -142,7 +142,7 @@
       [:> Controlled
        {:value (string/join "\n" @output)
         :options {:mode "clojure"
-                  :theme "material"
+                  :theme (:theme @options "material")
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers false}
@@ -159,7 +159,8 @@
                  (atom {:options-menu false
                         :orientation "horizontal"
                         :keymap "sublime"
-                        :font-size 12})
+                        :font-size 12
+                        :theme "material"})
                  :options)
         fs (browserfs/BFSRequire "fs")]
     (fn []
