@@ -160,8 +160,12 @@
                         :orientation "horizontal"
                         :keymap "sublime"
                         :font-size 12})
-                 :options)]
+                 :options)
+        fs (browserfs/BFSRequire "fs")]
     (fn []
+      (browserfs/configure #js {:fs "LocalStorage"}
+                           #(when %
+                              (error %)))
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [options-dialog options]
