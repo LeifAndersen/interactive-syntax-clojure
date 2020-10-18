@@ -165,7 +165,7 @@
     (fn []
       (browserfs/configure #js {:fs "LocalStorage"}
                            #(when %
-                              (error %)))
+                              (throw %)))
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}
        [options-dialog options]
