@@ -21,7 +21,9 @@
       ["codemirror/keymap/emacs"]
       ["codemirror/keymap/sublime"]
       ["@stopify/stopify" :as stopify]
-      [react-split-pane :refer [Pane]]))
+      [browserfs]
+      [react-split-pane :refer [Pane]]
+      [alandipert.storage-atom :refer [local-storage]]))
 
 ;; -------------------------
 ;; Components
@@ -153,10 +155,12 @@
 (defn home-page []
   (let [input (atom "")
         output (atom nil)
-        options (atom {:options-menu false
-                       :orientation "horizontal"
-                       :keymap "sublime"
-                       :font-size 12})]
+        options (local-storage
+                 (atom {:options-menu false
+                        :orientation "horizontal"
+                        :keymap "sublime"
+                        :font-size 12})
+                 :options)]
     (fn []
       (set! (.-stopify js/window) stopify)
       [:main {:role "main"}

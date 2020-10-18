@@ -8,7 +8,8 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.741"]
                  [org.clojure/core.match "1.0.0"]
-                 [reagent "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]]]
+                 [reagent "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]]
+                 [alandipert/storage-atom "1.2.4"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.20"]]
