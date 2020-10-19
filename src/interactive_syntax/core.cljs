@@ -52,6 +52,22 @@
                      (contains? program :error)
                      (pprint (-> program :error)))))))
 
+
+;; -------------------------
+;; File Dialogs
+
+(defn save-dialog []
+  [:> Modal {:show false
+             :on-hide #(false)}
+   [:> Modal.Header {:close-button true}]
+   [:> Modal.Footer
+    [:> Button {:variant "primary"
+                :on-click #(false)}
+     "Save"]
+    [:> Button {:variant "secondary"
+                :on-click #(false)}
+     "Close Without Saving"]]])
+
 ;; -------------------------
 ;; Options
 
@@ -103,7 +119,19 @@
 (defn button-row [input output options]
   (let []
     (fn []
-      [:> Row
+      [:> Row {:style {:display "flex"
+                       :justifyContent "flex-between"}}
+       [:div {:style {:display "flex"
+                      :justifyContent "flex-start"}}
+        [:> Button "New"]
+        [:> Button "Save"]
+        [:> Button "Load"]
+        [:> Button "Project"]
+        [:> Button
+         {:on-click #(swap! options assoc :options-menu true)}
+         "Options"]]
+       [:div {:style {:display "flex"
+                      :justifyContent "flex-end"}}
        [:> Button
         {:on-click #(let []
                       (reset! output #queue [])
@@ -111,9 +139,7 @@
         "Run"]
        [:> Button
         "Stop"]
-       [:> Button
-        {:on-click #(swap! options assoc :options-menu true)}
-        "Options"]])))
+        ]])))
 
 (defn editor [input options]
   (let [edit (atom nil)]
