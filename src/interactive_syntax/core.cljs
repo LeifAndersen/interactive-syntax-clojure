@@ -23,6 +23,7 @@
       ["@stopify/stopify" :as stopify]
       [browserfs]
       [react-split-pane :refer [Pane]]
+      [chonky :refer [FileBrowser FileList FileSearch FileToolbar]]
       [alandipert.storage-atom :refer [local-storage]]))
 
 ;; -------------------------

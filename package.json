@@ -23,6 +23,7 @@
     "@stopify/stopify": "^0.7.2",
     "bootstrap": "^4.5.2",
     "browserfs": "^1.4.3",
+    "chonky": "^1.1.5",
     "codemirror": "^5.58.1",
     "highlight.js": "^10.2.1",
     "jquery": "^3.5.1",
