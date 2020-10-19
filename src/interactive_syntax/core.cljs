@@ -57,15 +57,12 @@
 ;; File Dialogs
 
 (defn save-dialog []
-  [:> Modal {:show false
-             :on-hide #(false)}
+  [:> Modal {:show false}
    [:> Modal.Header {:close-button true}]
    [:> Modal.Footer
-    [:> Button {:variant "primary"
-                :on-click #(false)}
+    [:> Button {:variant "primary"}
      "Save"]
-    [:> Button {:variant "secondary"
-                :on-click #(false)}
+    [:> Button {:variant "secondary"}
      "Close Without Saving"]]])
 
 ;; -------------------------
