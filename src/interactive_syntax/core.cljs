@@ -10,7 +10,8 @@
       [jquery]
       [popper.js]
       [bootstrap]
-      [react-bootstrap :refer [Button ButtonGroup
+      [react-bootstrap :refer [Button ButtonGroup SplitButton
+                               Dropdown DropdownButton
                                Row Col
                                Container
                                Modal Modal.Header Modal.Body Modal.Footer]]
@@ -44,10 +45,9 @@
                    (cond
                      ;;
                      (contains? program :value)
-                     (let [runner (.stopifyLocally stopify (:value program))]
-                       (set! (.-g runner) #js {:cljs js/cljs})
-                       (.run runner
-                             #(swap! output conj nil)))
+                     (let [runner (stopify.stopifyLocally (:value program))]
+                       (set! runner.g #js {:cljs js/cljs})
+                       (runner.run #(swap! output conj nil)))
                      ;;
                      (contains? program :error)
                      (pprint (-> program :error)))))))
@@ -69,13 +69,18 @@
 ;; Options
 
 (defn option-button [options key type display]
-  [:> Button {:variant (if (= (key @options "") type) "primary" "secondary")
-              :on-click #(swap! options assoc key type)}
+  (println key)
+  (println type)
+  (println display)
+  (println options)
+  (println (key options))
+  [:> Button {:variant (if (= @(key options) type) "primary" "secondary")
+              :on-click #(reset! (key options) type)}
    display])
 
 (defn options-dialog [options]
-  [:> Modal {:show (:options-menu @options)
-             :on-hide #(swap! options assoc :options-menu false)}
+  [:> Modal {:show @(:options-menu options)
+             :on-hide #(reset! (:options-menu options) false)}
    [:> Modal.Header {:close-button true}]
    [:> Modal.Body
     [:> Row
@@ -88,16 +93,16 @@
      [:> Col [:h3 "Keymap:"]]
      [:> Col
       [:> ButtonGroup {:aria-label "Keyamp"}
-       [option-button options :key "vim" "Vim"]
-       [option-button options :key "emacs" "Emacs"]
-       [option-button options :key "sublime" "Sublime"]]]]
+       [option-button options :keymap "vim" "Vim"]
+       [option-button options :keymap "emacs" "Emacs"]
+       [option-button options :keymap "sublime" "Sublime"]]]]
     [:> Row
      [:> Col [:h3 "Font Size:"]]
      [:> Col
-      [:> Button {:on-click #(swap! options update :font-size dec)}
+      [:> Button {:on-click #(swap! (:font-size options) dec)}
        "-"]
-      (:font-size @options)
-      [:> Button {:on-click #(swap! options update :font-size inc)}
+      @(:font-size options)
+      [:> Button {:on-click #(swap! (:font-size options) inc)}
        "+"]]]
     [:> Row
      [:> Col [:h3 "Theme:"]]
@@ -107,7 +112,7 @@
        [option-button options :theme "material" "Dark"]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
-                :on-click #(swap! options assoc :options-menu false)}
+                :on-click #(reset! (:options-menu options) false)}
      "Close"]]])
 
 ;; -------------------------
@@ -116,40 +121,41 @@
 (defn button-row [input output options]
   (let []
     (fn []
-      [:> Row {:style {:display "flex"
-                       :justifyContent "flex-between"}}
-       [:div {:style {:display "flex"
-                      :justifyContent "flex-start"}}
+      [:> Row
+       [:> Col {:xs "auto"}
         [:> Button "New"]
-        [:> Button "Save"]
+        [:> SplitButton {:title "Save"}
+         [:> Dropdown.Item "Save As"]]
         [:> Button "Load"]
-        [:> Button "Project"]
+        [:> DropdownButton {:as ButtonGroup
+                            :title "Project"}
+         [:> Dropdown.Item "Import"]
+         [:> Dropdown.Item "Export"]]
         [:> Button
-         {:on-click #(swap! options assoc :options-menu true)}
+         {:on-click #(reset! (:options-menu options) true)}
          "Options"]]
-       [:div {:style {:display "flex"
-                      :justifyContent "flex-end"}}
-       [:> Button
-        {:on-click #(let []
-                      (reset! output #queue [])
-                      (eval-str @input output))}
-        "Run"]
-       [:> Button
-        "Stop"]
-        ]])))
+       [:> Col]
+       [:> Col {:xs "auto"}
+        [:> Button
+         {:on-click #(let []
+                       (reset! output #queue [])
+                       (eval-str @input output))}
+         "Run"]
+        [:> Button
+         "Stop"]]])))
 
 (defn editor [input options]
   (let [edit (atom nil)]
     (fn []
       (when (not= @edit nil)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
-              (str (:font-size @options) "px"))
+              (str @(:font-size options) "px"))
         (-> @edit .refresh))
       [:> UnControlled
        {:value ""
         :options {:mode "clojure"
-                  :keyMap (:keymap @options "sublime")
-                  :theme (:theme @options "material")
+                  :keyMap @(:keymap options)
+                  :theme @(:theme options "material")
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
@@ -161,12 +167,12 @@
     (fn []
       (when (not= @edit nil)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
-              (str (:font-size @options) "px"))
+              (str @(:font-size options) "px"))
         (-> @edit .refresh))
       [:> Controlled
        {:value (string/join "\n" @output)
         :options {:mode "clojure"
-                  :theme (:theme @options "material")
+                  :theme @(:theme options "material")
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers false}
@@ -179,23 +185,26 @@
 (defn home-page []
   (let [input (atom "")
         output (atom nil)
-        options (local-storage
-                 (atom {:options-menu false
-                        :orientation "horizontal"
-                        :keymap "sublime"
-                        :font-size 12
-                        :theme "material"})
-                 :options)
+        options (into {}
+                      (for [kv {:options-menu false
+                                :file-menu false
+                                :saved false
+                                :orientation "horizontal"
+                                :keymap "sublime"
+                                :font-size 12
+                                :theme "material"
+                                :current-file nil}]
+                        [(key kv) (local-storage (atom (val kv)) (key kv))]))
         fs (browserfs/BFSRequire "fs")]
     (fn []
       (browserfs/configure #js {:fs "LocalStorage"}
                            #(when %
                               (throw %)))
-      (set! (.-stopify js/window) stopify)
+      (set! js/window.stopify stopify)
       [:main {:role "main"}
        [options-dialog options]
        [button-row input output options]
-       [:> SplitPane {:split (:orientation @options)
+       [:> SplitPane {:split @(:orientation options)
                       :minSize 300
                       :defaultSize 300}
         [editor input options]
