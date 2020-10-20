@@ -12,9 +12,7 @@
       [bootstrap]
       [react-bootstrap :refer [Button ButtonGroup SplitButton
                                Dropdown DropdownButton
-                               Row Col
-                               Container
-                               Modal Modal.Header Modal.Body Modal.Footer]]
+                               Row Col Form Container Modal]]
       [codemirror]
       [react-codemirror2 :refer [Controlled UnControlled]]
       ["codemirror/mode/clojure/clojure"]
@@ -69,11 +67,6 @@
 ;; Options
 
 (defn option-button [options key type display]
-  (println key)
-  (println type)
-  (println display)
-  (println options)
-  (println (key options))
   [:> Button {:variant (if (= @(key options) type) "primary" "secondary")
               :on-click #(reset! (key options) type)}
    display])
@@ -81,35 +74,49 @@
 (defn options-dialog [options]
   [:> Modal {:show @(:options-menu options)
              :on-hide #(reset! (:options-menu options) false)}
-   [:> Modal.Header {:close-button true}]
+   [:> Modal.Header {:close-button true}
+    [:h2 "Options Menu"]]
    [:> Modal.Body
-    [:> Row
-     [:> Col [:h3 "Split:"]]
-     [:> Col
-      [:> ButtonGroup {:aria-label "Split"}
-       [option-button options :orientation "horizontal" "Horizontal"]
-       [option-button options :orientation "vertical" "Vertical"]]]]
-    [:> Row
-     [:> Col [:h3 "Keymap:"]]
-     [:> Col
-      [:> ButtonGroup {:aria-label "Keyamp"}
-       [option-button options :keymap "vim" "Vim"]
-       [option-button options :keymap "emacs" "Emacs"]
-       [option-button options :keymap "sublime" "Sublime"]]]]
-    [:> Row
-     [:> Col [:h3 "Font Size:"]]
-     [:> Col
-      [:> Button {:on-click #(swap! (:font-size options) dec)}
-       "-"]
-      @(:font-size options)
-      [:> Button {:on-click #(swap! (:font-size options) inc)}
-       "+"]]]
-    [:> Row
-     [:> Col [:h3 "Theme:"]]
-     [:> Col
-      [:> ButtonGroup {:aria-label "Theme"}
-       [option-button options :theme "neat" "Light"]
-       [option-button options :theme "material" "Dark"]]]]]
+    [:> Form
+     [:> Form.Group {:as Row}
+      [:> Form.Label {:column true}
+       [:h4 "Split:"]]
+      [:> Col
+       [:> ButtonGroup {:aria-label "Split"}
+        [option-button options :orientation "horizontal" "Horizontal"]
+        [option-button options :orientation "vertical" "Vertical"]]]]
+     [:> Form.Group {:as Row}
+      [:> Form.Label {:column true}
+       [:h4 "Keymap:"]]
+      [:> Col
+       [:> ButtonGroup {:aria-label "Keyamp"}
+        [option-button options :keymap "vim" "Vim"]
+        [option-button options :keymap "emacs" "Emacs"]
+        [option-button options :keymap "sublime" "Sublime"]]]]
+     [:> Form.Group {:as Row}
+      [:> Form.Label {:column true}
+       [:h4 "Font Size:"]]
+      [:> Col
+       [:> Row
+      [:> Col {:xs "auto"}
+       [:> Button {:on-click #(swap! (:font-size options) dec)}
+        "-"]]
+      [:> Col {:xs 4}
+       [:> Form.Control
+        {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
+                       (when (not (js/isNaN value))
+                         (reset! (:font-size options) value)))
+         :value @(:font-size options)}]]
+      [:> Col {:xs "auto"}
+       [:> Button {:on-click #(swap! (:font-size options) inc)}
+        "+"]]]]]
+     [:> Form.Group {:as Row}
+      [:> Form.Label {:column true}
+       [:h4 "Theme:"]]
+      [:> Col
+       [:> ButtonGroup {:aria-label "Theme"}
+        [option-button options :theme "neat" "Light"]
+        [option-button options :theme "material" "Dark"]]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
                 :on-click #(reset! (:options-menu options) false)}
@@ -183,7 +190,7 @@
 ;; Views
 
 (defn home-page []
-  (let [input (atom "")
+  (let [input (local-storage (atom "") :input)
         output (atom nil)
         options (into {}
                       (for [kv {:options-menu false
