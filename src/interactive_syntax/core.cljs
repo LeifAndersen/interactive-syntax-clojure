@@ -54,6 +54,26 @@
 ;; -------------------------
 ;; File Dialogs
 
+(defn file-description [fs filepath]
+  (let* [stats (fs.statSync filepath)
+         ret {:id (-> js/nodeCrypto
+                      (.createHash "sha1")
+                      (.update filepath)
+                      (.digest "base64"))
+              :name (js/path.basename filepath)
+              :isDir (.isDirectory stats)
+              :modDate stats.ctime}
+         ret (if (= (.charAt filepath 0) ".")
+               (assoc ret :isHidden true)
+               ret)
+         ret (if (.isSymbolicLink stats)
+               (assoc ret :isSymlink true)
+               ret)
+         ret (if (.isDirectory stats)
+               ret
+               (assoc ret :size stats.size))]
+    (clj->js ret)))
+
 (defn save-dialog []
   [:> Modal {:show false}
    [:> Modal.Header {:close-button true}]
@@ -64,13 +84,13 @@
      "Close Without Saving"]]])
 
 (defn load-dialog [fs load-menu current-folder]
-  (println (fs.readdirSync @current-folder))
   [:> Modal {:show @load-menu
              :on-hide #(reset! load-menu false)}
    [:> Modal.Header {:close-button true}
     [:h2 "Load"]]
    [:> Modal.Body
-    [:> FileBrowser {:files []}
+    [:> FileBrowser {:files (for [file (fs.readdirSync @current-folder)]
+                              (file-description fs file))}
      [:> FileToolbar]
      [:> FileSearch]
      [:> FileList]]]])
