@@ -45,7 +45,7 @@
                      (contains? program :value)
                      (let [runner (stopify.stopifyLocally (:value program))]
                        (set! runner.g #js {:cljs js/cljs})
-                       (runner.run #(swap! output conj nil)))
+                       (.run runner #(swap! output conj nil)))
                      ;;
                      (contains? program :error)
                      (pprint (-> program :error)))))))
