@@ -63,6 +63,18 @@
     [:> Button {:variant "secondary"}
      "Close Without Saving"]]])
 
+(defn load-dialog [fs load-menu current-folder]
+  (println (fs.readdirSync @current-folder))
+  [:> Modal {:show @load-menu
+             :on-hide #(reset! load-menu false)}
+   [:> Modal.Header {:close-button true}
+    [:h2 "Load"]]
+   [:> Modal.Body
+    [:> FileBrowser {:files []}
+     [:> FileToolbar]
+     [:> FileSearch]
+     [:> FileList]]]])
+
 ;; -------------------------
 ;; Options
 
@@ -71,9 +83,9 @@
               :on-click #(reset! (key options) type)}
    display])
 
-(defn options-dialog [options]
-  [:> Modal {:show @(:options-menu options)
-             :on-hide #(reset! (:options-menu options) false)}
+(defn options-dialog [options options-menu]
+  [:> Modal {:show @options-menu
+             :on-hide #(reset! options-menu false)}
    [:> Modal.Header {:close-button true}
     [:h2 "Options Menu"]]
    [:> Modal.Body
@@ -119,13 +131,13 @@
         [option-button options :theme "material" "Dark"]]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
-                :on-click #(reset! (:options-menu options) false)}
+                :on-click #(reset! options-menu false)}
      "Close"]]])
 
 ;; -------------------------
 ;; Editor
 
-(defn button-row [input output options]
+(defn button-row [input output options-menu load-menu]
   (let []
     (fn []
       [:> Row
@@ -133,13 +145,15 @@
         [:> Button "New"]
         [:> SplitButton {:title "Save"}
          [:> Dropdown.Item "Save As"]]
-        [:> Button "Load"]
+        [:> Button
+         {:on-click #(reset! load-menu true)}
+         "Load"]
         [:> DropdownButton {:as ButtonGroup
                             :title "Project"}
          [:> Dropdown.Item "Import"]
          [:> Dropdown.Item "Export"]]
         [:> Button
-         {:on-click #(reset! (:options-menu options) true)}
+         {:on-click #(reset! options-menu true)}
          "Options"]]
        [:> Col]
        [:> Col {:xs "auto"}
@@ -192,10 +206,11 @@
 (defn home-page []
   (let [input (local-storage (atom "") :input)
         output (atom nil)
+        options-menu (local-storage (atom false) :options-menu)
+        load-menu (local-storage (atom false) :load-menu)
+        current-folder (local-storage (atom "/") :current-folder)
         options (into {}
-                      (for [kv {:options-menu false
-                                :file-menu false
-                                :saved false
+                      (for [kv {:saved false
                                 :orientation "horizontal"
                                 :keymap "sublime"
                                 :font-size 12
@@ -209,8 +224,9 @@
                               (throw %)))
       (set! js/window.stopify stopify)
       [:main {:role "main"}
-       [options-dialog options]
-       [button-row input output options]
+       [load-dialog fs load-menu current-folder]
+       [options-dialog options options-menu]
+       [button-row input output options-menu load-menu]
        [:> SplitPane {:split @(:orientation options)
                       :minSize 300
                       :defaultSize 300}
