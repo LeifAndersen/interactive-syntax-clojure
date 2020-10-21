@@ -74,23 +74,51 @@
                (assoc ret :size stats.size))]
     (clj->js ret)))
 
-(defn handle-file-action [fs current-folder]
+(defn handle-file-action [fs menu current-folder]
   (fn [action data]
-    (println (= ChonkyActions.CreateFolder.id action.id))
     (condp = action.id
-      ChonkyActions.CreateFolder.id (println data)
-      ChonkyActions.OpenFiles.id (println "YAY")
-      nil)))
+      ChonkyActions.CreateFolder.id (swap! menu conj :new)
+      ;;
+      ChonkyActions.OpenFiles.id
+      (cond
+        (contains? (js->clj data.target) "breadCrumb")
+        (swap! current-folder
+               #(apply js/path.join
+                       (conj (for [i (range data.target.breadCrumb)]
+                               "..")
+                             %)))
+        ;;
+        data.target.isDir
+        (swap! current-folder #(js/path.join % data.target.name))
+        ;;
+        :else (println "TODO"))
+      ;;
+      (println data))))
 
-(defn new-dialog [fs new-menu current-folder]
-  [:> Modal {:show @new-menu
-             :on-hide #(reset! new-menu false)}
-   [:> Modal.Header {:close-button true}]
-   [:> Modal.Body
-    [:> Form
-     [:> Form.Group {:as Row}
-      [:> Form.Label {:column true}
-       [:h4 @new-menu]]]]]])
+(defn new-dialog [fs menu current-folder]
+  (let [text (atom "")]
+    (fn []
+      [:> Modal {:show (= (peek @menu) :new)
+                 :on-hide #(swap! menu pop)}
+       [:> Modal.Header {:close-button true}
+        [:h3 "New"]]
+       [:> Modal.Body
+        [:> Form
+         [:> Form.Group {:as Row}
+          [:> Col {:xs "auto"}
+           [:> Form.Label {:sr-only true}
+            [:h4 "New:"]]]
+          [:> Col {:xs 8}
+           [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
+          [:> Col {:xs "auto"}
+           [:> Button
+            {:on-click (fn []
+                         (when (not= @text "")
+                           (let [new-path (js/path.join @current-folder @text)]
+                             (fs.mkdir new-path)
+                             (reset! current-folder new-path))
+                           (swap! menu pop)))}
+            "Create"]]]]]])))
 
 (defn save-dialog []
   [:> Modal {:show false}
@@ -101,30 +129,30 @@
     [:> Button {:variant "secondary"}
      "Close Without Saving"]]])
 
-(defn load-dialog [fs load-menu current-folder]
-  [:> Modal {:show @load-menu
-             :size "xl"
-             :on-hide #(reset! load-menu false)}
+(defn load-dialog [fs menu current-folder]
+  [:> Modal {:show (= (peek @menu) :load)
+             :size "XL"
+             :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
-    [:h2 "Load"]]
+    [:h3 "Load"]]
    [:> Modal.Body
     [:> FileBrowser
      {:files (for [file (fs.readdirSync @current-folder)]
-               (file-description fs file))
-      :folder-chain (for [[i folder] (map list
-                                         (range)
-                                         (conj (filter (partial not= "")
-                                                       (.split @current-folder
-                                                               js/path.sep))
-                                               "/"))]
-                     #js {:id (str "folder" i)
-                          :name folder})
+               (file-description fs (js/path.join @current-folder file)))
+      :folder-chain (let [split (filter (partial not= "")
+                                        (.split @current-folder js/path.sep))]
+                      (for [[i folder] (map list
+                                            (range)
+                                            (conj split "/"))]
+                        #js {:id (str "folder" i)
+                             :breadCrumb (- (count split) i)
+                             :name folder}))
       :file-actions [ChonkyActions.CreateFolder
                     ChonkyActions.DeleteFiles
                     ChonkyActions.UploadFiles
                     ChonkyActions.DownloadFiles
                     ChonkyActions.CopyFiles]
-      :on-file-action (handle-file-action fs current-folder)}
+      :on-file-action (handle-file-action fs menu current-folder)}
      [:> FileToolbar]
      [:> FileSearch]
      [:> FileList]]]])
@@ -137,11 +165,11 @@
               :on-click #(reset! (key options) type)}
    display])
 
-(defn options-dialog [options options-menu]
-  [:> Modal {:show @options-menu
-             :on-hide #(reset! options-menu false)}
+(defn options-dialog [options menu]
+  [:> Modal {:show (= (peek @menu) :options)
+             :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
-    [:h2 "Options Menu"]]
+    [:h3 "Options Menu"]]
    [:> Modal.Body
     [:> Form
      [:> Form.Group {:as Row}
@@ -185,13 +213,13 @@
         [option-button options :theme "material" "Dark"]]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
-                :on-click #(reset! options-menu false)}
+                :on-click #(swap! menu pop)}
      "Close"]]])
 
 ;; -------------------------
 ;; Editor
 
-(defn button-row [input output options-menu load-menu]
+(defn button-row [input output menu]
   (let []
     (fn []
       [:> Row
@@ -200,14 +228,14 @@
         [:> SplitButton {:title "Save"}
          [:> Dropdown.Item "Save As"]]
         [:> Button
-         {:on-click #(reset! load-menu true)}
+         {:on-click #(swap! menu conj :load)}
          "Load"]
         [:> DropdownButton {:as ButtonGroup
                             :title "Project"}
          [:> Dropdown.Item "Import"]
          [:> Dropdown.Item "Export"]]
         [:> Button
-         {:on-click #(reset! options-menu true)}
+         {:on-click #(swap! menu conj :options)}
          "Options"]]
        [:> Col]
        [:> Col {:xs "auto"}
@@ -260,9 +288,7 @@
 (defn home-page []
   (let [input (local-storage (atom "") :input)
         output (atom nil)
-        options-menu (local-storage (atom false) :options-menu)
-        load-menu (local-storage (atom false) :load-menu)
-        new-menu (local-storage (atom false) :new-menu)
+        menu (local-storage (atom [:home]) :menu)
         current-folder (local-storage (atom "/") :current-folder)
         options (into {}
                       (for [kv {:saved false
@@ -278,11 +304,12 @@
                            #(when %
                               (throw %)))
       (set! js/window.stopify stopify)
+      (set! js/window.fs fs) ; <-- XXX For debugging, should remove
       [:main {:role "main"}
-       [load-dialog fs load-menu current-folder]
-       [options-dialog options options-menu]
-       [button-row input output options-menu load-menu]
-       [new-dialog fs new-menu current-folder]
+       [load-dialog fs menu current-folder]
+       [options-dialog options menu]
+       [button-row input output menu]
+       [new-dialog fs menu current-folder]
        [:> SplitPane {:split @(:orientation options)
                       :minSize 300
                       :defaultSize 300}
