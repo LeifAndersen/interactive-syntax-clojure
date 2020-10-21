@@ -22,7 +22,7 @@
       ["@stopify/stopify" :as stopify]
       [browserfs]
       [react-split-pane :refer [Pane]]
-      [chonky :refer [FileBrowser FileList FileSearch FileToolbar]]
+      [chonky :refer [FileBrowser FileList FileSearch FileToolbar ChonkyActions]]
       [alandipert.storage-atom :refer [local-storage]]))
 
 ;; -------------------------
@@ -74,6 +74,24 @@
                (assoc ret :size stats.size))]
     (clj->js ret)))
 
+(defn handle-file-action [fs current-folder]
+  (fn [action data]
+    (println (= ChonkyActions.CreateFolder.id action.id))
+    (condp = action.id
+      ChonkyActions.CreateFolder.id (println data)
+      ChonkyActions.OpenFiles.id (println "YAY")
+      nil)))
+
+(defn new-dialog [fs new-menu current-folder]
+  [:> Modal {:show @new-menu
+             :on-hide #(reset! new-menu false)}
+   [:> Modal.Header {:close-button true}]
+   [:> Modal.Body
+    [:> Form
+     [:> Form.Group {:as Row}
+      [:> Form.Label {:column true}
+       [:h4 @new-menu]]]]]])
+
 (defn save-dialog []
   [:> Modal {:show false}
    [:> Modal.Header {:close-button true}]
@@ -85,12 +103,28 @@
 
 (defn load-dialog [fs load-menu current-folder]
   [:> Modal {:show @load-menu
+             :size "xl"
              :on-hide #(reset! load-menu false)}
    [:> Modal.Header {:close-button true}
     [:h2 "Load"]]
    [:> Modal.Body
-    [:> FileBrowser {:files (for [file (fs.readdirSync @current-folder)]
-                              (file-description fs file))}
+    [:> FileBrowser
+     {:files (for [file (fs.readdirSync @current-folder)]
+               (file-description fs file))
+      :folder-chain (for [[i folder] (map list
+                                         (range)
+                                         (conj (filter (partial not= "")
+                                                       (.split @current-folder
+                                                               js/path.sep))
+                                               "/"))]
+                     #js {:id (str "folder" i)
+                          :name folder})
+      :file-actions [ChonkyActions.CreateFolder
+                    ChonkyActions.DeleteFiles
+                    ChonkyActions.UploadFiles
+                    ChonkyActions.DownloadFiles
+                    ChonkyActions.CopyFiles]
+      :on-file-action (handle-file-action fs current-folder)}
      [:> FileToolbar]
      [:> FileSearch]
      [:> FileList]]]])
@@ -228,6 +262,7 @@
         output (atom nil)
         options-menu (local-storage (atom false) :options-menu)
         load-menu (local-storage (atom false) :load-menu)
+        new-menu (local-storage (atom false) :new-menu)
         current-folder (local-storage (atom "/") :current-folder)
         options (into {}
                       (for [kv {:saved false
@@ -247,6 +282,7 @@
        [load-dialog fs load-menu current-folder]
        [options-dialog options options-menu]
        [button-row input output options-menu load-menu]
+       [new-dialog fs new-menu current-folder]
        [:> SplitPane {:split @(:orientation options)
                       :minSize 300
                       :defaultSize 300}
