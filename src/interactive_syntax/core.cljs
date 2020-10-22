@@ -22,6 +22,8 @@
       ["@stopify/stopify" :as stopify]
       [browserfs]
       [react-split-pane :refer [Pane]]
+      [react-dnd :refer [DndProvider]]
+      [react-dnd-html5-backend :refer [HTML5Backend]]
       [chonky :refer [ChonkyActions]]
       [alandipert.storage-atom :refer [local-storage]]))
 
@@ -55,24 +57,18 @@
 ;; File Dialogs
 
 (defn file-description [fs filepath]
-  (let* [stats (fs.statSync filepath)
-         ret {:id (-> js/nodeCrypto
-                      (.createHash "sha1")
-                      (.update filepath)
-                      (.digest "base64"))
-              :name (js/path.basename filepath)
-              :isDir (.isDirectory stats)
-              :modDate stats.ctime}
-         ret (if (= (.charAt filepath 0) ".")
-               (assoc ret :isHidden true)
-               ret)
-         ret (if (.isSymbolicLink stats)
-               (assoc ret :isSymlink true)
-               ret)
-         ret (if (.isDirectory stats)
-               ret
-               (assoc ret :size stats.size))]
-    (clj->js ret)))
+  (let [stats (fs.statSync filepath)]
+    (cond-> {:id (-> js/nodeCrypto
+                     (.createHash "sha1")
+                     (.update filepath)
+                     (.digest "base64"))
+             :name (js/path.basename filepath)
+             :isDir (.isDirectory stats)
+             :modDate stats.ctime}
+      (= (.charAt filepath 0) ".") (assoc :isHidden true)
+      (.isSymbolicLink stats) (assoc :isSymlink true)
+      (not (.isDirectory stats)) (assoc :size stats.size)
+      :always clj->js)))
 
 (defn save-buffer [current-folder current-file input file-changed]
   (fs.writeFileSync (js/path.join @current-folder @current-file) @input)
@@ -82,7 +78,7 @@
   (reset! input (fs.readFileSync (js/path.join @current-folder @current-file)))
   (reset! file-changed false))
 
-(defn handle-file-action [fs menu current-folder]
+(defn handle-file-action [fs menu current-folder file-changed]
   (fn [action data]
     (condp = action.id
       ,ChonkyActions.OpenParentFolder.id nil
@@ -129,71 +125,75 @@
                                (reset! current-folder new-path))
                              (swap! menu pop))))))
 
-(defn confirm-save-dialog []
-  [:> Modal {:show false}
-   [:> Modal.Header {:close-button true}]
-   [:> Modal.Footer
-    [:> Button {:variant "primary"}
-     "Save"]
-    [:> Button {:variant "secondary"}
-     "Close Without Saving"]]])
+(defn confirm-save-dialog [menu]
+  (let [item (peek @menu)]
+    [:> Modal {:show (and (coll? item) (= (first item) :confirm-save))
+               :on-hide #(swap! menu pop)}
+     [:> Modal.Header {:close-button true}]
+     [:> Modal.Footer
+      [:> Button {:variant "primary"
+                  :on-click (fn [] nil)}
+       "Save"]
+      [:> Button {:variant "secondary"
+                  :on-click #(swap! menu (fn [m] (conj (pop m) (second item))))}
+       "Close Without Saving"]]]))
 
-(defn file-browser [fs menu current-folder]
-  [:> chonky/FileBrowser
-   {:files (for [file (fs.readdirSync @current-folder)]
-             (file-description fs (js/path.join @current-folder file)))
-    :folder-chain (let [split (filter (partial not= "")
-                                      (.split @current-folder js/path.sep))]
-                    (for [[i folder] (map list
-                                          (range)
-                                          (conj split "/"))]
-                      #js {:id (str "folder" i)
-                           :breadCrumb (- (count split) i)
-                           :name folder}))
-    :file-actions [ChonkyActions.CreateFolder
-                   ChonkyActions.DeleteFiles
-                   ChonkyActions.UploadFiles
-                   ChonkyActions.DownloadFiles
-                   ChonkyActions.CopyFiles]
-    :on-file-action (handle-file-action fs menu current-folder)}
-   [:> chonky/FileToolbar]
-   [:> chonky/FileSearch]
-   [:> chonky/FileList]])
+(defn file-browser [fs menu current-folder current-file input file-changed]
+  (let [text (atom "")]
+    [:> chonky/FileBrowser
+     {:enable-drag-and-drop true
+      :files (for [file (fs.readdirSync @current-folder)]
+               (file-description fs (js/path.join @current-folder file)))
+      :folder-chain (let [split (filter (partial not= "")
+                                        (.split @current-folder js/path.sep))]
+                      (for [[i folder] (map list
+                                            (range)
+                                            (conj split "/"))]
+                        #js {:id (str "folder" i)
+                             :breadCrumb (- (count split) i)
+                             :name folder}))
+      :file-actions [ChonkyActions.CreateFolder
+                     ChonkyActions.DeleteFiles
+                     ChonkyActions.UploadFiles
+                     ChonkyActions.DownloadFiles
+                     ChonkyActions.CopyFiles]
+      :on-file-action (handle-file-action fs menu current-folder file-changed)}
+     [:> Form
+      [:> Form.Group {:as Row}
+       [:> Col {:xs "auto"}
+        [:> Form.Label {:column true}
+         "File"]]
+       [:> Col {:xs 10}
+        [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
+       [:> Col {:xs "auto"}
+        [:> Button
+         {:on-click
+          (fn []
+            (when (not= text "")
+              (reset! current-file @text)
+              (save-buffer current-folder current-file input file-changed)
+              (swap! menu pop)))}
+         "Save"]]]]
+     [:> chonky/FileToolbar]
+     [:> chonky/FileSearch]
+     [:> chonky/FileList]]))
 
 (defn save-dialog [fs menu current-folder current-file input file-changed]
-  (let [text (atom "")]
-    [:> Modal {:show (= (peek @menu) :save)
+  (let [item (peek @menu)]
+    [:> Modal {:show (or (and (coll? item) (= (first item) :save))
+                         (= item :load))
                :size "xl"
                :on-hide #(swap! menu pop)}
-     [:> Modal.Header {:close-button true}
-      [:h3 "Save"]]
-     [:> Modal.Body
-      [:> Form
-       [:> Form.Group {:as Row}
-        [:> Col {:xs "auto"}
-         [:> Form.Label {:column true}
-          "File"]]
-        [:> Col {:xs 10}
-         [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
-        [:> Col {:xs "auto"}
-         [:> Button
-          {:on-click
-           (fn []
-             (when (not= text "")
-               (reset! current-file @text)
-               (save-buffer current-folder current-file input file-changed)
-               (swap! menu pop)))}
-          "Save"]]]]
-      [file-browser fs menu current-folder]]]))
+     [file-browser fs menu current-folder current-file input file-changed]]))
 
-(defn load-dialog [fs menu current-folder]
+(defn load-dialog [fs menu current-folder current-file input file-changed]
   [:> Modal {:show (= (peek @menu) :load)
              :size "xl"
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
     [:h3 "Load"]]
    [:> Modal.Body
-    [file-browser fs menu current-folder]]])
+    [file-browser fs menu current-folder current-file input file-changed]]])
 
 ;; -------------------------
 ;; Options
@@ -257,14 +257,22 @@
 ;; -------------------------
 ;; Editor
 
-(defn button-row [input output menu]
+(defn button-row [input output current-folder current-file file-changed menu]
   (let []
     (fn []
-      [:> Row
+      [:> Row {:className "align-items-center"}
        [:> Col {:xs "auto"}
         [:> Button "New"]
-        [:> SplitButton {:title "Save"}
-         [:> Dropdown.Item {:on-click #(swap! menu conj :save)}
+        [:> SplitButton
+         {:title "Save"
+          :on-click (fn []
+                      (if @current-file
+                        (save-buffer current-folder
+                                     current-file
+                                     input
+                                     file-changed)
+                        (swap! menu conj [:save])))}
+         [:> Dropdown.Item {:on-click #(swap! menu conj [:save])}
         "Save As"]]
         [:> Button {:on-click #(swap! menu conj :load)}
          "Load"]
@@ -275,7 +283,14 @@
         [:> Button
          {:on-click #(swap! menu conj :options)}
          "Options"]]
-       [:> Col]
+       [:> Col
+        [:> Container
+         (str (if @current-file
+                (js/path.join @current-folder @current-file)
+                "UNTITLED.cljs")
+              (if @file-changed
+                "*"
+                ""))]]
        [:> Col {:xs "auto"}
         [:> Button
          {:on-click #(let []
@@ -333,8 +348,7 @@
         current-file (local-storage (atom nil) :current-file)
         file-changed (local-storage (atom "") :file-changed)
         options (into {}
-                      (for [kv {:saved false
-                                :orientation "horizontal"
+                      (for [kv {:orientation "horizontal"
                                 :keymap "sublime"
                                 :font-size 12
                                 :theme "material"}]
@@ -346,17 +360,19 @@
                               (throw %)))
       (set! js/window.stopify stopify)
       (set! js/window.fs fs) ; <-- XXX For debugging, should remove
-      [:main {:role "main"}
-       [save-dialog fs menu current-folder current-file input file-changed]
-       [load-dialog fs menu current-folder]
-       [options-dialog options menu]
-       [button-row input output menu]
-       [new-dialog fs menu current-folder]
-       [:> SplitPane {:split @(:orientation options)
-                      :minSize 300
-                      :defaultSize 300}
-        [editor input options file-changed]
-        [result-view output options]]])))
+      [:> DndProvider {:backend HTML5Backend}
+       [:main {:role "main"}
+        [save-dialog fs menu current-folder current-file input file-changed]
+        [load-dialog fs menu current-folder current-file input file-changed]
+        [options-dialog options menu]
+        [button-row input output current-folder current-file file-changed menu]
+        [confirm-save-dialog menu]
+        [new-dialog fs menu current-folder]
+        [:> SplitPane {:split @(:orientation options)
+                       :minSize 300
+                       :defaultSize 300}
+         [editor input options file-changed]
+         [result-view output options]]]])))
 
 ;; -------------------------
 ;; Initialize app
