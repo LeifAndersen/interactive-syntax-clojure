@@ -14,7 +14,7 @@
                                Dropdown DropdownButton
                                Row Col Form Container Modal]]
       [codemirror]
-      [react-codemirror2 :refer [Controlled UnControlled]]
+      [react-codemirror2 :as cm]
       ["codemirror/mode/clojure/clojure"]
       ["codemirror/keymap/vim"]
       ["codemirror/keymap/emacs"]
@@ -22,7 +22,7 @@
       ["@stopify/stopify" :as stopify]
       [browserfs]
       [react-split-pane :refer [Pane]]
-      [chonky :refer [FileBrowser FileList FileSearch FileToolbar ChonkyActions]]
+      [chonky :refer [ChonkyActions]]
       [alandipert.storage-atom :refer [local-storage]]))
 
 ;; -------------------------
@@ -74,53 +74,62 @@
                (assoc ret :size stats.size))]
     (clj->js ret)))
 
+(defn save-buffer [current-folder current-file input file-changed]
+  (fs.writeFileSync (js/path.join @current-folder @current-file) @input)
+  (reset! file-changed false))
+
+(defn load-buffer [current-folder current-file input file-changed]
+  (reset! input (fs.readFileSync (js/path.join @current-folder @current-file)))
+  (reset! file-changed false))
+
 (defn handle-file-action [fs menu current-folder]
   (fn [action data]
     (condp = action.id
-      ChonkyActions.CreateFolder.id (swap! menu conj :new)
-      ;;
-      ChonkyActions.OpenFiles.id
+      ,ChonkyActions.OpenParentFolder.id nil
+      ,ChonkyActions.CreateFolder.id (swap! menu conj :new-folder)
+      ,ChonkyActions.OpenFiles.id
       (cond
-        (contains? (js->clj data.target) "breadCrumb")
+        ,(contains? (js->clj data.target) "breadCrumb")
         (swap! current-folder
                #(apply js/path.join
                        (conj (for [i (range data.target.breadCrumb)]
                                "..")
                              %)))
-        ;;
-        data.target.isDir
-        (swap! current-folder #(js/path.join % data.target.name))
-        ;;
+        ,data.target.isDir (swap! current-folder #(js/path.join % data.target.name))
         :else (println "TODO"))
-      ;;
-      (println data))))
+      ,(println data))))
 
-(defn new-dialog [fs menu current-folder]
+(defn make-control-dialog [menu title confirm action]
   (let [text (atom "")]
     (fn []
-      [:> Modal {:show (= (peek @menu) :new)
+      [:> Modal {:show (= (peek @menu) :new-folder)
                  :on-hide #(swap! menu pop)}
        [:> Modal.Header {:close-button true}
-        [:h3 "New"]]
+        [:h3 title]]
        [:> Modal.Body
         [:> Form
          [:> Form.Group {:as Row}
           [:> Col {:xs "auto"}
            [:> Form.Label {:sr-only true}
-            [:h4 "New:"]]]
+            title]]
           [:> Col {:xs 8}
            [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
           [:> Col {:xs "auto"}
            [:> Button
-            {:on-click (fn []
-                         (when (not= @text "")
-                           (let [new-path (js/path.join @current-folder @text)]
-                             (fs.mkdir new-path)
-                             (reset! current-folder new-path))
-                           (swap! menu pop)))}
-            "Create"]]]]]])))
+            {:on-click (action text)}
+            confirm]]]]]])))
 
-(defn save-dialog []
+(defn new-dialog [fs menu current-folder]
+  (make-control-dialog menu "New" "Create"
+                       (fn [text]
+                         (fn []
+                           (when (not= @text "")
+                             (let [new-path (js/path.join @current-folder @text)]
+                               (fs.mkdir new-path)
+                               (reset! current-folder new-path))
+                             (swap! menu pop))))))
+
+(defn confirm-save-dialog []
   [:> Modal {:show false}
    [:> Modal.Header {:close-button true}]
    [:> Modal.Footer
@@ -129,33 +138,62 @@
     [:> Button {:variant "secondary"}
      "Close Without Saving"]]])
 
+(defn file-browser [fs menu current-folder]
+  [:> chonky/FileBrowser
+   {:files (for [file (fs.readdirSync @current-folder)]
+             (file-description fs (js/path.join @current-folder file)))
+    :folder-chain (let [split (filter (partial not= "")
+                                      (.split @current-folder js/path.sep))]
+                    (for [[i folder] (map list
+                                          (range)
+                                          (conj split "/"))]
+                      #js {:id (str "folder" i)
+                           :breadCrumb (- (count split) i)
+                           :name folder}))
+    :file-actions [ChonkyActions.CreateFolder
+                   ChonkyActions.DeleteFiles
+                   ChonkyActions.UploadFiles
+                   ChonkyActions.DownloadFiles
+                   ChonkyActions.CopyFiles]
+    :on-file-action (handle-file-action fs menu current-folder)}
+   [:> chonky/FileToolbar]
+   [:> chonky/FileSearch]
+   [:> chonky/FileList]])
+
+(defn save-dialog [fs menu current-folder current-file input file-changed]
+  (let [text (atom "")]
+    [:> Modal {:show (= (peek @menu) :save)
+               :size "xl"
+               :on-hide #(swap! menu pop)}
+     [:> Modal.Header {:close-button true}
+      [:h3 "Save"]]
+     [:> Modal.Body
+      [:> Form
+       [:> Form.Group {:as Row}
+        [:> Col {:xs "auto"}
+         [:> Form.Label {:column true}
+          "File"]]
+        [:> Col {:xs 10}
+         [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
+        [:> Col {:xs "auto"}
+         [:> Button
+          {:on-click
+           (fn []
+             (when (not= text "")
+               (reset! current-file @text)
+               (save-buffer current-folder current-file input file-changed)
+               (swap! menu pop)))}
+          "Save"]]]]
+      [file-browser fs menu current-folder]]]))
+
 (defn load-dialog [fs menu current-folder]
   [:> Modal {:show (= (peek @menu) :load)
-             :size "XL"
+             :size "xl"
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
     [:h3 "Load"]]
    [:> Modal.Body
-    [:> FileBrowser
-     {:files (for [file (fs.readdirSync @current-folder)]
-               (file-description fs (js/path.join @current-folder file)))
-      :folder-chain (let [split (filter (partial not= "")
-                                        (.split @current-folder js/path.sep))]
-                      (for [[i folder] (map list
-                                            (range)
-                                            (conj split "/"))]
-                        #js {:id (str "folder" i)
-                             :breadCrumb (- (count split) i)
-                             :name folder}))
-      :file-actions [ChonkyActions.CreateFolder
-                    ChonkyActions.DeleteFiles
-                    ChonkyActions.UploadFiles
-                    ChonkyActions.DownloadFiles
-                    ChonkyActions.CopyFiles]
-      :on-file-action (handle-file-action fs menu current-folder)}
-     [:> FileToolbar]
-     [:> FileSearch]
-     [:> FileList]]]])
+    [file-browser fs menu current-folder]]])
 
 ;; -------------------------
 ;; Options
@@ -226,9 +264,9 @@
        [:> Col {:xs "auto"}
         [:> Button "New"]
         [:> SplitButton {:title "Save"}
-         [:> Dropdown.Item "Save As"]]
-        [:> Button
-         {:on-click #(swap! menu conj :load)}
+         [:> Dropdown.Item {:on-click #(swap! menu conj :save)}
+        "Save As"]]
+        [:> Button {:on-click #(swap! menu conj :load)}
          "Load"]
         [:> DropdownButton {:as ButtonGroup
                             :title "Project"}
@@ -247,22 +285,24 @@
         [:> Button
          "Stop"]]])))
 
-(defn editor [input options]
+(defn editor [input options file-changed]
   (let [edit (atom nil)]
     (fn []
       (when (not= @edit nil)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
-      [:> UnControlled
-       {:value ""
+      [:> cm/Controlled
+       {:value @input
         :options {:mode "clojure"
                   :keyMap @(:keymap options)
                   :theme @(:theme options "material")
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
-        :onChange #(reset! input %3)
+        :onBeforeChange #(let []
+                     (reset! file-changed true)
+                     (reset! input %3))
         :editorDidMount #(reset! edit %)}])))
 
 (defn result-view [output options]
@@ -272,7 +312,7 @@
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
-      [:> Controlled
+      [:> cm/Controlled
        {:value (string/join "\n" @output)
         :options {:mode "clojure"
                   :theme @(:theme options "material")
@@ -290,13 +330,14 @@
         output (atom nil)
         menu (local-storage (atom [:home]) :menu)
         current-folder (local-storage (atom "/") :current-folder)
+        current-file (local-storage (atom nil) :current-file)
+        file-changed (local-storage (atom "") :file-changed)
         options (into {}
                       (for [kv {:saved false
                                 :orientation "horizontal"
                                 :keymap "sublime"
                                 :font-size 12
-                                :theme "material"
-                                :current-file nil}]
+                                :theme "material"}]
                         [(key kv) (local-storage (atom (val kv)) (key kv))]))
         fs (browserfs/BFSRequire "fs")]
     (fn []
@@ -306,6 +347,7 @@
       (set! js/window.stopify stopify)
       (set! js/window.fs fs) ; <-- XXX For debugging, should remove
       [:main {:role "main"}
+       [save-dialog fs menu current-folder current-file input file-changed]
        [load-dialog fs menu current-folder]
        [options-dialog options menu]
        [button-row input output menu]
@@ -313,7 +355,7 @@
        [:> SplitPane {:split @(:orientation options)
                       :minSize 300
                       :defaultSize 300}
-        [editor input options]
+        [editor input options file-changed]
         [result-view output options]]])))
 
 ;; -------------------------
