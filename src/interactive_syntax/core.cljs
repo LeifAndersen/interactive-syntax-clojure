@@ -78,27 +78,10 @@
   (reset! input (fs.readFileSync (js/path.join @current-folder @current-file)))
   (reset! file-changed false))
 
-(defn handle-file-action [fs menu current-folder file-changed]
-  (fn [action data]
-    (condp = action.id
-      ,ChonkyActions.OpenParentFolder.id nil
-      ,ChonkyActions.CreateFolder.id (swap! menu conj :new-folder)
-      ,ChonkyActions.OpenFiles.id
-      (cond
-        ,(contains? (js->clj data.target) "breadCrumb")
-        (swap! current-folder
-               #(apply js/path.join
-                       (conj (for [i (range data.target.breadCrumb)]
-                               "..")
-                             %)))
-        ,data.target.isDir (swap! current-folder #(js/path.join % data.target.name))
-        :else (println "TODO"))
-      ,(println data))))
-
-(defn make-control-dialog [menu title confirm action]
+(defn make-control-dialog [menu key title confirm action]
   (let [text (atom "")]
     (fn []
-      [:> Modal {:show (= (peek @menu) :new-folder)
+      [:> Modal {:show (= (peek @menu) key)
                  :on-hide #(swap! menu pop)}
        [:> Modal.Header {:close-button true}
         [:h3 title]]
@@ -115,8 +98,8 @@
             {:on-click (action text)}
             confirm]]]]]])))
 
-(defn new-dialog [fs menu current-folder]
-  (make-control-dialog menu "New" "Create"
+(defn new-folder-dialog [fs menu current-folder]
+  (make-control-dialog menu :new-folder "New" "Create"
                        (fn [text]
                          (fn []
                            (when (not= @text "")
@@ -125,66 +108,99 @@
                                (reset! current-folder new-path))
                              (swap! menu pop))))))
 
-(defn confirm-save-dialog [menu]
+(defn confirm-save-dialog [menu current-folder current-file input file-changed]
   (let [item (peek @menu)]
     [:> Modal {:show (and (coll? item) (= (first item) :confirm-save))
                :on-hide #(swap! menu pop)}
-     [:> Modal.Header {:close-button true}]
+     [:> Modal.Header {:close-button true}
+      [:h3 "Unsaved Changes..."]]
      [:> Modal.Footer
-      [:> Button {:variant "primary"
-                  :on-click (fn [] nil)}
+      [:> Button
+       {:variant "primary"
+        :on-click (fn []
+                    (if @current-file
+                      (save-buffer current-folder
+                                   current-file
+                                   input
+                                   file-changed)
+                      (swap! menu #(-> % pop (conj [:save (second item)])))))}
        "Save"]
       [:> Button {:variant "secondary"
-                  :on-click #(swap! menu (fn [m] (conj (pop m) (second item))))}
-       "Close Without Saving"]]]))
+                  :on-click (fn [] (swap! menu #(-> % (conj (second item)))))}
+       "Continue Without Saving"]]]))
 
-(defn file-browser [fs menu current-folder current-file input file-changed]
+(defn file-browser [fs menu current-folder current-file choice-text choice-callback]
   (let [text (atom "")]
-    [:> chonky/FileBrowser
-     {:enable-drag-and-drop true
-      :files (for [file (fs.readdirSync @current-folder)]
-               (file-description fs (js/path.join @current-folder file)))
-      :folder-chain (let [split (filter (partial not= "")
-                                        (.split @current-folder js/path.sep))]
-                      (for [[i folder] (map list
-                                            (range)
-                                            (conj split "/"))]
-                        #js {:id (str "folder" i)
-                             :breadCrumb (- (count split) i)
-                             :name folder}))
-      :file-actions [ChonkyActions.CreateFolder
-                     ChonkyActions.DeleteFiles
-                     ChonkyActions.UploadFiles
-                     ChonkyActions.DownloadFiles
-                     ChonkyActions.CopyFiles]
-      :on-file-action (handle-file-action fs menu current-folder file-changed)}
-     [:> Form
-      [:> Form.Group {:as Row}
-       [:> Col {:xs "auto"}
-        [:> Form.Label {:column true}
-         "File"]]
-       [:> Col {:xs 10}
-        [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
-       [:> Col {:xs "auto"}
-        [:> Button
-         {:on-click
-          (fn []
-            (when (not= text "")
-              (reset! current-file @text)
-              (save-buffer current-folder current-file input file-changed)
-              (swap! menu pop)))}
-         "Save"]]]]
-     [:> chonky/FileToolbar]
-     [:> chonky/FileSearch]
-     [:> chonky/FileList]]))
+    [:div {:style #js {:height "450px"}}
+     [:> chonky/FileBrowser
+      {:enable-drag-and-drop true
+       :files (for [file (fs.readdirSync @current-folder)]
+                (file-description fs (js/path.join @current-folder file)))
+       :folder-chain (let [split (filter (partial not= "")
+                                         (.split @current-folder js/path.sep))]
+                       (for [[i folder] (map list (range) (conj split "/"))]
+                         #js {:id (str "folder" i)
+                              :breadCrumb (- (count split) i)
+                              :name folder}))
+       :file-actions [ChonkyActions.CreateFolder
+                      ChonkyActions.DeleteFiles
+                      ChonkyActions.UploadFiles
+                      ChonkyActions.DownloadFiles
+                      ChonkyActions.CopyFiles]
+       :on-file-action (fn [action data]
+                         (condp = action.id
+                           ChonkyActions.OpenParentFolder.id nil,
+                           ChonkyActions.CreateFolder.id
+                           (swap! menu conj :new-folder),
+                           ChonkyActions.OpenFiles.id
+                           (cond
+                             (contains? (js->clj data.target) "breadCrumb")
+                             (swap! current-folder
+                                    #(apply js/path.join
+                                            (conj (for [i (range
+                                                           data.target.breadCrumb)]
+                                                    "..")
+                                                  %))),
+                             data.target.isDir
+                             (swap! current-folder
+                                   #(js/path.join % data.target.name)),
+                             :else (choice-callback data.target.name)),
+                           (println data)))}
+      [:> Form
+       [:> Form.Group {:as Row}
+        [:> Col {:xs "auto"}
+         [:> Form.Label {:column true}
+          "File"]]
+        [:> Col {:xs 10}
+         [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
+        [:> Col {:xs "auto"}
+         [:> Button
+          {:on-click
+           (fn []
+             (when (not= @text "")
+               (choice-callback @text)
+               (swap! menu #(let [item (peek %)
+                                  rest (pop %)]
+                              (if (and (coll? item)
+                                       (= (count item) 2))
+                                (conj rest (second item))
+                                rest)))))}
+          choice-text]]]]
+      [:> chonky/FileToolbar]
+      [:> chonky/FileSearch]
+      [:> chonky/FileList]]]))
 
 (defn save-dialog [fs menu current-folder current-file input file-changed]
   (let [item (peek @menu)]
-    [:> Modal {:show (or (and (coll? item) (= (first item) :save))
-                         (= item :load))
+    [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
                :on-hide #(swap! menu pop)}
-     [file-browser fs menu current-folder current-file input file-changed]]))
+     [:> Modal.Header {:close-button true}
+      [:h3 "Save"]]
+     [file-browser fs menu current-folder current-file "Save"
+      (fn [file]
+        (reset! current-file file)
+        (save-buffer current-folder current-file input file-changed))]]))
 
 (defn load-dialog [fs menu current-folder current-file input file-changed]
   [:> Modal {:show (= (peek @menu) :load)
@@ -193,7 +209,19 @@
    [:> Modal.Header {:close-button true}
     [:h3 "Load"]]
    [:> Modal.Body
-    [file-browser fs menu current-folder current-file input file-changed]]])
+    [file-browser fs menu current-folder current-file "Load"
+     (fn [file]
+       (reset! @current-file file)
+       (load-buffer current-folder current-file input file-changed))]]])
+
+(defn new-file-action [menu current-file input file-changed]
+  (when (= (peek @menu) :new)
+    (println @menu)
+    (reset! current-file nil)
+    (reset! file-changed false)
+    (reset! input "")
+    (swap! menu pop))
+  [:div])
 
 ;; -------------------------
 ;; Options
@@ -262,19 +290,24 @@
     (fn []
       [:> Row {:className "align-items-center"}
        [:> Col {:xs "auto"}
-        [:> Button "New"]
+        [:> Button
+         {:on-click (if @file-changed
+                      #(swap! menu conj [:confirm-save :new])
+                      #(swap! menu conj :new))}
+         "New"]
         [:> SplitButton
          {:title "Save"
-          :on-click (fn []
-                      (if @current-file
-                        (save-buffer current-folder
-                                     current-file
-                                     input
-                                     file-changed)
-                        (swap! menu conj [:save])))}
+          :on-click (if @current-file
+                      #(save-buffer current-folder
+                                    current-file
+                                    input
+                                    file-changed)
+                      #(swap! menu conj [:save]))}
          [:> Dropdown.Item {:on-click #(swap! menu conj [:save])}
         "Save As"]]
-        [:> Button {:on-click #(swap! menu conj :load)}
+        [:> Button {:on-click (if @file-changed
+                                #(swap! menu conj [:confirm-save :load])
+                                #(swap! menu conj :load))}
          "Load"]
         [:> DropdownButton {:as ButtonGroup
                             :title "Project"}
@@ -307,18 +340,19 @@
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
-      [:> cm/Controlled
-       {:value @input
-        :options {:mode "clojure"
+      [:> cm/UnControlled
+       {:options {:mode "clojure"
                   :keyMap @(:keymap options)
                   :theme @(:theme options "material")
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
-        :onBeforeChange #(let []
+        :onChange #(let []
                      (reset! file-changed true)
                      (reset! input %3))
-        :editorDidMount #(reset! edit %)}])))
+        :editorDidMount #(let []
+                           (-> % .getDoc (.setValue @input))
+                           (reset! edit %))}])))
 
 (defn result-view [output options]
   (let [edit (atom nil)]
@@ -346,7 +380,7 @@
         menu (local-storage (atom [:home]) :menu)
         current-folder (local-storage (atom "/") :current-folder)
         current-file (local-storage (atom nil) :current-file)
-        file-changed (local-storage (atom "") :file-changed)
+        file-changed (local-storage (atom false) :file-changed)
         options (into {}
                       (for [kv {:orientation "horizontal"
                                 :keymap "sublime"
@@ -360,14 +394,16 @@
                               (throw %)))
       (set! js/window.stopify stopify)
       (set! js/window.fs fs) ; <-- XXX For debugging, should remove
-      [:> DndProvider {:backend HTML5Backend}
-       [:main {:role "main"}
-        [save-dialog fs menu current-folder current-file input file-changed]
-        [load-dialog fs menu current-folder current-file input file-changed]
-        [options-dialog options menu]
-        [button-row input output current-folder current-file file-changed menu]
-        [confirm-save-dialog menu]
-        [new-dialog fs menu current-folder]
+      [:main {:role "main"
+              :style {:height "100%"}}
+       [new-file-action menu current-file input file-changed]
+       [save-dialog fs menu current-folder current-file input file-changed]
+       [load-dialog fs menu current-folder current-file input file-changed]
+       [options-dialog options menu]
+       [confirm-save-dialog menu current-folder current-file input file-changed]
+       [new-folder-dialog fs menu current-folder]
+       [button-row input output current-folder current-file file-changed menu]
+       [:div {:style {:height "95%"}}
         [:> SplitPane {:split @(:orientation options)
                        :minSize 300
                        :defaultSize 300}
@@ -378,7 +414,10 @@
 ;; Initialize app
 
 (defn mount-root []
-  (d/render [home-page] (.getElementById js/document "app")))
+  (d/render
+   [:> DndProvider {:backend HTML5Backend}
+    [home-page]]
+   (.getElementById js/document "app")))
 
 (defn init! []
   (mount-root))
