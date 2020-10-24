@@ -22,3 +22,15 @@ a:hover {
   text-decoration: underline;
 }
 
+.react-codemirror2 {
+  height: 100%;
+}
+.CodeMirror {
+  height: 100% !important;
+}
+
+#app, body, html {
+  height: 100%;
+  margin: 0;
+}
+

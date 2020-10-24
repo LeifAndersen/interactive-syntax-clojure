@@ -288,8 +288,11 @@
 (defn button-row [input output current-folder current-file file-changed menu]
   (let []
     (fn []
-      [:> Row {:className "align-items-center"}
-       [:> Col {:xs "auto"}
+      [:> Row {:className "align-items-center"
+               :style {:marginLeft 0
+                       :marginRight 0}}
+       [:> Col {:xs "auto"
+                :style {:paddingLeft 0}}
         [:> Button
          {:on-click (if @file-changed
                       #(swap! menu conj [:confirm-save :new])
@@ -324,7 +327,8 @@
               (if @file-changed
                 "*"
                 ""))]]
-       [:> Col {:xs "auto"}
+       [:> Col {:xs "auto"
+                :style {:paddingRight 0}}
         [:> Button
          {:on-click #(let []
                        (reset! output #queue [])
@@ -395,15 +399,18 @@
       (set! js/window.stopify stopify)
       (set! js/window.fs fs) ; <-- XXX For debugging, should remove
       [:main {:role "main"
-              :style {:height "100%"}}
+              :style {:height "100%"
+                      :display "flex"
+                      :flex-flow "column"}}
        [new-file-action menu current-file input file-changed]
        [save-dialog fs menu current-folder current-file input file-changed]
        [load-dialog fs menu current-folder current-file input file-changed]
        [options-dialog options menu]
        [confirm-save-dialog menu current-folder current-file input file-changed]
        [new-folder-dialog fs menu current-folder]
-       [button-row input output current-folder current-file file-changed menu]
-       [:div {:style {:height "95%"}}
+       [:div {:style {:flex "0 1 auto"}}
+        [button-row input output current-folder current-file file-changed menu]]
+       [:div {:style {:flex "1 1 auto"}}
         [:> SplitPane {:split @(:orientation options)
                        :minSize 300
                        :defaultSize 300}
