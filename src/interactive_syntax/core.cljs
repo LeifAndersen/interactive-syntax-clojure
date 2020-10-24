@@ -286,56 +286,79 @@
 ;; Editor
 
 (defn button-row [input output current-folder current-file file-changed menu]
-  (let []
+  (let [new-file (if @file-changed
+                   #(swap! menu conj [:confirm-save :new])
+                   #(swap! menu conj :new))
+        save-file (if @current-file
+                     #(save-buffer current-folder
+                                   current-file
+                                   input
+                                   file-changed)
+                     #(swap! menu conj [:save]))
+        save-file-as #(swap! menu conj [:save])
+        load-file (if @file-changed
+                    #(swap! menu conj [:confirm-save :load])
+                    #(swap! menu conj :load))
+        options #(swap! menu conj :options)
+        file-name (str (if @current-file
+                         (js/path.join @current-folder @current-file)
+                         "UNTITLED.cljs")
+                       (if @file-changed
+                         "*"
+                         ""))
+        run #(let []
+               (reset! output #queue [])
+               (eval-str @input output))]
     (fn []
-      [:> Row {:className "align-items-center"
-               :style {:marginLeft 0
-                       :marginRight 0}}
-       [:> Col {:xs "auto"
-                :style {:paddingLeft 0}}
-        [:> Button
-         {:on-click (if @file-changed
-                      #(swap! menu conj [:confirm-save :new])
-                      #(swap! menu conj :new))}
-         "New"]
-        [:> SplitButton
-         {:title "Save"
-          :on-click (if @current-file
-                      #(save-buffer current-folder
-                                    current-file
-                                    input
-                                    file-changed)
-                      #(swap! menu conj [:save]))}
-         [:> Dropdown.Item {:on-click #(swap! menu conj [:save])}
-        "Save As"]]
-        [:> Button {:on-click (if @file-changed
-                                #(swap! menu conj [:confirm-save :load])
-                                #(swap! menu conj :load))}
-         "Load"]
-        [:> DropdownButton {:as ButtonGroup
-                            :title "Project"}
-         [:> Dropdown.Item "Import"]
-         [:> Dropdown.Item "Export"]]
-        [:> Button
-         {:on-click #(swap! menu conj :options)}
-         "Options"]]
-       [:> Col
-        [:> Container
-         (str (if @current-file
-                (js/path.join @current-folder @current-file)
-                "UNTITLED.cljs")
-              (if @file-changed
-                "*"
-                ""))]]
-       [:> Col {:xs "auto"
-                :style {:paddingRight 0}}
-        [:> Button
-         {:on-click #(let []
-                       (reset! output #queue [])
-                       (eval-str @input output))}
-         "Run"]
-        [:> Button
-         "Stop"]]])))
+      [:div
+       [:div {:class-name "d-block d-md-none"}
+        [:> Row {:class-name "align-items-center flex-nowrap"
+                 :style {:margin-left 0
+                         :margin-right 0}}
+         [:> Col {:xs "auto"
+                  :style {:padding-left 0}}
+          [:> DropdownButton {:as ButtonGroup
+                              :title "Menu"}
+           [:> Dropdown.Item {:on-click new-file} "New"]
+           [:> Dropdown.Item {:on-click save-file} "Save"]
+           [:> Dropdown.Item {:on-click save-file-as} "Save As"]
+           [:> Dropdown.Item {:on-click load-file} "Load"]
+           [:> Dropdown.Item {:on-click options} "Options"]
+           [:> Dropdown.Item "Import Project"]
+           [:> Dropdown.Item "Export Project"]]]
+         [:> Col
+          [:> Container {:class-name "d-none d-sm-block"
+                         :fluid true
+                         :overflow "hidden"
+                         :text-overflow "ellipsis"}
+           file-name]]
+         [:> Col {:xs "auto"
+                  :style {:padding-right 0}}
+          [:> SplitButton {:title "Run"
+                           :on-click run}
+           [:> Dropdown.Item "Stop"]]]]]
+       [:div {:className "d-none d-md-block"}
+        [:> Row {:className "align-items-center"
+                 :style {:marginLeft 0
+                         :marginRight 0}}
+         [:> Col {:xs "auto"
+                  :style {:paddingLeft 0}}
+          [:> Button {:on-click new-file} "New"]
+          [:> SplitButton
+           {:title "Save"
+            :on-click save-file}
+           [:> Dropdown.Item {:on-click save-file-as} "Save As"]]
+          [:> Button {:on-click load-file} "Load"]
+          [:> DropdownButton {:as ButtonGroup
+                              :title "Project"}
+           [:> Dropdown.Item "Import"]
+           [:> Dropdown.Item "Export"]]
+          [:> Button {:on-click options} "Options"]]
+         [:> Col [:> Container file-name]]
+         [:> Col {:xs "auto"
+                  :style {:paddingRight 0}}
+          [:> Button {:on-click run} "Run"]
+          [:> Button "Stop"]]]]])))
 
 (defn editor [input options file-changed]
   (let [edit (atom nil)]
