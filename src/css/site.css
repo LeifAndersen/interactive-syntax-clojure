@@ -34,3 +34,8 @@ a:hover {
   margin: 0;
 }
 
+.dropdown-menu {
+    position: absolute;
+    max-height: 80vh;
+    overflow-y: auto;
+}

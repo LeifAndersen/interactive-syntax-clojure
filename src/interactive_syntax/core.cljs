@@ -265,7 +265,7 @@
        [:> Form.Control
         {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
                        (when (not (js/isNaN value))
-                         (reset! (:font-size options) value)))
+                         (reset! (:font-size options) (max 1 value))))
          :value @(:font-size options)}]]
       [:> Col {:xs "auto"}
        [:> Button {:on-click #(swap! (:font-size options) inc)}
@@ -318,7 +318,8 @@
          [:> Col {:xs "auto"
                   :style {:padding-left 0}}
           [:> DropdownButton {:as ButtonGroup
-                              :title "Menu"}
+                              :title "Menu"
+                              :size "sm"}
            [:> Dropdown.Item {:on-click new-file} "New"]
            [:> Dropdown.Item {:on-click save-file} "Save"]
            [:> Dropdown.Item {:on-click save-file-as} "Save As"]
@@ -335,14 +336,15 @@
          [:> Col {:xs "auto"
                   :style {:padding-right 0}}
           [:> SplitButton {:title "Run"
+                           :size "sm"
                            :on-click run}
            [:> Dropdown.Item "Stop"]]]]]
        [:div {:className "d-none d-md-block"}
         [:> Row {:className "align-items-center"
-                 :style {:marginLeft 0
-                         :marginRight 0}}
+                 :style {:margin-left 0
+                         :margin-right 0}}
          [:> Col {:xs "auto"
-                  :style {:paddingLeft 0}}
+                  :style {:padding-left 0}}
           [:> Button {:on-click new-file} "New"]
           [:> SplitButton
            {:title "Save"
