@@ -35,7 +35,8 @@
                          :output-dir "public/js/out"
                          :asset-path   "js/out"
                          :target :bundle
-                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]}
+                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
+                                      :default ["npx" "webpack"]}
                          :source-map true
                          :optimizations :none
                          :pretty-print  true}
@@ -45,13 +46,18 @@
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
-                        {:main "interactive-syntax.prod"
+                        {;;:main "interactive-syntax.prod"
                          :output-to "public/js/out/app.js"
                          :output-dir "target/release"
+                         :externs ["src/js/externs.js"]
                          :target :bundle
-                         :bundle-cmd {:default ["npx" "webpack"]}
-                         :optimizations :advanced
+                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
+                                      :default ["npx" "webpack"]}
                          :infer-externs true
+                         :optimizations :simple
+                         ;; For debugging
+                         ;;:source-map "public/js/out/app.js.map"
+                         ;;:pseudo-names true
                          :pretty-print false}}}}
 
   :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]}

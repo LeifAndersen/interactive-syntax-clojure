@@ -331,7 +331,8 @@
           [:> Container {:class-name "d-none d-sm-block"
                          :fluid true
                          :overflow "hidden"
-                         :text-overflow "ellipsis"}
+                         ;;:text-overflow "ellipsis"
+                         }
            file-name]]
          [:> Col {:xs "auto"
                   :style {:padding-right 0}}
