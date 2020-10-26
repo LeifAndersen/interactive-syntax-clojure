@@ -35,8 +35,7 @@
                          :output-dir "public/js/out"
                          :asset-path   "js/out"
                          :target :bundle
-                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
-                                      :default ["npx" "webpack"]}
+                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]}
                          :source-map true
                          :optimizations :none
                          :pretty-print  true}
@@ -46,11 +45,11 @@
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
-                        {:output-to "public/js/out/app.js"
+                        {:main "interactive-syntax.prod"
+                         :output-to "public/js/out/app.js"
                          :output-dir "target/release"
                          :target :bundle
-                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
-                                      :default ["npx" "webpack"]}
+                         :bundle-cmd {:default ["npx" "webpack"]}
                          :optimizations :advanced
                          :infer-externs true
                          :pretty-print false}}}}
