@@ -54,7 +54,8 @@
                          :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
                                       :default ["npx" "webpack"]}
                          :infer-externs true
-                         :optimizations :simple
+                         :optimizations :advanced
+                         :closure-defines {cljs.core/*global* "window"}
                          ;; For debugging
                          ;;:source-map "public/js/out/app.js.map"
                          ;;:pseudo-names true
