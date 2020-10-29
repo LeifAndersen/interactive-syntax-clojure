@@ -48,14 +48,11 @@
                (fn [program]
                  (binding [*print-fn* #(swap! output conj %)]
                    (cond
-                     ;;
                      (contains? program :value)
                      (let [runner (stopify.stopifyLocally (:value program))]
                        (set! runner.g #js {:cljs js/cljs})
-                       (.run runner #(swap! output conj nil)))
-                     ;;
-                     (contains? program :error)
-                     (pprint (-> program :error)))))))
+                       (.run runner #(swap! output conj nil))),
+                     (contains? program :error) (pprint (-> program :error)))))))
 
 
 ;; -------------------------
@@ -368,8 +365,36 @@
           [:> Button {:on-click run} "Run"]
           [:> Button "Stop"]]]]])))
 
+(defn reset-editors! [s editor instances]
+  (when @editor
+    (let [prog (indexing-push-back-reader s)
+          eof (atom nil)]
+      (for [i @instances] (.clear i))
+      (reset! instances [])
+      (loop []
+        (let [form (read {:eof eof} prog)]
+          (when-not (identical? form eof)
+            ((fn rec [form]
+               (let [info (meta form)]
+                 (when (= (:tag info) 'editor)
+                   (swap! instances conj
+                          (-> @editor
+                              (.getDoc)
+                              (.markText
+                               #js {:line (dec (:line info)),
+                                    :ch (dec (:column info))}
+                               #js {:line (dec (:end-line info)),
+                                    :ch (dec (:end-column info))}
+                               #js {:collapsed true}))))
+                 (doseq [e form]
+                   (when (coll? e)
+                     (rec e)))))
+             form)
+            (recur)))))))
+
 (defn editor [input options file-changed]
-  (let [edit (atom nil)]
+  (let [edit (atom nil)
+        instances (atom [])]
     (fn []
       (when (not= @edit nil)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
@@ -382,26 +407,14 @@
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
-        :onChange #(let [prog (indexing-push-back-reader %3)
-                         eof (atom nil)]
-                     (loop []
-                       (let [form (read {:eof eof} prog)]
-                         (when-not (identical? form eof)
-                           ((fn rec [form]
-                              (let [info (meta form)]
-                                (when (= (:tag info) 'editor)
-                                  (pprint form)
-                                  (pprint info))
-                                (doseq [e form]
-                                  (when (coll? e)
-                                    (rec e)))))
-                            form)
-                           (recur))))
+        :onChange #(let []
+                     (reset-editors! %3 edit instances)
                      (reset! file-changed true)
                      (reset! input %3))
         :editorDidMount #(let []
                            (-> % .getDoc (.setValue @input))
-                           (reset! edit %))}])))
+                           (reset! edit %)
+                           (reset-editors! @input edit instances))}])))
 
 (defn result-view [output options]
   (let [edit (atom nil)]
@@ -434,7 +447,8 @@
                       (for [kv {:orientation "horizontal"
                                 :keymap "sublime"
                                 :font-size 12
-                                :theme "material"}]
+                                :theme "material"
+                                :show-editors false}]
                         [(key kv) (local-storage (atom (val kv)) (key kv))]))
         fs (browserfs/BFSRequire "fs")]
     (fn []
