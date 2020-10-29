@@ -8,6 +8,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.741"]
                  [org.clojure/core.match "1.0.0"]
+                 [org.clojure/tools.reader "1.3.3"]
                  [reagent "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]]
                  [alandipert/storage-atom "1.2.4"]]
 

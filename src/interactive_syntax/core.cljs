@@ -3,7 +3,11 @@
       [reagent.core :as r :refer [atom]]
       [reagent.dom :as d]
       [clojure.string :as string]
+      [clojure.walk :as walk]
       [cljs.tools.reader :refer [read read-string]]
+      [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
+                                              get-line-number
+                                              get-column-number]]
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
       [cljs.core.match :refer [match]]
@@ -19,6 +23,7 @@
       ["codemirror/keymap/vim"]
       ["codemirror/keymap/emacs"]
       ["codemirror/keymap/sublime"]
+      ["codemirror/addon/search/searchcursor"]
       ["@stopify/stopify" :as stopify]
       [browserfs]
       [react-split-pane :refer [Pane]]
@@ -264,7 +269,7 @@
       [:> Col {:xs 4}
        [:> Form.Control
         {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
-                       (when (not (js/isNaN value))
+                       (when-not (js/isNaN value)
                          (reset! (:font-size options) (max 1 value))))
          :value @(:font-size options)}]]
       [:> Col {:xs "auto"}
@@ -377,7 +382,21 @@
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
-        :onChange #(let []
+        :onChange #(let [prog (indexing-push-back-reader %3)
+                         eof (atom nil)]
+                     (loop []
+                       (let [form (read {:eof eof} prog)]
+                         (when-not (identical? form eof)
+                           ((fn rec [form]
+                              (let [info (meta form)]
+                                (when (= (:tag info) 'editor)
+                                  (pprint form)
+                                  (pprint info))
+                                (doseq [e form]
+                                  (when (coll? e)
+                                    (rec e)))))
+                            form)
+                           (recur))))
                      (reset! file-changed true)
                      (reset! input %3))
         :editorDidMount #(let []
