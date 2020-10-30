@@ -14,23 +14,23 @@ const config = {
     module: {
         rules: [
             {
+                test: /\.js$/,
+                enforce: 'pre',
+                use: ['source-map-loader'],
+            },
+            {
                 test: /\.css$/,
-                use: [
-                    'style-loader',
-                    'css-loader',
+                use: ['style-loader',
+                      'css-loader',
                 ],
             },
             {
                 test: /\.(png|svg|jpg|gif)$/,
-                use: [
-                    'file-loader',
-                ],
+                use: ['file-loader'],
             },
             {
                 test: /\.(woff|woff2|eot|ttf|otf)$/,
-                use: [
-                    'file-loader',
-                ],
+                use: ['file-loader'],
             },
         ],
         // REQUIRED to avoid issue "Uncaught TypeError: BrowserFS.BFSRequire is not a function"
@@ -63,8 +63,12 @@ const config = {
         // Expose BrowserFS, process, and Buffer globals.
         // NOTE: If you intend to use BrowserFS in a script tag, you do not need
         // to expose a BrowserFS global.
-        new webpack.ProvidePlugin({ BrowserFS: 'bfsGlobal', process: 'processGlobal', Buffer: 'bufferGlobal' })
+        new webpack.ProvidePlugin({ BrowserFS: 'bfsGlobal', process: 'processGlobal', Buffer: 'bufferGlobal' }),
+        new webpack.SourceMapDevToolPlugin({
+            filename: "[file].map"
+        }),
     ],
+    //devtool: 'eval-cheap-source-map',
 };
 
 module.exports = config;

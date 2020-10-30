@@ -457,7 +457,7 @@
                                 :keymap "sublime"
                                 :font-size 12
                                 :theme "material"
-                                :show-editors false}]
+                                :show-editors true}]
                         [(key kv) (local-storage (atom (val kv)) (key kv))]))
         fs (browserfs/BFSRequire "fs")]
     (fn []
