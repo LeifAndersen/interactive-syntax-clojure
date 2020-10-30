@@ -374,7 +374,7 @@
           [:> Button "Stop"]]]]])))
 
 (defn reset-editors! [s editor instances options]
-  (for [i @instances] (.clear i))
+  (doseq [i @instances] (.clear i))
   (reset! instances [])
   (when (and @(:show-editors options) @editor)
     (let [prog (indexing-push-back-reader s)
@@ -402,10 +402,10 @@
 
 (defn editor [input options file-changed]
   (let [edit (atom nil)
-        instances (atom [])]
+        instances (clojure.core/atom [])]
     (fn []
+      (reset-editors! @input edit instances options)
       (when (not= @edit nil)
-        (reset-editors! @input edit instances options)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
