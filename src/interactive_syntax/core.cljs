@@ -27,6 +27,7 @@
       ["@stopify/stopify" :as stopify]
       [browserfs]
       [react-split-pane :refer [Pane]]
+      [react-switch]
       [react-dnd :refer [DndProvider]]
       [react-dnd-html5-backend :refer [HTML5Backend]]
       [chonky :refer [ChonkyActions]]
@@ -35,6 +36,7 @@
 ;; -------------------------
 ;; Components
 (def ^:private SplitPane (.-default react-split-pane))
+(def ^:private Switch (.-default react-switch))
 
 ;; -------------------------
 ;; Evaluator
@@ -242,6 +244,12 @@
     [:> Form
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
+       [:h4 "Visual Editors:"]]
+      [:> Col
+       [:> Switch {:checked @(:show-editors options)
+                   :on-change #(reset! (:show-editors options) %)}]]]
+     [:> Form.Group {:as Row}
+      [:> Form.Label {:column true}
        [:h4 "Split:"]]
       [:> Col
        [:> ButtonGroup {:aria-label "Split"}
@@ -365,12 +373,12 @@
           [:> Button {:on-click run} "Run"]
           [:> Button "Stop"]]]]])))
 
-(defn reset-editors! [s editor instances]
-  (when @editor
+(defn reset-editors! [s editor instances options]
+  (for [i @instances] (.clear i))
+  (reset! instances [])
+  (when (and @(:show-editors options) @editor)
     (let [prog (indexing-push-back-reader s)
           eof (atom nil)]
-      (for [i @instances] (.clear i))
-      (reset! instances [])
       (loop []
         (let [form (read {:eof eof} prog)]
           (when-not (identical? form eof)
@@ -397,6 +405,7 @@
         instances (atom [])]
     (fn []
       (when (not= @edit nil)
+        (reset-editors! @input edit instances options)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
@@ -408,13 +417,13 @@
                   :showCursorWhenSelecting true
                   :lineNumbers true}
         :onChange #(let []
-                     (reset-editors! %3 edit instances)
+                     (reset-editors! %3 edit instances options)
                      (reset! file-changed true)
                      (reset! input %3))
         :editorDidMount #(let []
                            (-> % .getDoc (.setValue @input))
                            (reset! edit %)
-                           (reset-editors! @input edit instances))}])))
+                           (reset-editors! @input edit instances options))}])))
 
 (defn result-view [output options]
   (let [edit (atom nil)]
