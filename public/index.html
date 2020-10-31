@@ -6,9 +6,28 @@
   </head>
   <body>
     <div id="app">
-      <h3>ClojureScript has not been compiled!</h3>
-      <p>please run <b>lein figwheel</b> in order to start the compiler</p>
+        <h3>Loading...</h3>
+        <progress id="progress" value="0" max="100"></progress>
     </div>
-    <script src="/js/main.js" type="text/javascript"></script>
+    <script type="text/javascript">
+     var req = new XMLHttpRequest();
+     var prog = document.getElementById("progress");
+     req.addEventListener("progress", function(event) {
+       if (event.lengthComputable) {
+         var percentComplete = event.loaded / event.total;
+         prog.setAttribute("value", percentComplete);
+         prog.innerHTML = percentComplete + "%";
+       } else {}
+     }, false);
+     req.addEventListener("load", function(event) {
+       var e = event.target;
+       var s = document.createElement("script");
+       s.innerHTML = e.responseText;
+       document.documentElement.appendChild(s);
+       s.addEventListener("load", function() {});
+     }, false);
+     req.open("GET", "js/main.js");
+     req.send();
+    </script>
   </body>
 </html>

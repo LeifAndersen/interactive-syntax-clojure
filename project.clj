@@ -43,7 +43,7 @@
                          :pretty-print  true}
                         :figwheel
                         {:on-jsload "interactive-syntax.core/mount-root"
-                         :open-urls ["http://localhost:3449/index.html"]}}
+                         :open-urls ["http://localhost:3449/index-dev.html"]}}
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
