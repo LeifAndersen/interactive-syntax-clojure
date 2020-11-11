@@ -35,12 +35,15 @@
                        {:source-paths ["src" "env/dev/cljs"]
                         :compiler
                         {:main "interactive-syntax.dev"
-                         :output-to "public/js/out/app.js"
-                         :output-dir "public/js/out"
-                         :asset-path   "js/out"
+                         :output-to "public/js/development/app.js"
+                         :output-dir "public/js/development"
+                         :asset-path   "js/development"
                          :target :bundle
-                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
-                                      :default ["npx" "webpack"]}
+                         :bundle-cmd {:none ["npx" "webpack"
+                                             "--mode=development"
+                                             "--env=development"]
+                                      :default ["npx" "webpack"
+                                                "--env=development"]}
                          ;:deps-cmd "npm"
                          :source-map true
                          :optimizations :none
@@ -52,12 +55,15 @@
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
                         {;;:main "interactive-syntax.prod"
-                         :output-to "public/js/out/app.js"
+                         :output-to "target/release/app.js"
                          :output-dir "target/release"
                          :externs ["src/js/externs.js"]
                          :target :bundle
-                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
-                                      :default ["npx" "webpack"]}
+                         :bundle-cmd {:none ["npx" "webpack"
+                                             "--mode=development"
+                                             "--env=release"]
+                                      :default ["npx" "webpack"
+                                                "--env=release"]}
                          ;:deps-cmd "npm"
                          :infer-externs true
                          :optimizations :advanced
@@ -69,12 +75,16 @@
                        :test
                        {:source-paths ["src" "env/test/cljs"]
                         :compiler
-                        {:main interactive-syntax.test
-                         :output-to "public/js/out/app.js"
-                         :output-dir "target/test"
+                        {:main "interactive-syntax.test"
+                         :output-to "public/js/test/app.js"
+                         :output-dir "public/js/test"
+                         :asset-path   "js/test"
                          :target :bundle
-                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
-                                      :default ["npx" "webpack"]}
+                         :bundle-cmd {:none ["npx" "webpack"
+                                             "--mode=development"
+                                             "--env=test"]
+                                      :default ["npx" "webpack"
+                                                "--env=test"]}
                          ;:deps-cmd "npm"
                          :optimizations :none}}}}
 

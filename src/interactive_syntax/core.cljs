@@ -11,6 +11,7 @@
       [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
       [cljs.pprint :refer [pprint]]
       [cljs.core.match :refer [match]]
+      [interactive-syntax.db :as db]
       [jquery]
       [popper.js]
       [bootstrap]
@@ -30,8 +31,7 @@
       [react-switch]
       [react-dnd :refer [DndProvider]]
       [react-dnd-html5-backend :refer [HTML5Backend]]
-      [chonky :refer [ChonkyActions]]
-      [alandipert.storage-atom :refer [local-storage]]))
+      [chonky :refer [ChonkyActions]]))
 
 ;; -------------------------
 ;; Components
@@ -445,20 +445,14 @@
 ;; -------------------------
 ;; Views
 
-(defn home-page []
-  (let [input (local-storage (atom "") :input)
-        output (atom nil)
-        menu (local-storage (atom [:home]) :menu)
-        current-folder (local-storage (atom "/") :current-folder)
-        current-file (local-storage (atom nil) :current-file)
-        file-changed (local-storage (atom false) :file-changed)
-        options (into {}
-                      (for [kv {:orientation "horizontal"
-                                :keymap "sublime"
-                                :font-size 12
-                                :theme "material"
-                                :show-editors true}]
-                        [(key kv) (local-storage (atom (val kv)) (key kv))]))
+(defn home-page [db]
+  (let [input (:input db)
+        output (:output db)
+        menu (:menu db)
+        current-folder (:current-folder db)
+        current-file (:current-file db)
+        file-changed (:file-changed db)
+        options (:options db)
         fs (browserfs/BFSRequire "fs")]
     (fn []
       (browserfs/configure #js {:fs "LocalStorage"}
@@ -490,7 +484,7 @@
 (defn mount-root []
   (d/render
    [:> DndProvider {:backend HTML5Backend}
-    [home-page]]
+    [home-page db/default-db]]
    (.getElementById js/document "app")))
 
 (defn init! []
