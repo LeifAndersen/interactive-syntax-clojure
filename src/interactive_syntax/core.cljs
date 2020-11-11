@@ -462,8 +462,7 @@
         fs (browserfs/BFSRequire "fs")]
     (fn []
       (browserfs/configure #js {:fs "LocalStorage"}
-                           #(when %
-                              (throw %)))
+                           #(when % (throw %)))
       (set! js/window.stopify stopify)
       (set! js/window.fs fs) ; <-- XXX For debugging, should remove
       [:main {:role "main"

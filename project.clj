@@ -13,7 +13,8 @@
                  [alandipert/storage-atom "1.2.4"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-figwheel "0.5.20"]]
+            [lein-figwheel "0.5.20"]
+            [lein-doo "0.1.11"]]
 
   :clean-targets ^{:protect false}
 
@@ -28,6 +29,8 @@
              :nrepl-middleware [cider.piggieback/wrap-cljs-repl]
              :css-dirs ["public/css"]}
 
+  :doo {:paths {:karma "./node_modules/karma/bin/karma"}}
+
   :cljsbuild {:builds {:app
                        {:source-paths ["src" "env/dev/cljs"]
                         :compiler
@@ -38,6 +41,7 @@
                          :target :bundle
                          :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
                                       :default ["npx" "webpack"]}
+                         ;:deps-cmd "npm"
                          :source-map true
                          :optimizations :none
                          :pretty-print  true}
@@ -54,15 +58,29 @@
                          :target :bundle
                          :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
                                       :default ["npx" "webpack"]}
+                         ;:deps-cmd "npm"
                          :infer-externs true
                          :optimizations :advanced
                          :closure-defines {cljs.core/*global* "window"}
                          ;; For debugging
                          ;;:source-map "public/js/out/app.js.map"
                          ;;:pseudo-names true
-                         :pretty-print false}}}}
+                         :pretty-print false}}
+                       :test
+                       {:source-paths ["src" "env/test/cljs"]
+                        :compiler
+                        {:main interactive-syntax.test
+                         :output-to "public/js/out/app.js"
+                         :output-dir "target/test"
+                         :target :bundle
+                         :bundle-cmd {:none ["npx" "webpack" "--mode=development"]
+                                      :default ["npx" "webpack"]}
+                         ;:deps-cmd "npm"
+                         :optimizations :none}}}}
 
-  :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]}
+  :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]
+            "test-chrome" ["do" "clean" ["doo" "chrome" "test"]]
+            "test-firefox" ["do" "clean" ["doo" "firefox" "test"]]}
 
   :profiles {:dev {:source-paths ["src" "env/dev/clj"]
                    :dependencies [[binaryage/devtools "1.0.2"]
