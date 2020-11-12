@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+  </head>
+  <body>
+    <div id="app">
+        <h3>Loading...</h3>
+        <progress id="progress" value="0" max="100"></progress>
+    </div>
+    <script type="text/javascript">
+     var req = new XMLHttpRequest();
+     var prog = document.getElementById("progress");
+     req.addEventListener("progress", function(event) {
+       if (event.lengthComputable) {
+         var percentComplete = event.loaded / event.total;
+         prog.setAttribute("value", percentComplete);
+         prog.innerHTML = percentComplete + "%";
+       } else {}
+     }, false);
+     req.addEventListener("load", function(event) {
+       var e = event.target;
+       var s = document.createElement("script");
+       s.innerHTML = e.responseText;
+       document.documentElement.appendChild(s);
+       s.addEventListener("load", function() {});
+     }, false);
+     req.open("GET", "js/main.js");
+     req.send();
+    </script>
+  </body>
+</html>

@@ -10,7 +10,8 @@
                  [org.clojure/core.match "1.0.0"]
                  [org.clojure/tools.reader "1.3.3"]
                  [reagent "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]]
-                 [alandipert/storage-atom "1.2.4"]]
+                 [alandipert/storage-atom "1.2.4"]
+                 [karma-reporter "3.1.0"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.20"]
@@ -50,7 +51,7 @@
                          :pretty-print  true}
                         :figwheel
                         {:on-jsload "interactive-syntax.core/mount-root"
-                         :open-urls ["http://localhost:3449/index-dev.html"]}}
+                         :open-urls ["http://localhost:3449/index.html"]}}
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
@@ -75,6 +76,7 @@
                         {:main "interactive-syntax.test"
                          :output-to "public/js/test/app.js"
                          :output-dir "public/js/test"
+                         ;;:asset-path   "base/js/test"
                          :asset-path   "js/test"
                          :target :bundle
                          :bundle-cmd {:none ["npx" "webpack"
