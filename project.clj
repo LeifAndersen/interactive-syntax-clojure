@@ -44,7 +44,7 @@
                                              "--env=development"]
                                       :default ["npx" "webpack"
                                                 "--env=development"]}
-                         ;:deps-cmd "npm"
+                         ;;:deps-cmd "npm"
                          :source-map true
                          :optimizations :none
                          :pretty-print  true}
@@ -54,7 +54,7 @@
                        :release
                        {:source-paths ["src" "env/prod/cljs"]
                         :compiler
-                        {;;:main "interactive-syntax.prod"
+                        {:main "interactive-syntax.prod"
                          :output-to "target/release/app.js"
                          :output-dir "target/release"
                          :externs ["src/js/externs.js"]
@@ -64,13 +64,10 @@
                                              "--env=release"]
                                       :default ["npx" "webpack"
                                                 "--env=release"]}
-                         ;:deps-cmd "npm"
+                         ;;:deps-cmd "npm"
                          :infer-externs true
                          :optimizations :advanced
                          :closure-defines {cljs.core/*global* "window"}
-                         ;; For debugging
-                         ;;:source-map "public/js/out/app.js.map"
-                         ;;:pseudo-names true
                          :pretty-print false}}
                        :test
                        {:source-paths ["src" "env/test/cljs"]
@@ -85,8 +82,12 @@
                                              "--env=test"]
                                       :default ["npx" "webpack"
                                                 "--env=test"]}
-                         ;:deps-cmd "npm"
-                         :optimizations :none}}}}
+                         ;;:deps-cmd "npm"
+                         :infer-externs true
+                         :optimizations :simple
+                         :closure-defines {cljs.core/*global* "window"}
+                         :pseudo-names true
+                         :silence-optimizations-warning true}}}}
 
   :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]
             "test-chrome" ["do" "clean" ["doo" "chrome" "test"]]
