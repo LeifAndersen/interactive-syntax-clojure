@@ -74,11 +74,11 @@
       (not (.isDirectory stats)) (assoc :size stats.size)
       :always clj->js)))
 
-(defn save-buffer [current-folder current-file input file-changed]
+(defn save-buffer [fs current-folder current-file input file-changed]
   (fs.writeFileSync (js/path.join @current-folder @current-file) @input)
   (reset! file-changed false))
 
-(defn load-buffer [current-folder current-file input file-changed]
+(defn load-buffer [fs current-folder current-file input file-changed]
   (reset! input (fs.readFileSync (js/path.join @current-folder @current-file)))
   (reset! file-changed false))
 
@@ -112,7 +112,7 @@
                                (reset! current-folder new-path))
                              (swap! menu pop))))))
 
-(defn confirm-save-dialog [menu current-folder current-file input file-changed]
+(defn confirm-save-dialog [fs menu current-folder current-file input file-changed]
   (let [item (peek @menu)]
     [:> Modal {:show (and (coll? item) (= (first item) :confirm-save))
                :on-hide #(swap! menu pop)}
@@ -123,7 +123,8 @@
        {:variant "primary"
         :on-click (fn []
                     (if @current-file
-                      (save-buffer current-folder
+                      (save-buffer fs
+                                   current-folder
                                    current-file
                                    input
                                    file-changed)
@@ -204,7 +205,7 @@
      [file-browser fs menu current-folder current-file "Save"
       (fn [file]
         (reset! current-file file)
-        (save-buffer current-folder current-file input file-changed))]]))
+        (save-buffer fs current-folder current-file input file-changed))]]))
 
 (defn load-dialog [fs menu current-folder current-file input file-changed]
   [:> Modal {:show (= (peek @menu) :load)
@@ -216,7 +217,7 @@
     [file-browser fs menu current-folder current-file "Load"
      (fn [file]
        (reset! @current-file file)
-       (load-buffer current-folder current-file input file-changed))]]])
+       (load-buffer fs current-folder current-file input file-changed))]]])
 
 (defn new-file-action [menu current-file input file-changed]
   (when (= (peek @menu) :new)
@@ -295,15 +296,16 @@
 ;; -------------------------
 ;; Editor
 
-(defn button-row [input output current-folder current-file file-changed menu]
+(defn button-row [fs input output current-folder current-file file-changed menu]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
                    #(swap! menu conj :new))
         save-file (if @current-file
-                     #(save-buffer current-folder
-                                   current-file
-                                   input
-                                   file-changed)
+                    #(save-buffer fs
+                                  current-folder
+                                  current-file
+                                  input
+                                  file-changed)
                      #(swap! menu conj [:save]))
         save-file-as #(swap! menu conj [:save])
         load-file (if @file-changed
@@ -453,10 +455,8 @@
         current-file (:current-file db)
         file-changed (:file-changed db)
         options (:options db)
-        fs (browserfs/BFSRequire "fs")]
+        fs (:fs db)]
     (fn []
-      (browserfs/configure #js {:fs "LocalStorage"}
-                           #(when % (throw %)))
       (set! js/window.stopify stopify)
       (set! js/window.fs fs) ; <-- XXX For debugging, should remove
       [:main {:role "main"
@@ -470,7 +470,7 @@
        [confirm-save-dialog menu current-folder current-file input file-changed]
        [new-folder-dialog fs menu current-folder]
        [:div {:style {:flex "0 1 auto"}}
-        [button-row input output current-folder current-file file-changed menu]]
+        [button-row fs input output current-folder current-file file-changed menu]]
        [:div {:style {:flex "1 1 auto"}}
         [:> SplitPane {:split @(:orientation options)
                        :minSize 300
@@ -484,7 +484,7 @@
 (defn mount-root []
   (d/render
    [:> DndProvider {:backend HTML5Backend}
-    [home-page db/default-db]]
+    [home-page (db/default-db)]]
    (.getElementById js/document "app")))
 
 (defn init! []
