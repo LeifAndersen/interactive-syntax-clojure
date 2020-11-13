@@ -86,10 +86,10 @@
                                                 "--env=test"]}
                          ;;:deps-cmd "npm"
                          :infer-externs true
+                         ;;:silence-optimizations-warning true
                          :optimizations :simple
                          :closure-defines {cljs.core/*global* "window"}
-                         :pseudo-names true
-                         :silence-optimizations-warning true}}}}
+                         :pseudo-names true}}}}
 
   :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]
             "test-chrome" ["do" "clean" ["doo" "chrome" "test"]]
