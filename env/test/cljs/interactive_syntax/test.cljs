@@ -1,4 +1,4 @@
-(ns interactive-syntax.test-notme
+(ns interactive-syntax.test
   (:require
    ;;[doo.runner :refer-macros [doo-tests]]
    ;;[jx.reporter.karma :refer-macros [run-all-tests]]

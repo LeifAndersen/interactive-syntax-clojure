@@ -79,7 +79,9 @@
   (reset! file-changed false))
 
 (defn load-buffer [fs current-folder current-file input file-changed]
-  (reset! input (fs.readFileSync (js/path.join @current-folder @current-file)))
+  (reset! input (-> (js/path.join @current-folder @current-file)
+                    fs.readFileSync
+                    .toString))
   (reset! file-changed false))
 
 (defn make-control-dialog [menu key title confirm action]
@@ -221,7 +223,6 @@
 
 (defn new-file-action [menu current-file input file-changed]
   (when (= (peek @menu) :new)
-    (println @menu)
     (reset! current-file nil)
     (reset! file-changed false)
     (reset! input "")
@@ -381,51 +382,59 @@
   (when (and @(:show-editors options) @editor)
     (let [prog (indexing-push-back-reader s)
           eof (atom nil)]
-      (loop []
-        (let [form (read {:eof eof} prog)]
-          (when-not (identical? form eof)
-            ((fn rec [form]
-               (let [info (meta form)]
-                 (when (= (:tag info) 'editor)
-                   (swap! instances conj
-                          (-> @editor
-                              (.getDoc)
-                              (.markText
-                               #js {:line (dec (:line info)),
-                                    :ch (dec (:column info))}
-                               #js {:line (dec (:end-line info)),
-                                    :ch (dec (:end-column info))}
-                               #js {:collapsed true}))))
-                 (doseq [e form]
-                   (when (coll? e)
-                     (rec e)))))
-             form)
-            (recur)))))))
+      (try
+        (loop []
+          (let [form (read {:eof eof} prog)]
+            (when-not (identical? form eof)
+              ((fn rec [form]
+                 (let [info (meta form)]
+                   (when (= (:tag info) 'editor)
+                     (swap! instances conj
+                            (-> @editor
+                                (.getDoc)
+                                (.markText
+                                 #js {:line (dec (:line info)),
+                                      :ch (dec (:column info))}
+                                 #js {:line (dec (:end-line info)),
+                                      :ch (dec (:end-column info))}
+                                 #js {:collapsed true}))))
+                   (doseq [e form]
+                     (when (coll? e)
+                       (rec e)))))
+               form)
+              (recur))))
+        (catch js/Error e
+          "TODO LOG")))))
 
-(defn editor [input options file-changed]
-  (let [edit (atom nil)
-        instances (clojure.core/atom [])]
-    (fn []
-      (reset-editors! @input edit instances options)
-      (when (not= @edit nil)
-        (set! (-> @edit .getWrapperElement .-style .-fontSize)
-              (str @(:font-size options) "px"))
-        (-> @edit .refresh))
-      [:> cm/UnControlled
-       {:options {:mode "clojure"
-                  :keyMap @(:keymap options)
-                  :theme @(:theme options "material")
-                  :matchBrackets true
-                  :showCursorWhenSelecting true
-                  :lineNumbers true}
-        :onChange #(let []
-                     (reset-editors! %3 edit instances options)
-                     (reset! file-changed true)
-                     (reset! input %3))
-        :editorDidMount #(let []
-                           (-> % .getDoc (.setValue @input))
-                           (reset! edit %)
-                           (reset-editors! @input edit instances options))}])))
+(defn editor-view
+  ([input options file-changed]
+   (editor-view input options file-changed nil))
+  ([input options file-changed editor-ref]
+   (let [edit (atom nil)
+         instances (clojure.core/atom [])]
+     (fn []
+       (reset-editors! @input edit instances options)
+       (when (not= @edit nil)
+         (set! (-> @edit .getWrapperElement .-style .-fontSize)
+               (str @(:font-size options) "px"))
+         (-> @edit .refresh))
+       [:> cm/UnControlled
+        {:options {:mode "clojure"
+                   :keyMap @(:keymap options)
+                   :theme @(:theme options)
+                   :matchBrackets true
+                   :showCursorWhenSelecting true
+                   :lineNumbers true}
+         :onChange #(let []
+                      (reset-editors! %3 edit instances options)
+                      (reset! file-changed true)
+                      (reset! input %3))
+         :editorDidMount #(let []
+                            (-> % .getDoc (.setValue @input))
+                            (reset! edit %)
+                            (when editor-ref
+                              (reset! editor-ref %))
+                            (reset-editors! @input edit instances options))}]))))
 
 (defn result-view [output options]
   (let [edit (atom nil)]
@@ -437,7 +446,7 @@
       [:> cm/Controlled
        {:value (string/join "\n" @output)
         :options {:mode "clojure"
-                  :theme @(:theme options "material")
+                  :theme @(:theme options)
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers false}
@@ -467,7 +476,7 @@
        [save-dialog fs menu current-folder current-file input file-changed]
        [load-dialog fs menu current-folder current-file input file-changed]
        [options-dialog options menu]
-       [confirm-save-dialog menu current-folder current-file input file-changed]
+       [confirm-save-dialog fs menu current-folder current-file input file-changed]
        [new-folder-dialog fs menu current-folder]
        [:div {:style {:flex "0 1 auto"}}
         [button-row fs input output current-folder current-file file-changed menu]]
@@ -475,7 +484,7 @@
         [:> SplitPane {:split @(:orientation options)
                        :minSize 300
                        :defaultSize 300}
-         [editor input options file-changed]
+         [editor-view input options file-changed]
          [result-view output options]]]])))
 
 ;; -------------------------

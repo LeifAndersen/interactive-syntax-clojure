@@ -33,7 +33,7 @@
   :doo {:paths {:karma "./node_modules/karma/bin/karma"}}
 
   :cljsbuild {:builds {:app
-                       {:source-paths ["src" "env/dev/cljs"]
+                       {:source-paths ["src" "env/dev/cljs" "env/test/cljs"]
                         :compiler
                         {:main "interactive-syntax.dev"
                          :output-to "public/js/development/app.js"
@@ -87,7 +87,7 @@
                          ;;:deps-cmd "npm"
                          :infer-externs true
                          ;;:silence-optimizations-warning true
-                         :optimizations :simple
+                         :optimizations :none
                          :closure-defines {cljs.core/*global* "window"}
                          :pseudo-names true}}}}
 
