@@ -241,13 +241,17 @@
 ;; -------------------------
 ;; Options
 
-(defn option-button [options key type display]
-  [:> Button {:variant (if (= @(key options) type) "primary" "secondary")
-              :on-click #(reset! (key options) type)}
+(defn option-button [option type display]
+  [:> Button {:variant (if (= @option type) "primary" "secondary")
+              :on-click #(reset! option type)}
    display])
 
-(defn options-dialog [{:keys [options menu]
-                       :as db}]
+(defn options-dialog [{{:keys [show-editors
+                               orientation
+                               keymap
+                               font-size
+                               theme]} :options
+                       :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
@@ -257,48 +261,42 @@
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
        [:h4 "Visual Editors:"]]
-      [:> Col
-       [:> Switch {:checked @(:show-editors options)
-                   :on-change #(reset! (:show-editors options) %)}]]]
+      [:> Col [:> Switch {:checked @show-editors
+                          :on-change #(reset! show-editors %)}]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
        [:h4 "Split:"]]
-      [:> Col
-       [:> ButtonGroup {:aria-label "Split"}
-        [option-button options :orientation "horizontal" "Horizontal"]
-        [option-button options :orientation "vertical" "Vertical"]]]]
+      [:> Col [:> ButtonGroup {:aria-label "Split"}
+               [option-button orientation "horizontal" "Horizontal"]
+               [option-button orientation "vertical" "Vertical"]]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
        [:h4 "Keymap:"]]
-      [:> Col
-       [:> ButtonGroup {:aria-label "Keyamp"}
-        [option-button options :keymap "vim" "Vim"]
-        [option-button options :keymap "emacs" "Emacs"]
-        [option-button options :keymap "sublime" "Sublime"]]]]
+      [:> Col [:> ButtonGroup {:aria-label "Keyamp"}
+               [option-button keymap "vim" "Vim"]
+               [option-button keymap "emacs" "Emacs"]
+               [option-button keymap "sublime" "Sublime"]]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
        [:h4 "Font Size:"]]
-      [:> Col
-       [:> Row
-      [:> Col {:xs "auto"}
-       [:> Button {:on-click #(swap! (:font-size options) dec)}
-        "-"]]
-      [:> Col {:xs 4}
-       [:> Form.Control
-        {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
-                       (when-not (js/isNaN value)
-                         (reset! (:font-size options) (max 1 value))))
-         :value @(:font-size options)}]]
-      [:> Col {:xs "auto"}
-       [:> Button {:on-click #(swap! (:font-size options) inc)}
-        "+"]]]]]
+      [:> Col [:> Row [:> Col {:xs "auto"}
+                       [:> Button {:on-click #(swap! font-size dec)}
+                        "-"]]
+        [:> Col {:xs 4}
+         [:> Form.Control
+          {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
+                         (when-not (js/isNaN value)
+                           (reset! font-size (max 1 value))))
+           :value @font-size}]]
+        [:> Col {:xs "auto"}
+         [:> Button {:on-click #(swap! font-size inc)}
+          "+"]]]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
        [:h4 "Theme:"]]
-      [:> Col
-       [:> ButtonGroup {:aria-label "Theme"}
-        [option-button options :theme "neat" "Light"]
-        [option-button options :theme "material" "Dark"]]]]]]
+      [:> Col [:> ButtonGroup {:aria-label "Theme"}
+               [option-button theme "neat" "Light"]
+        [option-button theme "material" "Dark"]]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}
@@ -307,8 +305,7 @@
 ;; -------------------------
 ;; Editor
 
-(defn button-row [{:keys [fs
-                          input
+(defn button-row [{:keys [input
                           output
                           current-folder
                           current-file
