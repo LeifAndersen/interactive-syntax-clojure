@@ -332,59 +332,58 @@
         run #(let []
                (reset! output #queue [])
                (eval-str @input output))]
-    (fn []
-      [:div
-       [:div {:class-name "d-block d-md-none"}
-        [:> Row {:class-name "align-items-center flex-nowrap"
-                 :style {:margin-left 0
-                         :margin-right 0}}
-         [:> Col {:xs "auto"
-                  :style {:padding-left 0}}
-          [:> DropdownButton {:as ButtonGroup
-                              :title "Menu"
-                              :size "sm"}
-           [:> Dropdown.Item {:on-click new-file} "New"]
-           [:> Dropdown.Item {:on-click save-file} "Save"]
-           [:> Dropdown.Item {:on-click save-file-as} "Save As"]
-           [:> Dropdown.Item {:on-click load-file} "Load"]
-           [:> Dropdown.Item {:on-click options} "Options"]
-           [:> Dropdown.Item "Import Project"]
-           [:> Dropdown.Item "Export Project"]]]
-         [:> Col
-          [:> Container {:class-name "d-none d-sm-block"
-                         :fluid true
-                         :overflow "hidden"
-                         ;;:text-overflow "ellipsis"
-                         }
-           file-name]]
-         [:> Col {:xs "auto"
-                  :style {:padding-right 0}}
-          [:> SplitButton {:title "Run"
-                           :size "sm"
-                           :on-click run}
-           [:> Dropdown.Item "Stop"]]]]]
-       [:div {:className "d-none d-md-block"}
-        [:> Row {:className "align-items-center"
-                 :style {:margin-left 0
-                         :margin-right 0}}
-         [:> Col {:xs "auto"
-                  :style {:padding-left 0}}
-          [:> Button {:on-click new-file} "New"]
-          [:> SplitButton
-           {:title "Save"
-            :on-click save-file}
-           [:> Dropdown.Item {:on-click save-file-as} "Save As"]]
-          [:> Button {:on-click load-file} "Load"]
-          [:> DropdownButton {:as ButtonGroup
-                              :title "Project"}
-           [:> Dropdown.Item "Import"]
-           [:> Dropdown.Item "Export"]]
-          [:> Button {:on-click options} "Options"]]
-         [:> Col [:> Container file-name]]
-         [:> Col {:xs "auto"
-                  :style {:paddingRight 0}}
-          [:> Button {:on-click run} "Run"]
-          [:> Button "Stop"]]]]])))
+    [:div
+     [:div {:class-name "d-block d-md-none"}
+      [:> Row {:class-name "align-items-center flex-nowrap"
+               :style {:margin-left 0
+                       :margin-right 0}}
+       [:> Col {:xs "auto"
+                :style {:padding-left 0}}
+        [:> DropdownButton {:as ButtonGroup
+                            :title "Menu"
+                            :size "sm"}
+         [:> Dropdown.Item {:on-click new-file} "New"]
+         [:> Dropdown.Item {:on-click save-file} "Save"]
+         [:> Dropdown.Item {:on-click save-file-as} "Save As"]
+         [:> Dropdown.Item {:on-click load-file} "Load"]
+         [:> Dropdown.Item {:on-click options} "Options"]
+         [:> Dropdown.Item "Import Project"]
+         [:> Dropdown.Item "Export Project"]]]
+       [:> Col
+        [:> Container {:class-name "d-none d-sm-block"
+                       :fluid true
+                       :overflow "hidden"
+                       ;;:text-overflow "ellipsis"
+                       }
+         file-name]]
+       [:> Col {:xs "auto"
+                :style {:padding-right 0}}
+        [:> SplitButton {:title "Run"
+                         :size "sm"
+                         :on-click run}
+         [:> Dropdown.Item "Stop"]]]]]
+     [:div {:className "d-none d-md-block"}
+      [:> Row {:className "align-items-center"
+               :style {:margin-left 0
+                       :margin-right 0}}
+       [:> Col {:xs "auto"
+                :style {:padding-left 0}}
+        [:> Button {:on-click new-file} "New"]
+        [:> SplitButton
+         {:title "Save"
+          :on-click save-file}
+         [:> Dropdown.Item {:on-click save-file-as} "Save As"]]
+        [:> Button {:on-click load-file} "Load"]
+        [:> DropdownButton {:as ButtonGroup
+                            :title "Project"}
+         [:> Dropdown.Item "Import"]
+         [:> Dropdown.Item "Export"]]
+        [:> Button {:on-click options} "Options"]]
+       [:> Col [:> Container file-name]]
+       [:> Col {:xs "auto"
+                :style {:paddingRight 0}}
+        [:> Button {:on-click run} "Run"]
+        [:> Button "Stop"]]]]]))
 
 (defn reset-editors! [s editor instances options]
   (doseq [i @instances] (.clear i))
@@ -416,37 +415,36 @@
         (catch js/Error e
           "TODO LOG")))))
 
-(defn editor-view
-  ([db]
-   (editor-view db nil))
-  ([{:keys [input options file-changed]
-     :as db}
-    editor-ref]
-   (let [edit (atom nil)
-         instances (clojure.core/atom [])]
-     (fn []
-       (reset-editors! @input edit instances options)
-       (when (not= @edit nil)
-         (set! (-> @edit .getWrapperElement .-style .-fontSize)
-               (str @(:font-size options) "px"))
-         (-> @edit .refresh))
-       [:> cm/UnControlled
-        {:options {:mode "clojure"
-                   :keyMap @(:keymap options)
-                   :theme @(:theme options)
-                   :matchBrackets true
-                   :showCursorWhenSelecting true
-                   :lineNumbers true}
-         :onChange #(let []
-                      (reset-editors! %3 edit instances options)
-                      (reset! file-changed true)
-                      (reset! input %3))
-         :editorDidMount #(let []
-                            (-> % .getDoc (.setValue @input))
-                            (reset! edit %)
-                            (when editor-ref
-                              (reset! editor-ref %))
-                            (reset-editors! @input edit instances options))}]))))
+(defn editor-view [db & [editor-ref]]
+  (let [edit (atom nil)
+        instances (clojure.core/atom [])]
+    (fn [{:keys [input options file-changed current-file]
+          :as db}
+         & [editor-ref]]
+      @current-file
+      ;(reset-editors! @input edit instances options)
+      (when (not= @edit nil)
+        (set! (-> @edit .getWrapperElement .-style .-fontSize)
+              (str @(:font-size options) "px"))
+        (-> @edit .refresh))
+      [:> cm/UnControlled
+       {:options {:mode "clojure"
+                  :keyMap @(:keymap options)
+                  :theme @(:theme options)
+                  :matchBrackets true
+                  :showCursorWhenSelecting true
+                  :lineNumbers true}
+        ;;:value @input
+        :onChange #(let []
+                     (reset! file-changed true)
+                     (reset! input %3)
+                     (reset-editors! %3 edit instances options))
+        :editorDidMount #(let []
+                           (-> % .getDoc (.setValue @input))
+                           (reset! edit %)
+                           (when editor-ref
+                             (reset! editor-ref %))
+                           (reset-editors! @input edit instances options))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}]
@@ -472,27 +470,26 @@
 (defn home-page [{{:keys [orientation]} :options
                   :keys [fs]
                   :as db}]
-  (fn []
-    (set! js/window.stopify stopify)
-    (set! js/window.fs fs) ; <-- XXX For debugging, should remove
-    [:main {:role "main"
-            :style {:height "100%"
-                    :display "flex"
-                    :flex-flow "column"}}
-     [new-file-action db]
-     [save-dialog db]
-     [load-dialog db]
-     [options-dialog db]
-     [confirm-save-dialog db]
-     [new-folder-dialog db]
-     [:div {:style {:flex "0 1 auto"}}
-      [button-row db]]
-     [:div {:style {:flex "1 1 auto"}}
-      [:> SplitPane {:split @orientation
-                     :minSize 300
-                     :defaultSize 300}
-       [editor-view db]
-       [result-view db]]]]))
+  (set! js/window.stopify stopify)
+  (set! js/window.fs fs) ; <-- XXX For debugging, should remove
+  [:main {:role "main"
+          :style {:height "100%"
+                  :display "flex"
+                  :flex-flow "column"}}
+   [new-file-action db]
+   [save-dialog db]
+   [load-dialog db]
+   [options-dialog db]
+   [confirm-save-dialog db]
+   [new-folder-dialog db]
+   [:div {:style {:flex "0 1 auto"}}
+    [button-row db]]
+   [:div {:style {:flex "1 1 auto"}}
+    [:> SplitPane {:split @orientation
+                   :minSize 300
+                   :defaultSize 300}
+     [editor-view db]
+     [result-view db]]]])
 
 ;; -------------------------
 ;; Initialize app

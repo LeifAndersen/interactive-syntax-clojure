@@ -9,7 +9,9 @@
 
 (use-fixtures :each
   {:before (fn [] (-> js/localStorage .clear))
-   :after rtl/cleanup})
+   :after (fn []
+            (rtl/cleanup)
+            (-> js/localStorage .clear))})
 
 (deftest file-system-available
   (testing "File System Access"
@@ -35,22 +37,28 @@
 
 (deftest file-tite
   (testing "Make sure title matches current file, even accross save/load"
-    (let [db (default-db)
-          fs (:fs db)]
+    (let [{:keys [file-changed] :as db} (default-db)
+          component (rtl/render (r/as-element [core/button-row db]))]
       (is (= "UNTITLED.cljs"
-             (-> (r/as-element
-                  [core/button-row db])
-                 rtl/render
+             (-> component
                  (.getAllByText "UNTITLED.cljs")
+                 first
+                 (.-innerHTML))))
+      (reset! file-changed true)
+      (is (= "UNTITLED.cljs*"
+             (-> component
+                 (.getAllByText "UNTITLED.cljs*")
                  first
                  (.-innerHTML)))))))
 
 (deftest bad-input-buff
   (testing "Malformed string in input buffer"
-    (let [db (default-db)
+    (let [{:keys [input file-changed] :as db} (default-db)
           editor (atom nil)
-          view (r/as-element [core/editor-view db editor])
-          _ (is (= @(:input db) ""))
-          field (-> view rtl/render)]
+          view (r/as-element [core/editor-view db editor])]
+      (is (= @input ""))
+      (is (= @file-changed false))
+      (-> view rtl/render)
       (-> @editor .getDoc (.setValue "(+ 1 2"))
-      (is (= @(:input db) "(+ 1 2")))))
+      (is (= @input "(+ 1 2"))
+      (is (= @file-changed true)))))
