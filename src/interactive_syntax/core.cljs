@@ -74,11 +74,13 @@
       (not (.isDirectory stats)) (assoc :size stats.size)
       :always clj->js)))
 
-(defn save-buffer [fs current-folder current-file input file-changed]
+(defn save-buffer [{:keys [fs current-folder current-file input file-changed]
+                    :as db}]
   (fs.writeFileSync (js/path.join @current-folder @current-file) @input)
   (reset! file-changed false))
 
-(defn load-buffer [fs current-folder current-file input file-changed]
+(defn load-buffer [{:keys [fs current-folder current-file input file-changed]
+                    :as db}]
   (reset! input (-> (js/path.join @current-folder @current-file)
                     fs.readFileSync
                     .toString))
@@ -104,7 +106,8 @@
             {:on-click (action text)}
             confirm]]]]]])))
 
-(defn new-folder-dialog [fs menu current-folder]
+(defn new-folder-dialog [{:keys [fs menu current-folder]
+                          :as db}]
   (make-control-dialog menu :new-folder "New" "Create"
                        (fn [text]
                          (fn []
@@ -114,7 +117,8 @@
                                (reset! current-folder new-path))
                              (swap! menu pop))))))
 
-(defn confirm-save-dialog [fs menu current-folder current-file input file-changed]
+(defn confirm-save-dialog [{:keys [menu current-file]
+                            :as db}]
   (let [item (peek @menu)]
     [:> Modal {:show (and (coll? item) (= (first item) :confirm-save))
                :on-hide #(swap! menu pop)}
@@ -125,18 +129,20 @@
        {:variant "primary"
         :on-click (fn []
                     (if @current-file
-                      (save-buffer fs
-                                   current-folder
-                                   current-file
-                                   input
-                                   file-changed)
+                      (save-buffer db)
                       (swap! menu #(-> % pop (conj [:save (second item)])))))}
        "Save"]
       [:> Button {:variant "secondary"
                   :on-click (fn [] (swap! menu #(-> % (conj (second item)))))}
        "Continue Without Saving"]]]))
 
-(defn file-browser [fs menu current-folder current-file choice-text choice-callback]
+(defn file-browser [{:keys [fs
+                            menu
+                            current-folder
+                            current-file]
+                     :as db}
+                    choice-text
+                    choice-callback]
   (let [text (atom "")]
     [:div {:style #js {:height "450px"}}
      [:> chonky/FileBrowser
@@ -197,31 +203,34 @@
       [:> chonky/FileSearch]
       [:> chonky/FileList]]]))
 
-(defn save-dialog [fs menu current-folder current-file input file-changed]
+(defn save-dialog [{:keys [menu current-file]
+                    :as db}]
   (let [item (peek @menu)]
     [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
                :on-hide #(swap! menu pop)}
      [:> Modal.Header {:close-button true}
       [:h3 "Save"]]
-     [file-browser fs menu current-folder current-file "Save"
+     [file-browser db "Save"
       (fn [file]
         (reset! current-file file)
-        (save-buffer fs current-folder current-file input file-changed))]]))
+        (save-buffer db))]]))
 
-(defn load-dialog [fs menu current-folder current-file input file-changed]
+(defn load-dialog [{:keys [menu current-file]
+                    :as db}]
   [:> Modal {:show (= (peek @menu) :load)
              :size "xl"
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
     [:h3 "Load"]]
    [:> Modal.Body
-    [file-browser fs menu current-folder current-file "Load"
+    [file-browser db "Load"
      (fn [file]
        (reset! @current-file file)
-       (load-buffer fs current-folder current-file input file-changed))]]])
+       (load-buffer db))]]])
 
-(defn new-file-action [menu current-file input file-changed]
+(defn new-file-action [{:keys [menu current-file input file-changed]
+                        :as db}]
   (when (= (peek @menu) :new)
     (reset! current-file nil)
     (reset! file-changed false)
@@ -237,7 +246,8 @@
               :on-click #(reset! (key options) type)}
    display])
 
-(defn options-dialog [options menu]
+(defn options-dialog [{:keys [options menu]
+                       :as db}]
   [:> Modal {:show (= (peek @menu) :options)
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
@@ -297,16 +307,19 @@
 ;; -------------------------
 ;; Editor
 
-(defn button-row [fs input output current-folder current-file file-changed menu]
+(defn button-row [{:keys [fs
+                          input
+                          output
+                          current-folder
+                          current-file
+                          file-changed
+                          menu]
+                   :as db}]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
                    #(swap! menu conj :new))
         save-file (if @current-file
-                    #(save-buffer fs
-                                  current-folder
-                                  current-file
-                                  input
-                                  file-changed)
+                    #(save-buffer db)
                      #(swap! menu conj [:save]))
         save-file-as #(swap! menu conj [:save])
         load-file (if @file-changed
@@ -407,9 +420,11 @@
           "TODO LOG")))))
 
 (defn editor-view
-  ([input options file-changed]
-   (editor-view input options file-changed nil))
-  ([input options file-changed editor-ref]
+  ([db]
+   (editor-view db nil))
+  ([{:keys [input options file-changed]
+     :as db}
+    editor-ref]
    (let [edit (atom nil)
          instances (clojure.core/atom [])]
      (fn []
@@ -436,7 +451,8 @@
                               (reset! editor-ref %))
                             (reset-editors! @input edit instances options))}]))))
 
-(defn result-view [output options]
+(defn result-view [{:keys [output options]
+                    :as db}]
   (let [edit (atom nil)]
     (fn []
       (when (not= @edit nil)
@@ -456,36 +472,30 @@
 ;; -------------------------
 ;; Views
 
-(defn home-page [db]
-  (let [input (:input db)
-        output (:output db)
-        menu (:menu db)
-        current-folder (:current-folder db)
-        current-file (:current-file db)
-        file-changed (:file-changed db)
-        options (:options db)
-        fs (:fs db)]
-    (fn []
-      (set! js/window.stopify stopify)
-      (set! js/window.fs fs) ; <-- XXX For debugging, should remove
-      [:main {:role "main"
-              :style {:height "100%"
-                      :display "flex"
-                      :flex-flow "column"}}
-       [new-file-action menu current-file input file-changed]
-       [save-dialog fs menu current-folder current-file input file-changed]
-       [load-dialog fs menu current-folder current-file input file-changed]
-       [options-dialog options menu]
-       [confirm-save-dialog fs menu current-folder current-file input file-changed]
-       [new-folder-dialog fs menu current-folder]
-       [:div {:style {:flex "0 1 auto"}}
-        [button-row fs input output current-folder current-file file-changed menu]]
-       [:div {:style {:flex "1 1 auto"}}
-        [:> SplitPane {:split @(:orientation options)
-                       :minSize 300
-                       :defaultSize 300}
-         [editor-view input options file-changed]
-         [result-view output options]]]])))
+(defn home-page [{{:keys [orientation]} :options
+                  :keys [fs]
+                  :as db}]
+  (fn []
+    (set! js/window.stopify stopify)
+    (set! js/window.fs fs) ; <-- XXX For debugging, should remove
+    [:main {:role "main"
+            :style {:height "100%"
+                    :display "flex"
+                    :flex-flow "column"}}
+     [new-file-action db]
+     [save-dialog db]
+     [load-dialog db]
+     [options-dialog db]
+     [confirm-save-dialog db]
+     [new-folder-dialog db]
+     [:div {:style {:flex "0 1 auto"}}
+      [button-row db]]
+     [:div {:style {:flex "1 1 auto"}}
+      [:> SplitPane {:split @orientation
+                     :minSize 300
+                     :defaultSize 300}
+       [editor-view db]
+       [result-view db]]]]))
 
 ;; -------------------------
 ;; Initialize app

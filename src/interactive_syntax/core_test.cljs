@@ -24,20 +24,12 @@
       (reset! (:input db) "(+ 1 2)")
       (reset! (:file-changed db) true)
       (reset! (:current-file db) "sample.cljs")
-      (core/save-buffer fs
-                        (:current-folder db)
-                        (:current-file db)
-                        (:input db)
-                        (:file-changed db))
+      (core/save-buffer db)
       (is (= (js->clj (fs.readdirSync "/")) ["sample.cljs"]))
       (is (= @(:file-changed db) false))
       (reset! (:input db) ":new-file")
       (reset! (:file-changed db) true)
-      (core/load-buffer fs
-                        (:current-folder db)
-                        (:current-file db)
-                        (:input db)
-                        (:file-changed db))
+      (core/load-buffer db)
       (is (= @(:input db) "(+ 1 2)"))
       (is (= @(:file-changed db) false)))))
 
@@ -47,13 +39,7 @@
           fs (:fs db)]
       (is (= "UNTITLED.cljs"
              (-> (r/as-element
-                  [core/button-row fs
-                   (:input db)
-                   (:output db)
-                   (:current-folder db)
-                   (:current-file db)
-                   (:file-changed db)
-                   (:menu db)])
+                  [core/button-row db])
                  rtl/render
                  (.getAllByText "UNTITLED.cljs")
                  first
@@ -63,11 +49,7 @@
   (testing "Malformed string in input buffer"
     (let [db (default-db)
           editor (atom nil)
-          view (r/as-element [core/editor-view
-                              (:input db)
-                              (:options db)
-                              (:file-changed db)
-                              editor])
+          view (r/as-element [core/editor-view db editor])
           _ (is (= @(:input db) ""))
           field (-> view rtl/render)]
       (-> @editor .getDoc (.setValue "(+ 1 2"))
