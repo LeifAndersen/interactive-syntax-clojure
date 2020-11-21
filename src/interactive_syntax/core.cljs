@@ -232,9 +232,9 @@
 (defn new-file-action [{:keys [menu current-file input file-changed]
                         :as db}]
   (when (= (peek @menu) :new)
+    (reset! input "")
     (reset! current-file nil)
     (reset! file-changed false)
-    (reset! input "")
     (swap! menu pop))
   [:div])
 
@@ -347,6 +347,7 @@
          [:> Dropdown.Item {:on-click save-file-as} "Save As"]
          [:> Dropdown.Item {:on-click load-file} "Load"]
          [:> Dropdown.Item {:on-click options} "Options"]
+         [:> Dropdown.Item "New Project"]
          [:> Dropdown.Item "Import Project"]
          [:> Dropdown.Item "Export Project"]]]
        [:> Col
@@ -376,8 +377,9 @@
         [:> Button {:on-click load-file} "Load"]
         [:> DropdownButton {:as ButtonGroup
                             :title "Project"}
-         [:> Dropdown.Item "Import"]
-         [:> Dropdown.Item "Export"]]
+         [:> Dropdown.Item "New Project"]
+         [:> Dropdown.Item "Import Project"]
+         [:> Dropdown.Item "Export Project"]]
         [:> Button {:on-click options} "Options"]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"
@@ -415,15 +417,22 @@
         (catch js/Error e
           "TODO LOG")))))
 
-(defn editor-view [db & [editor-ref]]
+(defn editor-view [{:keys [input options file-changed current-file]
+                    :as db}
+                   & [editor-ref]]
   (let [edit (atom nil)
         instances (clojure.core/atom [])]
+    (add-watch current-file ::editor-view
+               (fn [k r o n]
+                 (when (and @edit (not= o n))
+                   (-> @edit .getDoc (.setValue @input))
+                   (reset-editors! @input edit instances options))))
     (fn [{:keys [input options file-changed current-file]
           :as db}
          & [editor-ref]]
       @current-file
-      ;(reset-editors! @input edit instances options)
       (when (not= @edit nil)
+        ;(-> @edit .getDoc .getValue pprint)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
@@ -434,7 +443,6 @@
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineNumbers true}
-        ;;:value @input
         :onChange #(let []
                      (reset! file-changed true)
                      (reset! input %3)
@@ -497,7 +505,7 @@
 (defn mount-root []
   (d/render
    [:> DndProvider {:backend HTML5Backend}
-    [home-page (db/default-db)]]
+    [home-page (db/default-db :local)]]
    (.getElementById js/document "app")))
 
 (defn init! []
