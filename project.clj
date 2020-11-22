@@ -33,7 +33,7 @@
   :doo {:paths {:karma "./node_modules/karma/bin/karma"}}
 
   :cljsbuild {:builds {:app
-                       {:source-paths ["src" "env/dev/cljs" "env/test/cljs"]
+                       {:source-paths ["src" "env/dev/cljs"]
                         :compiler
                         {:main "interactive-syntax.dev"
                          :output-to "public/js/development/app.js"
@@ -66,17 +66,17 @@
                                       :default ["npx" "webpack"
                                                 "--env=release"]}
                          ;;:deps-cmd "npm"
+                         ;;:pseudo-names true <- For debugging
                          :infer-externs true
                          :optimizations :advanced
                          :closure-defines {cljs.core/*global* "window"}
                          :pretty-print false}}
                        :test
-                       {:source-paths ["src" "env/test/cljs"]
+                       {:source-paths ["src" "test" "env/test/cljs"]
                         :compiler
                         {:main "interactive-syntax.test"
                          :output-to "public/js/test/app.js"
                          :output-dir "public/js/test"
-                         ;;:asset-path   "base/js/test"
                          :asset-path   "js/test"
                          :target :bundle
                          :bundle-cmd {:none ["npx" "webpack"
@@ -88,8 +88,7 @@
                          :infer-externs true
                          ;;:silence-optimizations-warning true
                          :optimizations :none
-                         :closure-defines {cljs.core/*global* "window"}
-                         :pseudo-names true}}}}
+                         :closure-defines {cljs.core/*global* "window"}}}}}
 
   :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]
             "test-chrome" ["do" "clean" ["doo" "chrome" "test"]]

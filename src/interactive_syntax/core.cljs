@@ -143,7 +143,17 @@
                      :as db}
                     choice-text
                     choice-callback]
-  (let [text (atom "")]
+  (let [text (atom "")
+        confirm-action (fn []
+                         (println "confirming?")
+                         (when (not= @text "")
+                           (choice-callback @text)
+                           (swap! menu #(let [item (peek %)
+                                              rest (pop %)]
+                                          (if (and (coll? item)
+                                                   (= (count item) 2))
+                                            (conj rest (second item))
+                                            rest)))))]
     [:div {:style #js {:height "450px"}}
      [:> chonky/FileBrowser
       {:enable-drag-and-drop true
@@ -179,7 +189,9 @@
                                    #(js/path.join % data.target.name)),
                              :else (choice-callback data.target.name)),
                            (println data)))}
-      [:> Form
+      [:> Form {:onSubmit #(do (.preventDefault %)
+                               (.stopPropagation %)
+                               (confirm-action))}
        [:> Form.Group {:as Row}
         [:> Col {:xs "auto"}
          [:> Form.Label {:column true}
@@ -189,15 +201,7 @@
         [:> Col {:xs "auto"}
          [:> Button
           {:on-click
-           (fn []
-             (when (not= @text "")
-               (choice-callback @text)
-               (swap! menu #(let [item (peek %)
-                                  rest (pop %)]
-                              (if (and (coll? item)
-                                       (= (count item) 2))
-                                (conj rest (second item))
-                                rest)))))}
+           #(confirm-action)}
           choice-text]]]]
       [:> chonky/FileToolbar]
       [:> chonky/FileSearch]
@@ -257,7 +261,8 @@
    [:> Modal.Header {:close-button true}
     [:h3 "Options Menu"]]
    [:> Modal.Body
-    [:> Form
+    [:> Form {:onSubmit #(do (.preventDefault %)
+                              (.stopPropagation %))}
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
        [:h4 "Visual Editors:"]]
@@ -477,7 +482,8 @@
 
 (defn home-page [{{:keys [orientation]} :options
                   :keys [fs]
-                  :as db}]
+                  :as db}
+                 & [editor-ref]]
   (set! js/window.stopify stopify)
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
   [:main {:role "main"
@@ -496,7 +502,7 @@
     [:> SplitPane {:split @orientation
                    :minSize 300
                    :defaultSize 300}
-     [editor-view db]
+     [editor-view db editor-ref]
      [result-view db]]]])
 
 ;; -------------------------

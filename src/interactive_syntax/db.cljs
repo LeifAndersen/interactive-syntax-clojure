@@ -6,7 +6,7 @@
 
 
 (defn default-db
-  ([] (default-db :local))
+  ([] (default-db :temp))
   ([mode]
    (let [db (into {:output (atom nil)
                    :fs (browserfs/BFSRequire "fs")

@@ -90,3 +90,15 @@
       (r/flush)
       (is (= @input "(+ 1 2"))
       (is (= @file-changed true)))))
+
+(deftest file-save-load-view
+  (testing "File Save And load through view actions"
+    (let [db (default-db :temp)
+          editor (atom nil)
+          view (rtl/render (r/as-element [core/home-page db editor]))]
+      (-> @editor .getDoc (.setValue "(+ 1 2)"))
+      (-> view
+          (.getByText "Save As")
+          pprint
+          )
+      )))
