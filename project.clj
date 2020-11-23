@@ -77,7 +77,7 @@
                         {:main "interactive-syntax.test"
                          :output-to "public/js/test/app.js"
                          :output-dir "public/js/test"
-                         :asset-path   "js/test"
+                         :asset-path   "public/js/test"
                          :target :bundle
                          :bundle-cmd {:none ["npx" "webpack"
                                              "--mode=development"

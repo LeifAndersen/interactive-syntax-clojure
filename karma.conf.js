@@ -5,7 +5,7 @@ module.exports = function(config) {
   config.set({
 
       // base path that will be used to resolve all patterns (eg. files, exclude)
-      basePath: '',
+      basePath: 'public',
 
       // frameworks to use
       // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
@@ -14,10 +14,14 @@ module.exports = function(config) {
 
       // list of files / patterns to load in the browser
       files: [
-          'public/js/main.js'
+          'js/test/goog/base.js',
+          'js/test/cljs_deps.js',
+          'js/main.js',
+          {pattern: 'js/**/*.js',
+           included: false, watched: false, served: true},
       ],
 
-      clients: {
+      client: {
           args: ['interactive_syntax.test.run_all']
       },
 
@@ -52,7 +56,7 @@ module.exports = function(config) {
 
       // Continuous Integration mode
       // if true, Karma captures browsers, runs the tests and exits
-      singleRun: false,
+      singleRun: true,
 
       // Concurrency level
       // how many browser should be started simultaneous
