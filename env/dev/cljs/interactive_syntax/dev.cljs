@@ -1,7 +1,8 @@
 (ns ^:figwheel-no-load interactive-syntax.dev
   (:require
     [interactive-syntax.core :as core]
-    [devtools.core :as devtools]))
+    ;[devtools.core :as devtools]
+    ))
 
 (extend-protocol IPrintWithWriter
   js/Symbol
@@ -10,6 +11,6 @@
 
 (enable-console-print!)
 
-(devtools/install!)
+;(devtools/install!)
 
 (core/init!)

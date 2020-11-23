@@ -1,37 +1,37 @@
 (ns interactive-syntax.core
     (:require
-      [reagent.core :as r :refer [atom]]
-      [reagent.dom :as d]
-      [clojure.string :as string]
-      [clojure.walk :as walk]
-      [cljs.tools.reader :refer [read read-string]]
-      [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
-                                              get-line-number
-                                              get-column-number]]
-      [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
-      [cljs.pprint :refer [pprint]]
-      [cljs.core.match :refer [match]]
-      [interactive-syntax.db :as db]
-      [jquery]
-      [popper.js]
-      [bootstrap]
-      [react-bootstrap :refer [Button ButtonGroup SplitButton
-                               Dropdown DropdownButton
-                               Row Col Form Container Modal]]
-      [codemirror]
-      [react-codemirror2 :as cm]
-      ["codemirror/mode/clojure/clojure"]
-      ["codemirror/keymap/vim"]
-      ["codemirror/keymap/emacs"]
-      ["codemirror/keymap/sublime"]
-      ["codemirror/addon/search/searchcursor"]
-      ["@stopify/stopify" :as stopify]
-      [browserfs]
-      [react-split-pane :refer [Pane]]
-      [react-switch]
-      [react-dnd :refer [DndProvider]]
-      [react-dnd-html5-backend :refer [HTML5Backend]]
-      [chonky :refer [ChonkyActions]]))
+     [reagent.core :as r :refer [atom]]
+     [reagent.dom :as d]
+     [clojure.string :as string]
+     [clojure.walk :as walk]
+     [cljs.tools.reader :refer [read read-string]]
+     [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
+                                             get-line-number
+                                             get-column-number]]
+     [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
+     [cljs.pprint :refer [pprint]]
+     [cljs.core.match :refer [match]]
+     [interactive-syntax.db :as db]
+     [jquery]
+     [popper.js]
+     [bootstrap]
+     [react-bootstrap :refer [Button ButtonGroup SplitButton
+                              Dropdown DropdownButton
+                              Row Col Form Container Modal]]
+     [codemirror]
+     [react-codemirror2 :as cm]
+     ["codemirror/mode/clojure/clojure"]
+     ["codemirror/keymap/vim"]
+     ["codemirror/keymap/emacs"]
+     ["codemirror/keymap/sublime"]
+     ["codemirror/addon/search/searchcursor"]
+     ["@stopify/stopify" :as stopify]
+     [browserfs]
+     [react-split-pane :refer [Pane]]
+     [react-switch]
+     [react-dnd :refer [DndProvider]]
+     [react-dnd-html5-backend :refer [HTML5Backend]]
+     [chonky :refer [ChonkyActions]]))
 
 ;; -------------------------
 ;; Components
@@ -516,3 +516,4 @@
 
 (defn init! []
   (mount-root))
+
