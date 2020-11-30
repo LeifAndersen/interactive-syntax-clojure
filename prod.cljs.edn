@@ -1,7 +1,5 @@
-^{:auto-bundle :webpack
-  :watch-dirs ["src" "test" "env/dev/cljs"]
-  :auto-testing true}
-{:main interactive-syntax.dev
+^{:auto-bundle :webpack}
+{:main interactive-syntax.prod
  ;;:deps-command "npm"
  :bundle-cmd
  {:none ["npx" "webpack" "--mode=development" "src/js/bundle.js" :output-to
@@ -9,5 +7,5 @@
          "--output-filename" :final-output-filename]
   :default ["npx" "webpack" "--mode=production" "src/js/bundle.js" :output-to
             "--output-path" :final-output-dir
-            "--output-filename" :final-output-filename]}}
-
+            "--output-filename" :final-output-filename]}
+ :optimizations :advanced}

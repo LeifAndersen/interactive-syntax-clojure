@@ -4,11 +4,15 @@ To start the Figwheel compiler, navigate to the project folder and run the follo
 
 ```
 npm ci
-lein figwheel
+clojure -A:fig
 ```
 
 Figwheel will automatically push cljs changes to the browser.
-Once Figwheel starts up, you should be able to open the `public/index.html` page in the browser.
+Once Figwheel starts up, you should be able to open `localhost:9500` in the browser.
+
+### Tests
+
+With a development build running, open `localhost:9005/figwheel-extra-main/auto-testing` in the browser.
 
 ### REPL
 
@@ -18,7 +22,7 @@ Once you connect to the nREPL, run `(cljs)` to switch to the ClojureScript REPL.
 ### Building for production
 
 ```
+git clean -fxd
 npm ci
-lein clean
-lein package
+clojure -A:package
 ```

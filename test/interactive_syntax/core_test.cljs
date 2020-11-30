@@ -43,10 +43,6 @@
                  (.getAllByText "UNTITLED.cljs")
                  first
                  (.-innerHTML))))
-
-
-
-      ))) #_(comment (((
       (reset! file-changed true)
       (r/flush)
       (is (= "UNTITLED.cljs*"
@@ -88,6 +84,7 @@
           editor (atom nil)
           view (r/as-element [core/editor-view db editor])]
       (is (= @input ""))
+      ))) #_(comment (((
       (is (= @file-changed false))
       (-> view rtl/render)
       (-> @editor .getDoc (.setValue "(+ 1 2"))
