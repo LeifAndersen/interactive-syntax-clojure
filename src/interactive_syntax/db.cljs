@@ -4,8 +4,6 @@
             [alandipert.storage-atom :refer [local-storage]]
             [browserfs]))
 
-(def UNTITLED "UNTITLED.cljs")
-
 (defn default-db
   ([] (default-db :temp))
   ([mode]

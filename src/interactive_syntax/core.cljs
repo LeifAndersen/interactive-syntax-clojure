@@ -12,6 +12,7 @@
      [cljs.pprint :refer [pprint]]
      [cljs.core.match :refer [match]]
      [interactive-syntax.db :as db]
+     [interactive-syntax.strings :as strings]
      [jquery]
      [popper.js]
      [bootstrap]
@@ -44,7 +45,7 @@
 (defn eval-str [s output]
   (compile-str (empty-state)
                s
-               db/UNTITLED
+               strings/UNTITLED
                {:eval js-eval
                 :source-map true}
                (fn [program]
@@ -108,7 +109,7 @@
 
 (defn new-folder-dialog [{:keys [fs menu current-folder]
                           :as db}]
-  (make-control-dialog menu :new-folder "New" "Create"
+  (make-control-dialog menu :new-folder strings/NEW strings/CREATE
                        (fn [text]
                          (fn []
                            (when (not= @text "")
@@ -259,31 +260,31 @@
   [:> Modal {:show (= (peek @menu) :options)
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
-    [:h3 "Options Menu"]]
+    [:h3 strings/OPTIONS-MENU]]
    [:> Modal.Body
     [:> Form {:onSubmit #(do (.preventDefault %)
                               (.stopPropagation %))}
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
-       [:h4 "Visual Editors:"]]
+       [:h4 (str strings/VISUAL-EDITORS ":")]]
       [:> Col [:> Switch {:checked @show-editors
                           :on-change #(reset! show-editors %)}]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
-       [:h4 "Split:"]]
-      [:> Col [:> ButtonGroup {:aria-label "Split"}
-               [option-button orientation "horizontal" "Horizontal"]
-               [option-button orientation "vertical" "Vertical"]]]]
+       [:h4 (str strings/SPLIT ":")]]
+      [:> Col [:> ButtonGroup {:aria-label strings/SPLIT}
+               [option-button orientation "horizontal" strings/HORIZONTAL]
+               [option-button orientation "vertical" strings/VERTICAL]]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
-       [:h4 "Keymap:"]]
-      [:> Col [:> ButtonGroup {:aria-label "Keyamp"}
+       [:h4 (str strings/KEYMAP ":")]]
+      [:> Col [:> ButtonGroup {:aria-label strings/KEYMAP}
                [option-button keymap "vim" "Vim"]
                [option-button keymap "emacs" "Emacs"]
                [option-button keymap "sublime" "Sublime"]]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
-       [:h4 "Font Size:"]]
+       [:h4 (str strings/FONT-SIZE ":")]]
       [:> Col [:> Row [:> Col {:xs "auto"}
                        [:> Button {:on-click #(swap! font-size dec)}
                         "-"]]
@@ -298,14 +299,14 @@
           "+"]]]]]
      [:> Form.Group {:as Row}
       [:> Form.Label {:column true}
-       [:h4 "Theme:"]]
-      [:> Col [:> ButtonGroup {:aria-label "Theme"}
-               [option-button theme "neat" "Light"]
-        [option-button theme "material" "Dark"]]]]]]
+       [:h4 (str strings/THEME ":")]]
+      [:> Col [:> ButtonGroup {:aria-label strings/THEME}
+               [option-button theme "neat" strings/LIGHT]
+        [option-button theme "material" strings/DARK]]]]]]
    [:> Modal.Footer
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}
-     "Close"]]])
+     strings/CLOSE]]])
 
 ;; -------------------------
 ;; Editor
@@ -330,7 +331,7 @@
         options #(swap! menu conj :options)
         file-name (str (if @current-file
                          (js/path.join @current-folder @current-file)
-                         db/UNTITLED)
+                         strings/UNTITLED)
                        (if @file-changed
                          "*"
                          ""))
@@ -345,16 +346,16 @@
        [:> Col {:xs "auto"
                 :style {:padding-left 0}}
         [:> DropdownButton {:as ButtonGroup
-                            :title "Menu"
+                            :title strings/MENU
                             :size "sm"}
-         [:> Dropdown.Item {:on-click new-file} "New"]
-         [:> Dropdown.Item {:on-click save-file} "Save"]
-         [:> Dropdown.Item {:on-click save-file-as} "Save As"]
-         [:> Dropdown.Item {:on-click load-file} "Load"]
-         [:> Dropdown.Item {:on-click options} "Options"]
-         [:> Dropdown.Item "New Project"]
-         [:> Dropdown.Item "Import Project"]
-         [:> Dropdown.Item "Export Project"]]]
+         [:> Dropdown.Item {:on-click new-file} strings/NEW]
+         [:> Dropdown.Item {:on-click save-file} strings/SAVE]
+         [:> Dropdown.Item {:on-click save-file-as} strings/SAVE-AS]
+         [:> Dropdown.Item {:on-click load-file} strings/LOAD]
+         [:> Dropdown.Item {:on-click options} strings/OPTIONS]
+         [:> Dropdown.Item strings/NEW-PROJECT]
+         [:> Dropdown.Item strings/IMPORT-PROJECT]
+         [:> Dropdown.Item strings/EXPORT-PROJECT]]]
        [:> Col
         [:> Container {:class-name "d-none d-sm-block"
                        :fluid true
@@ -364,33 +365,33 @@
          file-name]]
        [:> Col {:xs "auto"
                 :style {:padding-right 0}}
-        [:> SplitButton {:title "Run"
+        [:> SplitButton {:title strings/RUN
                          :size "sm"
                          :on-click run}
-         [:> Dropdown.Item "Stop"]]]]]
+         [:> Dropdown.Item strings/STOP]]]]]
      [:div {:className "d-none d-md-block"}
       [:> Row {:className "align-items-center"
                :style {:margin-left 0
                        :margin-right 0}}
        [:> Col {:xs "auto"
                 :style {:padding-left 0}}
-        [:> Button {:on-click new-file} "New"]
+        [:> Button {:on-click new-file} strings/NEW]
         [:> SplitButton
-         {:title "Save"
+         {:title strings/SAVE
           :on-click save-file}
-         [:> Dropdown.Item {:on-click save-file-as} "Save As"]]
-        [:> Button {:on-click load-file} "Load"]
+         [:> Dropdown.Item {:on-click save-file-as} strings/SAVE-AS]]
+        [:> Button {:on-click load-file} strings/LOAD]
         [:> DropdownButton {:as ButtonGroup
-                            :title "Project"}
-         [:> Dropdown.Item "New Project"]
-         [:> Dropdown.Item "Import Project"]
-         [:> Dropdown.Item "Export Project"]]
-        [:> Button {:on-click options} "Options"]]
+                            :title strings/PROJECT}
+         [:> Dropdown.Item strings/NEW-PROJECT]
+         [:> Dropdown.Item strings/IMPORT-PROJECT]
+         [:> Dropdown.Item strings/EXPORT-PROJECT]]
+        [:> Button {:on-click options} strings/OPTIONS]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"
                 :style {:paddingRight 0}}
-        [:> Button {:on-click run} "Run"]
-        [:> Button "Stop"]]]]]))
+        [:> Button {:on-click run} strings/RUN]
+        [:> Button strings/STOP]]]]]))
 
 (defn reset-editors! [s editor instances options]
   (doseq [i @instances] (.clear i))

@@ -4,9 +4,9 @@
             [reagent.core :as r :refer [atom]]
             [reagent.dom :as d]
             ["@testing-library/react" :as rtl]
-            [interactive-syntax.core :as core]
-            [interactive-syntax.db :as db :refer [default-db]]))
-
+            [interactive-syntax.db :as db :refer [default-db]]
+            [interactive-syntax.strings :as strings]
+            [interactive-syntax.core :as core]))
 
 (defn print-view [view]
   (->> view
@@ -51,16 +51,16 @@
           component (rtl/render (r/as-element [:div
                                                [core/new-file-action db]
                                                [core/button-row db]]))]
-      (is (= db/UNTITLED
+      (is (= strings/UNTITLED
              (-> component
-                 (.getAllByText db/UNTITLED)
+                 (.getAllByText strings/UNTITLED)
                  first
                  (.-innerHTML))))
       (reset! file-changed true)
       (r/flush)
-      (is (= (str db/UNTITLED "*")
+      (is (= (str strings/UNTITLED "*")
              (-> component
-                 (.getAllByText (str db/UNTITLED "*"))
+                 (.getAllByText (str strings/UNTITLED "*"))
                  first
                  (.-innerHTML))))
       (reset! input "(+ 1 2)")
@@ -85,9 +85,9 @@
       (is (= @current-file nil))
       (is (= @file-changed false))
       (is (= @input ""))
-      (is (= db/UNTITLED
+      (is (= strings/UNTITLED
              (-> component
-                 (.getAllByText db/UNTITLED)
+                 (.getAllByText strings/UNTITLED)
                  first
                  (.-innerHTML))))
       )))
@@ -107,23 +107,21 @@
 
 (deftest file-save-load-view
   (testing "File Save And load through view actions"
-    (let [{:keys [fs menu current-file file-changed] :as db} (default-db :temp)
-          editor (atom nil)
+    (let [{:keys [fs input menu current-file file-changed]
+           :as db}
+          (default-db :temp),
+          editor (atom nil),
           view (rtl/render (r/as-element [core/home-page db editor]))]
       (reset! (-> db :options :enable-drag-and-drop) false)
       (is (= @file-changed false))
       (-> @editor .getDoc (.setValue "(+ 1 2)"))
       (r/flush)
       (is (= @file-changed true))
-      (.click rtl/fireEvent (.getByText view "Menu"))
+      (.click rtl/fireEvent (.getByText view strings/MENU))
       (r/flush)
-      (.click rtl/fireEvent (.getByText view "Save As"))
+      (.click rtl/fireEvent (.getByText view strings/SAVE-AS))
       (is (= @menu [:home [:save]]))
       (r/flush)
-      (-> (get-file-browser)
-          (.getElementsByTagName "input")
-          (aget 0)
-          js/console.log)
       (.change rtl/fireEvent
                (-> (get-file-browser)
                    (.getElementsByTagName "input")
@@ -137,5 +135,12 @@
       (r/flush)
       (is (= (js->clj (fs.readdirSync "/")) ["foo.cljs"]))
       (is (= @menu [:home]))
-      (is (= @current-file "foo.cljs")))))
+      (is (= @current-file "foo.cljs"))
+      (.click rtl/fireEvent (first (.getAllByText view strings/NEW)))
+      (r/flush)
+      (is (= @menu [:home]))
+      (is (= @current-file nil))
+      (is (= @input ""))
+      (.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+      )))
 
