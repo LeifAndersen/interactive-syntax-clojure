@@ -124,7 +124,7 @@
     [:> Modal {:show (and (coll? item) (= (first item) :confirm-save))
                :on-hide #(swap! menu pop)}
      [:> Modal.Header {:close-button true}
-      [:h3 "Unsaved Changes..."]]
+      [:h3 strings/UNSAVED-CHANGES]]
      [:> Modal.Footer
       [:> Button
        {:variant "primary"
@@ -132,10 +132,10 @@
                     (if @current-file
                       (save-buffer db)
                       (swap! menu #(-> % pop (conj [:save (second item)])))))}
-       "Save"]
+       strings/SAVE]
       [:> Button {:variant "secondary"
-                  :on-click (fn [] (swap! menu #(-> % (conj (second item)))))}
-       "Continue Without Saving"]]]))
+                  :on-click (fn [] (swap! menu #(-> % pop (conj (second item)))))}
+       strings/CONTINUE-WITHOUT-SAVING]]]))
 
 (defn file-browser [{:keys [fs
                             menu
@@ -188,7 +188,9 @@
                              data.target.isDir
                              (swap! current-folder
                                    #(js/path.join % data.target.name)),
-                             :else (choice-callback data.target.name)),
+                             :else (do
+                                     (reset! text data.target.name)
+                                     (confirm-action))),
                            (println data)))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
@@ -196,7 +198,7 @@
        [:> Form.Group {:as Row}
         [:> Col {:xs "auto"}
          [:> Form.Label {:column true}
-          "File"]]
+          strings/FILE]]
         [:> Col {:xs 10}
          [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
         [:> Col {:xs "auto"}
@@ -215,8 +217,8 @@
                :size "xl"
                :on-hide #(swap! menu pop)}
      [:> Modal.Header {:close-button true}
-      [:h3 "Save"]]
-     [file-browser db "Save"
+      [:h3 strings/SAVE]]
+     [file-browser db strings/SAVE
       (fn [file]
         (reset! current-file file)
         (save-buffer db))]]))
@@ -227,11 +229,11 @@
              :size "xl"
              :on-hide #(swap! menu pop)}
    [:> Modal.Header {:close-button true}
-    [:h3 "Load"]]
+    [:h3 strings/LOAD]]
    [:> Modal.Body
-    [file-browser db "Load"
+    [file-browser db strings/LOAD
      (fn [file]
-       (reset! @current-file file)
+       (reset! current-file file)
        (load-buffer db))]]])
 
 (defn new-file-action [{:keys [menu current-file input file-changed]
@@ -423,20 +425,23 @@
         (catch js/Error e
           "TODO LOG")))))
 
-(defn editor-view [{:keys [input options file-changed current-file]
+(defn editor-view [{:keys [menu input options file-changed current-file]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
-        instances (clojure.core/atom [])]
-    (add-watch current-file ::editor-view
-               (fn [k r o n]
-                 (when (and @edit (not= o n))
-                   (-> @edit .getDoc (.setValue @input))
-                   (reset-editors! @input edit instances options))))
-    (fn [{:keys [input options file-changed current-file]
+        instances (clojure.core/atom [])
+        watch-updater (fn [k r o n]
+                        (when (and @edit (not= o n))
+                          (let [fc @file-changed]
+                            (-> @edit .getDoc (.setValue @input))
+                            (reset! file-changed fc))))]
+    (add-watch current-file ::editor-view watch-updater)
+    (add-watch menu ::editor-view watch-updater)
+    (fn [{:keys [menu input options file-changed current-file]
           :as db}
          & [editor-ref]]
       @current-file
+      @menu
       (when (not= @edit nil)
         ;(-> @edit .getDoc .getValue pprint)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)

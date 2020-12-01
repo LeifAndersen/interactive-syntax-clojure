@@ -8,6 +8,9 @@
 (def MENU "Menu")
 (def CREATE "Create")
 (def OPTIONS "Options")
+(def FILE "File")
+(def UNSAVED-CHANGES "Unsaved Changes...")
+(def CONTINUE-WITHOUT-SAVING "Continue Without Saving")
 
 (def PROJECT "Project")
 (def NEW-PROJECT "New Project")

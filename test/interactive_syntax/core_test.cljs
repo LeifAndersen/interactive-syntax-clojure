@@ -14,11 +14,30 @@
        .-firstChild
        (.log js/console)))
 
-(defn get-file-browser []
-  (-> js/document
-      .-body
-      (.getElementsByClassName "chonky-root")
-      (aget 0)))
+(defn get-file-browser [& [index]]
+  (let [lst (-> js/document
+                .-body
+                (.getElementsByClassName "chonky-root"))]
+    (aget lst (or index (dec (alength lst))))))
+
+(defn change-file-browser-input [input & [index]]
+  (.change rtl/fireEvent
+           (-> (get-file-browser index)
+               (.getElementsByTagName "input")
+               (aget 0))
+           #js {:target #js {:value input}}))
+
+(defn submit-file-browser-input [& [index]]
+  (.click rtl/fireEvent
+          (-> (get-file-browser index)
+              (.getElementsByClassName "btn")
+              (aget 0))))
+
+(defn get-modal [& [index]]
+ (let [lst (-> js/document
+               .-body
+               (.getElementsByClassName "modal"))]
+   (aget lst (or index (dec (alength lst))))))
 
 (use-fixtures :each
   {:after rtl/cleanup})
@@ -107,7 +126,7 @@
 
 (deftest file-save-load-view
   (testing "File Save And load through view actions"
-    (let [{:keys [fs input menu current-file file-changed]
+    (let [{:keys [fs input menu current-file current-folder file-changed]
            :as db}
           (default-db :temp),
           editor (atom nil),
@@ -122,25 +141,96 @@
       (.click rtl/fireEvent (.getByText view strings/SAVE-AS))
       (is (= @menu [:home [:save]]))
       (r/flush)
-      (.change rtl/fireEvent
-               (-> (get-file-browser)
-                   (.getElementsByTagName "input")
-                   (aget 0))
-               #js {:target #js {:value "foo.cljs"}})
+      (change-file-browser-input "foo.cljs")
       (r/flush)
-      (.click rtl/fireEvent
-              (-> (get-file-browser)
-                  (.getElementsByClassName "btn")
-                  (aget 0)))
+      (submit-file-browser-input)
       (r/flush)
       (is (= (js->clj (fs.readdirSync "/")) ["foo.cljs"]))
       (is (= @menu [:home]))
       (is (= @current-file "foo.cljs"))
+      (is (= @current-folder "/"))
       (.click rtl/fireEvent (first (.getAllByText view strings/NEW)))
       (r/flush)
       (is (= @menu [:home]))
       (is (= @current-file nil))
       (is (= @input ""))
       (.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
-      )))
+      (is (= @menu [:home :load]))
+      (r/flush)
+      (change-file-browser-input "foo.cljs")
+      (r/flush)
+      (submit-file-browser-input)
+      (r/flush)
+      (is (= @menu [:home]))
+      (is (= @current-file "foo.cljs"))
+      (is (= @current-folder "/")))))
 
+(deftest save-named-unnamed-file
+  (testing "Saving named and unnamed files"
+    (let [{:keys [fs input menu current-file current-folder file-changed]
+           :as db}
+          (default-db :temp),
+          editor (atom nil),
+          view (rtl/render (r/as-element [core/home-page db editor]))]
+      (reset! (-> db :options :enable-drag-and-drop) false)
+      (is (= @file-changed false))
+      (-> @editor .getDoc (.setValue "(+ 1 2)"))
+      (r/flush)
+      (is (= @file-changed true))
+      (is (= @input "(+ 1 2)"))
+      (is (= @menu [:home]))
+      (.click rtl/fireEvent (.getByText view strings/NEW))
+      (r/flush)
+      (is (= @file-changed true))
+      (is (= @input "(+ 1 2)"))
+      (is (= @menu [:home [:confirm-save :new]]))
+      (.click rtl/fireEvent (-> (get-modal)
+                                (.getElementsByClassName "btn-secondary")
+                                (aget 0)))
+      (r/flush)
+      (is (= @file-changed false))
+      (is (= @input ""))
+      (is (= @menu [:home]))
+      (-> @editor .getDoc (.setValue "(+ 1 2)"))
+      (r/flush)
+      (.click rtl/fireEvent (.getByText view strings/NEW))
+      (r/flush)
+      (.click rtl/fireEvent (-> (get-modal)
+                                (.getElementsByClassName "close")
+                                (aget 0)))
+      (r/flush)
+      (is (= @file-changed true))
+      (is (= @input "(+ 1 2)"))
+      (is (= @menu [:home]))
+      (.click rtl/fireEvent (.getByText view strings/NEW))
+      (r/flush)
+      (is (= @menu [:home [:confirm-save :new]]))
+      (.click rtl/fireEvent (-> (get-modal)
+                                (.getElementsByClassName "btn-primary")
+                                (aget 0)))
+      (r/flush)
+      (is (= @menu [:home [:save :new]]))
+      (.click rtl/fireEvent (-> (get-modal)
+                                (.getElementsByClassName "close")
+                                (aget 0)))
+      (r/flush)
+      (is (= @file-changed true))
+      (is (= @input "(+ 1 2)"))
+      (is (= @menu [:home]))
+      (.click rtl/fireEvent (.getByText view strings/NEW))
+      (r/flush)
+      (is (= @menu [:home [:confirm-save :new]]))
+      (.click rtl/fireEvent (-> (get-modal 0)
+                                (.getElementsByClassName "btn-primary")
+                                (aget 0)))
+      (r/flush)
+      (is (= @menu [:home [:save :new]]))
+      (change-file-browser-input "bar.cljs")
+      (r/flush)
+      (submit-file-browser-input)
+      (r/flush)
+      (is (= @file-changed false))
+      (is (= @current-file nil))
+      (is (= @input ""))
+      (is (= @menu [:home]))
+      )))
