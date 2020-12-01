@@ -4,6 +4,7 @@
             [alandipert.storage-atom :refer [local-storage]]
             [browserfs]))
 
+(def UNTITLED "UNTITLED.cljs")
 
 (defn default-db
   ([] (default-db :temp))
@@ -16,6 +17,7 @@
                                    :keymap "sublime"
                                    :font-size 12
                                    :theme "material"
+                                   :enable-drag-and-drop true
                                    :show-editors true}]
                            [(key kv)
                             (case mode

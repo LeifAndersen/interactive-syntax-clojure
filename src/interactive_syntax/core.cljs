@@ -44,7 +44,7 @@
 (defn eval-str [s output]
   (compile-str (empty-state)
                s
-               "UNTITLED.cljs"
+               db/UNTITLED
                {:eval js-eval
                 :source-map true}
                (fn [program]
@@ -139,13 +139,13 @@
 (defn file-browser [{:keys [fs
                             menu
                             current-folder
-                            current-file]
+                            current-file
+                            options]
                      :as db}
                     choice-text
                     choice-callback]
   (let [text (atom "")
         confirm-action (fn []
-                         (println "confirming?")
                          (when (not= @text "")
                            (choice-callback @text)
                            (swap! menu #(let [item (peek %)
@@ -156,7 +156,7 @@
                                             rest)))))]
     [:div {:style #js {:height "450px"}}
      [:> chonky/FileBrowser
-      {:enable-drag-and-drop true
+      {:enable-drag-and-drop @(:enable-drag-and-drop options)
        :files (for [file (fs.readdirSync @current-folder)]
                 (file-description fs (js/path.join @current-folder file)))
        :folder-chain (let [split (filter (partial not= "")
@@ -330,7 +330,7 @@
         options #(swap! menu conj :options)
         file-name (str (if @current-file
                          (js/path.join @current-folder @current-file)
-                         "UNTITLED.cljs")
+                         db/UNTITLED)
                        (if @file-changed
                          "*"
                          ""))

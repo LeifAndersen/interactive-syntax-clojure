@@ -5,7 +5,20 @@
             [reagent.dom :as d]
             ["@testing-library/react" :as rtl]
             [interactive-syntax.core :as core]
-            [interactive-syntax.db :refer [default-db]]))
+            [interactive-syntax.db :as db :refer [default-db]]))
+
+
+(defn print-view [view]
+  (->> view
+       .-container
+       .-firstChild
+       (.log js/console)))
+
+(defn get-file-browser []
+  (-> js/document
+      .-body
+      (.getElementsByClassName "chonky-root")
+      (aget 0)))
 
 (use-fixtures :each
   {:after rtl/cleanup})
@@ -38,16 +51,16 @@
           component (rtl/render (r/as-element [:div
                                                [core/new-file-action db]
                                                [core/button-row db]]))]
-      (is (= "UNTITLED.cljs"
+      (is (= db/UNTITLED
              (-> component
-                 (.getAllByText "UNTITLED.cljs")
+                 (.getAllByText db/UNTITLED)
                  first
                  (.-innerHTML))))
       (reset! file-changed true)
       (r/flush)
-      (is (= "UNTITLED.cljs*"
+      (is (= (str db/UNTITLED "*")
              (-> component
-                 (.getAllByText "UNTITLED.cljs*")
+                 (.getAllByText (str db/UNTITLED "*"))
                  first
                  (.-innerHTML))))
       (reset! input "(+ 1 2)")
@@ -68,12 +81,13 @@
                  (.-innerHTML))))
       (swap! menu conj :new)
       (r/flush)
+      (r/flush)
       (is (= @current-file nil))
       (is (= @file-changed false))
       (is (= @input ""))
-      (is (= "UNTITLED.cljs"
+      (is (= db/UNTITLED
              (-> component
-                 (.getAllByText "UNTITLED.cljs")
+                 (.getAllByText db/UNTITLED)
                  first
                  (.-innerHTML))))
       )))
@@ -84,7 +98,6 @@
           editor (atom nil)
           view (r/as-element [core/editor-view db editor])]
       (is (= @input ""))
-      ))) #_(comment (((
       (is (= @file-changed false))
       (-> view rtl/render)
       (-> @editor .getDoc (.setValue "(+ 1 2"))
@@ -94,14 +107,35 @@
 
 (deftest file-save-load-view
   (testing "File Save And load through view actions"
-    (let [db (default-db :temp)
+    (let [{:keys [fs menu current-file file-changed] :as db} (default-db :temp)
           editor (atom nil)
           view (rtl/render (r/as-element [core/home-page db editor]))]
+      (reset! (-> db :options :enable-drag-and-drop) false)
+      (is (= @file-changed false))
       (-> @editor .getDoc (.setValue "(+ 1 2)"))
-      (-> view
-          (.getByText "Save As")
-          pprint
-          )
-      )))
+      (r/flush)
+      (is (= @file-changed true))
+      (.click rtl/fireEvent (.getByText view "Menu"))
+      (r/flush)
+      (.click rtl/fireEvent (.getByText view "Save As"))
+      (is (= @menu [:home [:save]]))
+      (r/flush)
+      (-> (get-file-browser)
+          (.getElementsByTagName "input")
+          (aget 0)
+          js/console.log)
+      (.change rtl/fireEvent
+               (-> (get-file-browser)
+                   (.getElementsByTagName "input")
+                   (aget 0))
+               #js {:target #js {:value "foo.cljs"}})
+      (r/flush)
+      (.click rtl/fireEvent
+              (-> (get-file-browser)
+                  (.getElementsByClassName "btn")
+                  (aget 0)))
+      (r/flush)
+      (is (= (js->clj (fs.readdirSync "/")) ["foo.cljs"]))
+      (is (= @menu [:home]))
+      (is (= @current-file "foo.cljs")))))
 
-)
