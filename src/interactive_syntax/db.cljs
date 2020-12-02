@@ -15,6 +15,8 @@
                                    :keymap "sublime"
                                    :font-size 12
                                    :theme "material"
+                                   :line-wrapping false
+                                   :line-numbers true
                                    :enable-drag-and-drop true
                                    :show-editors true}]
                            [(key kv)

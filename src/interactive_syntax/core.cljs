@@ -19,6 +19,7 @@
      [react-bootstrap :refer [Button ButtonGroup SplitButton
                               Dropdown DropdownButton
                               Row Col Form Container Modal]]
+     [react-hotkeys :refer [GlobalHotKeys]]
      [codemirror]
      [react-codemirror2 :as cm]
      ["codemirror/mode/clojure/clojure"]
@@ -313,6 +314,11 @@
 ;; -------------------------
 ;; Editor
 
+(defn save-file [{:keys [menu current-file] :as db}]
+  (if @current-file
+    (save-buffer db)
+    (swap! menu conj [:save])))
+
 (defn button-row [{:keys [input
                           output
                           current-folder
@@ -323,9 +329,6 @@
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
                    #(swap! menu conj :new))
-        save-file (if @current-file
-                    #(save-buffer db)
-                     #(swap! menu conj [:save]))
         save-file-as #(swap! menu conj [:save])
         load-file (if @file-changed
                     #(swap! menu conj [:confirm-save :load])
@@ -453,7 +456,9 @@
                   :theme @(:theme options)
                   :matchBrackets true
                   :showCursorWhenSelecting true
-                  :lineNumbers true}
+                  :lineWrapping @(:line-wrapping options)
+                  :lineNumbers @(:line-numbers options)
+                  :extraKeys #js {"Ctr-S" #(save-file db)}}
         :onChange #(let []
                      (reset! file-changed true)
                      (reset! input %3)
@@ -479,6 +484,7 @@
                   :theme @(:theme options)
                   :matchBrackets true
                   :showCursorWhenSelecting true
+                  :lineWrapping @(:line-wrapping options)
                   :lineNumbers false}
         :editorDidMount #(reset! edit %)}])))
 
@@ -496,6 +502,10 @@
           :style {:height "100%"
                   :display "flex"
                   :flex-flow "column"}}
+   [:> GlobalHotKeys
+    {:keyMap #js {:save-file "ctrl+s"}
+     :handlers #js {:save-file #(do (.preventDefault %)
+                                    (save-file db))}}]
    [new-file-action db]
    [save-dialog db]
    [load-dialog db]
