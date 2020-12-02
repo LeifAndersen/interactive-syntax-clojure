@@ -192,6 +192,8 @@
                              :else (do
                                      (reset! text data.target.name)
                                      (confirm-action))),
+                           ChonkyActions.ClearSelection.id
+                           (swap! menu pop),
                            (println data)))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
@@ -459,14 +461,15 @@
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineWrapping @(:line-wrapping options)
-                  :lineNumbers @(:line-numbers options)
-                  :extraKeys #js {"Ctr-S" #(save-file db)}}
+                  :lineNumbers @(:line-numbers options)}
         :onChange #(let []
                      (reset! file-changed true)
                      (reset! input %3)
                      (reset-editors! %3 edit instances options))
-        :editorDidMount #(let []
-                           (-> % .getDoc (.setValue @input))
+        :editorDidMount #(do
+                           (let [fc @file-changed]
+                             (-> % .getDoc (.setValue @input))
+                             (reset! file-changed fc))
                            (reset! edit %)
                            (when editor-ref
                              (reset! editor-ref %))
@@ -500,14 +503,15 @@
                  & [editor-ref]]
   (set! js/window.stopify stopify)
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
+  (set! codemirror/commands.save #(save-file db))
   [:main {:role "main"
           :style {:height "100%"
                   :display "flex"
                   :flex-flow "column"}}
    [:> GlobalHotKeys
-    {:keyMap #js {:save-file "ctrl+s"}
-     :handlers #js {:save-file #(do (.preventDefault %)
-                                    (save-file db))}}]
+    {:keyMap {:save-file "ctrl+s"}
+     :handlers {:save-file #(do (.preventDefault %)
+                                (save-file db))}}]
    [new-file-action db]
    [save-dialog db]
    [load-dialog db]

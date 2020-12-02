@@ -1,4 +1,5 @@
-^{:auto-bundle :webpack}
+^{:auto-bundle :webpack
+  :clean-outputs true}
 {:main interactive-syntax.prod
  ;;:deps-command "npm"
  :bundle-cmd
