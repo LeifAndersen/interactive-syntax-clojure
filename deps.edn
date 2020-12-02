@@ -8,4 +8,4 @@
         com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}}
  :aliases {:fig {:main-opts ["-m" "figwheel.main" "--build" "dev" "--repl"]}
            :package {:main-opts ["-m" "figwheel.main" "--build-once" "prod"]}}
- :paths ["src" "test" "target" "resources" "env/dev/cljs" "env/prod/cljs"]}
+ :paths ["src" "test" "target" "resources" "env/dev" "env/prod"]}

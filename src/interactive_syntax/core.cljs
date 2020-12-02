@@ -329,6 +329,8 @@
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
                    #(swap! menu conj :new))
+        save-file* save-file
+        save-file #(save-file* db)
         save-file-as #(swap! menu conj [:save])
         load-file (if @file-changed
                     #(swap! menu conj [:confirm-save :load])

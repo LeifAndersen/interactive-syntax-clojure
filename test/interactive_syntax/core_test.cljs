@@ -165,6 +165,48 @@
       (is (= @current-file "foo.cljs"))
       (is (= @current-folder "/")))))
 
+(deftest save-to-save-as
+  (testing "Save goes to Save As only when needed"
+    (let [{:keys [fs input menu current-file current-folder file-changed]
+           :as db}
+          (default-db :temp),
+          editor (atom nil),
+          view (rtl/render (r/as-element [core/home-page db editor]))]
+      (reset! (-> db :options :enable-drag-and-drop) false)
+      (is (= @input ""))
+      (is (= @menu [:home]))
+      (-> @editor .getDoc (.setValue "(+ 1 2)"))
+      (r/flush)
+      (is (= @input "(+ 1 2)"))
+      (.click rtl/fireEvent (.getByText view strings/SAVE))
+      (r/flush)
+      (is (= @menu [:home [:save]]))
+      (is (= @file-changed true))
+      (.click rtl/fireEvent (-> (get-modal)
+                                (.getElementsByClassName "close")
+                                (aget 0)))
+      (r/flush)
+      (is (= @menu [:home]))
+      (is (= @file-changed true))
+      (.click rtl/fireEvent (first (.getAllByText view strings/SAVE)))
+      (r/flush)
+      (is (= @menu [:home [:save]]))
+      (is (= @file-changed true))
+      (change-file-browser-input "saver.cljs")
+      (r/flush)
+      (submit-file-browser-input)
+      (r/flush)
+      (is (= @menu [:home]))
+      (is (= @file-changed false))
+      (is (= @current-file "saver.cljs"))
+      (-> @editor .getDoc (.setValue "(/ 8 4)"))
+      (r/flush)
+      (is (= @file-changed true))
+      (.click rtl/fireEvent (first (.getAllByText view strings/SAVE)))
+      (r/flush)
+      (is (= @file-changed false))
+      (is (= @current-file "saver.cljs")))))
+
 (deftest save-named-unnamed-file
   (testing "Saving named and unnamed files"
     (let [{:keys [fs input menu current-file current-folder file-changed]
@@ -232,5 +274,4 @@
       (is (= @file-changed false))
       (is (= @current-file nil))
       (is (= @input ""))
-      (is (= @menu [:home]))
-      )))
+      (is (= @menu [:home])))))
