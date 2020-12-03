@@ -503,6 +503,7 @@
                  & [editor-ref]]
   (set! js/window.stopify stopify)
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
+  (set! js/window.db db)
   (set! codemirror/commands.save #(save-file db))
   [:main {:role "main"
           :style {:height "100%"
