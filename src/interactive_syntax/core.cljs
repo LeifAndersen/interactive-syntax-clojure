@@ -33,6 +33,7 @@
      [react-switch]
      [react-dnd :refer [DndProvider]]
      [react-dnd-html5-backend :refer [HTML5Backend]]
+     [react-beautiful-dnd :as dnd :refer [DragDropContext]]
      [chonky :refer [ChonkyActions]]
      [chonky-icon-fontawesome]))
 
@@ -160,6 +161,7 @@
     [:div {:style #js {:height "450px"}}
      [:> chonky/FileBrowser
       {:enable-drag-and-drop @(:enable-drag-and-drop options)
+       :disable-drag-and-drop-provider true
        :files (for [file (fs.readdirSync @current-folder)]
                 (file-description fs (js/path.join @current-folder file)))
        :folder-chain (let [split (filter (partial not= "")
@@ -536,7 +538,8 @@
 (defn mount-root []
   (d/render
    [:> DndProvider {:backend HTML5Backend}
-    [home-page (db/default-db :local)]]
+    [:> DragDropContext
+     [home-page (db/default-db :local)]]]
    (.getElementById js/document "app")))
 
 (defn init! []
