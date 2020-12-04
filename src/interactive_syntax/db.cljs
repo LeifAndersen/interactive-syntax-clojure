@@ -157,6 +157,7 @@
                               :enable-drag-and-drop
                               :show-editors]]
                        [i (->DBAtom backed-db [:options i])]))
+      :fs fs
       :menu (->DBAtom backed-db [:menu])
       :input (->DBAtom backed-db [:current :input])
       :output (->DBAtom backed-db [:current :output])
