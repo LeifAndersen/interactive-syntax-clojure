@@ -17,7 +17,7 @@
 (defn get-file-browser [& [index]]
   (let [lst (-> js/document
                 .-body
-                (.getElementsByClassName "chonky-root"))]
+                (.getElementsByClassName "chonky-chonkyRoot"))]
     (aget lst (or index (dec (alength lst))))))
 
 (defn change-file-browser-input [input & [index]]

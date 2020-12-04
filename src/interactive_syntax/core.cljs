@@ -33,7 +33,8 @@
      [react-switch]
      [react-dnd :refer [DndProvider]]
      [react-dnd-html5-backend :refer [HTML5Backend]]
-     [chonky :refer [ChonkyActions]]))
+     [chonky :refer [ChonkyActions]]
+     [chonky-icon-fontawesome]))
 
 ;; -------------------------
 ;; Components
@@ -209,8 +210,8 @@
           {:on-click
            #(confirm-action)}
           choice-text]]]]
+      [:> chonky/FileNavbar]
       [:> chonky/FileToolbar]
-      [:> chonky/FileSearch]
       [:> chonky/FileList]]]))
 
 (defn save-dialog [{:keys [menu current-file]
@@ -503,7 +504,8 @@
                  & [editor-ref]]
   (set! js/window.stopify stopify)
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
-  (set! js/window.db db)
+  (chonky/setChonkyDefaults
+   #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
   (set! codemirror/commands.save #(save-file db))
   [:main {:role "main"
           :style {:height "100%"
