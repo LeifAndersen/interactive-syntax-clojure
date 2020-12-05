@@ -73,7 +73,7 @@
 (s/def ::keymap (s/or :sublime (partial = "sublime")
                       :emacs (partial = "emacs")
                       :vim (partial = "vim")))
-(s/def ::font-size integer?)
+(s/def ::font-size nat-int?)
 (s/def ::theme string?)
 (s/def ::line-wrapping boolean?)
 (s/def ::line-numbers boolean?)
@@ -93,9 +93,8 @@
 (s/def ::changed? boolean?)
 (s/def ::buffer (s/keys :req-un [::input ::output ::folder ::file ::changed?]))
 
-(s/def ::buffers (s/map-of symbol? ::buffer
-                           :min-count 1))
-(s/def ::current symbol?)
+(s/def ::buffers (s/+ ::buffer))
+(s/def ::current nat-int?)
 
 (s/def ::menu (s/* keyword?))
 
@@ -130,16 +129,15 @@
 (defn default-db
   ([] (default-db :temp))
   ([mode]
-   (let [key (gensym)
-         fs (browserfs/BFSRequire "fs")
+   (let [fs (browserfs/BFSRequire "fs")
          _ (browserfs/configure #js {:fs (case mode
                                            :local "LocalStorage"
                                            :temp "InMemory")}
                                 #(when % (throw %)))
          base {:fs fs
                :options default-options
-               :current key
-               :buffers {key default-buffer}
+               :current 0
+               :buffers [default-buffer]
                :menu [:home]}
          db (atom base)
          backed-db (case mode
@@ -158,6 +156,8 @@
                               :show-editors]]
                        [i (->DBAtom backed-db [:options i])]))
       :fs fs
+      :backing backed-db
+      :buffers (->DBAtom backed-db [:buffers])
       :menu (->DBAtom backed-db [:menu])
       :input (->DBAtom backed-db [:current :input])
       :output (->DBAtom backed-db [:current :output])

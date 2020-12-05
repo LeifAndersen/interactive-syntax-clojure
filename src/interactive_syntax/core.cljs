@@ -17,7 +17,7 @@
      [popper.js]
      [bootstrap]
      [react-bootstrap :refer [Button ButtonGroup SplitButton
-                              Dropdown DropdownButton
+                              Dropdown DropdownButton Tabs Tab
                               Row Col Form Container Modal]]
      [react-hotkeys :refer [GlobalHotKeys]]
      [codemirror]
@@ -501,7 +501,7 @@
 ;; Views
 
 (defn home-page [{{:keys [orientation]} :options
-                  :keys [fs]
+                  :keys [fs buffers]
                   :as db}
                  & [editor-ref]]
   (set! js/window.stopify stopify)
@@ -525,12 +525,21 @@
    [new-folder-dialog db]
    [:div {:style {:flex "0 1 auto"}}
     [button-row db]]
-   [:div {:style {:flex "1 1 auto"}}
-    [:> SplitPane {:split @orientation
-                   :minSize 300
-                   :defaultSize 300}
-     [editor-view db editor-ref]
-     [result-view db]]]])
+   (if (= (count @buffers) 1)
+     [:div {:style {:flex "1 1 auto"}}
+      [:> SplitPane {:split @orientation}
+       [editor-view db editor-ref]
+       [result-view db]]]
+     [:div {:style {:flex "1 1 auto"
+                    :height "100%"
+                    :display "flex"
+                    :flex-flow "column"}}
+      [:> Tabs {:defaultActiveKey "1"}
+       [:> Tab {:eventKey "1"
+                :title "Test"}
+        [:> SplitPane {:split @orientation}
+         [editor-view db editor-ref]
+         [result-view db]]]]])])
 
 ;; -------------------------
 ;; Initialize app

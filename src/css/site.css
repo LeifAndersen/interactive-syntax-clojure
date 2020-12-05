@@ -39,3 +39,15 @@ a:hover {
     max-height: 80vh;
     overflow-y: auto;
 }
+
+.nav-tabs {
+    flex: 0 1 auto;
+}
+
+.tab-content {
+    flex: 1 1 auto;
+}
+
+.tab-pane {
+    height: 100%;
+}

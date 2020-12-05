@@ -22,7 +22,9 @@ Once you connect to the nREPL, run `(cljs)` to switch to the ClojureScript REPL.
 ### Building for production
 
 ```
-git clean -fxd
 npm ci
 clojure -A:package
 ```
+
+Then go get a coffee, or just eat dinner, a production build seems 
+to take a little over 15 minutes.
