@@ -33,7 +33,6 @@
      [react-switch]
      [react-dnd :refer [DndProvider]]
      [react-dnd-html5-backend :refer [HTML5Backend]]
-     [react-beautiful-dnd :as dnd :refer [DragDropContext]]
      [chonky :refer [ChonkyActions]]
      [chonky-icon-fontawesome]))
 
@@ -547,8 +546,7 @@
 (defn mount-root []
   (d/render
    [:> DndProvider {:backend HTML5Backend}
-    [:> DragDropContext
-     [home-page (db/default-db :local)]]]
+    [home-page (db/default-db :local)]]
    (.getElementById js/document "app")))
 
 (defn init! []

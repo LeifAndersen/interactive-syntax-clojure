@@ -40,7 +40,6 @@
     "jquery": "^3.5.1",
     "popper.js": "^1.16.1",
     "react": "^16.14.0",
-    "react-beautiful-dnd": "^13.0.0",
     "react-bootstrap": "^1.4.0",
     "react-codemirror2": "^7.2.1",
     "react-dnd": "^11.1.3",
@@ -48,6 +47,7 @@
     "react-dom": "^16.14.0",
     "react-hotkeys": "^2.0.0",
     "react-split-pane": "^2.0.3",
-    "react-switch": "^5.0.1"
+    "react-switch": "^5.0.1",
+    "react-tabtab": "^2.0.0"
   }
 }
