@@ -275,3 +275,37 @@
       (is (= @current-file nil))
       (is (= @input ""))
       (is (= @menu [:home])))))
+
+(deftest simple-eval
+  (testing "Make sure eval works"
+    (let [{:keys [fs input output menu current-file current-folder file-changed]
+           :as db}
+          (default-db :temp),
+          editor (atom nil),
+          repl (atom nil),
+          view (rtl/render (r/as-element [core/home-page db editor repl]))]
+      (-> @editor .getDoc (.setValue "(println (+ 1 2))"))
+      (is (= @input "(println (+ 1 2))"))
+      (r/flush)
+      (.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+      (r/flush)
+      (is (= @output #queue ["3" nil]))
+      (is (= (-> @repl .getDoc .getValue) "3\n")))))
+
+(deftest test-stopify
+  (testing "Make sure stopify works"
+    (let [{:keys [fs input output menu current-file current-folder file-changed]
+           :as db}
+          (default-db :temp),
+          editor (atom nil),
+          repl (atom nil),
+          view (rtl/render (r/as-element [core/home-page db editor repl]))]
+      (reset! input "
+(defn oh-no []
+  (println \"Oh no!\")
+  (recur))
+
+(oh-no)")
+      (r/flush)
+      ;(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+      (r/flush))))

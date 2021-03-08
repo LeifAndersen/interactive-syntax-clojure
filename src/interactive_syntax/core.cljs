@@ -56,7 +56,10 @@
                      (contains? program :value)
                      (let [runner (stopify.stopifyLocally (:value program))]
                        (set! runner.g #js {:cljs js/cljs})
-                       (.run runner #(swap! output conj nil))),
+                       (.run runner #(swap! output conj nil))
+                       (js/setTimeout #(.pause runner (fn [] (js/console.log "Paused")))
+                                      2000)
+                       ),
                      (contains? program :error) (pprint (-> program :error)))))))
 
 
@@ -478,7 +481,8 @@
                            (reset-editors! @input edit instances options))}])))
 
 (defn result-view [{:keys [output options]
-                    :as db}]
+                    :as db}
+                   & [repl-ref]]
   (let [edit (atom nil)]
     (fn []
       (when (not= @edit nil)
@@ -493,7 +497,10 @@
                   :showCursorWhenSelecting true
                   :lineWrapping @(:line-wrapping options)
                   :lineNumbers false}
-        :editorDidMount #(reset! edit %)}])))
+        :editorDidMount #(do
+                           (when repl-ref
+                             (reset! repl-ref %))
+                           (reset! edit %))}])))
 
 
 ;; -------------------------
@@ -502,7 +509,7 @@
 (defn home-page [{{:keys [orientation]} :options
                   :keys [fs buffers]
                   :as db}
-                 & [editor-ref]]
+                 & [editor-ref repl-ref]]
   (set! js/window.stopify stopify)
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
   (chonky/setChonkyDefaults
@@ -528,7 +535,7 @@
      [:div {:style {:flex "1 1 auto"}}
       [:> SplitPane {:split @orientation}
        [editor-view db editor-ref]
-       [result-view db]]]
+       [result-view db repl-ref]]]
      [:div {:style {:flex "1 1 auto"
                     :height "100%"
                     :display "flex"
@@ -538,7 +545,7 @@
                 :title "Test"}
         [:> SplitPane {:split @orientation}
          [editor-view db editor-ref]
-         [result-view db]]]]])])
+         [result-view db repl-ref]]]]])])
 
 ;; -------------------------
 ;; Initialize app
