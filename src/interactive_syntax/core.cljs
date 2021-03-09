@@ -168,7 +168,7 @@
                 (file-description fs (js/path.join @current-folder file)))
        :folder-chain (let [split (filter (partial not= "")
                                          (.split @current-folder js/path.sep))]
-                       (for [[i folder] (map list (range) (conj split "/"))]
+                       (for [[i folder] (map list (range) (conj split " "))]
                          #js {:id (str "folder" i)
                               :breadCrumb (- (count split) i)
                               :name folder}))
@@ -177,29 +177,38 @@
                       ChonkyActions.UploadFiles
                       ChonkyActions.DownloadFiles
                       ChonkyActions.CopyFiles]
-       :on-file-action (fn [action data]
-                         (condp = action.id
-                           ChonkyActions.OpenParentFolder.id nil,
-                           ChonkyActions.CreateFolder.id
-                           (swap! menu conj :new-folder),
-                           ChonkyActions.OpenFiles.id
-                           (cond
-                             (contains? (js->clj data.target) "breadCrumb")
-                             (swap! current-folder
-                                    #(apply js/path.join
-                                            (conj (for [i (range
-                                                           data.target.breadCrumb)]
-                                                    "..")
-                                                  %))),
-                             data.target.isDir
-                             (swap! current-folder
-                                   #(js/path.join % data.target.name)),
-                             :else (do
-                                     (reset! text data.target.name)
-                                     (confirm-action))),
-                           ChonkyActions.ClearSelection.id
-                           (swap! menu pop),
-                           (println data)))}
+       :on-file-action
+       (fn [data-js]
+         (let [{id "id"
+                action "action"
+                payload "payload"
+                :as data}
+               (js->clj data-js)]
+           (condp = id
+             ChonkyActions.OpenParentFolder.id nil,
+             ChonkyActions.CreateFolder.id
+             (swap! menu conj :new-folder),
+             ChonkyActions.OpenFiles.id
+             (cond
+               (contains? (get-in payload ["targetFile"])
+                          "breadCrumb")
+               (swap! current-folder
+                      #(apply js/path.join
+                              (conj
+                               (for [i
+                                     (range
+                                      (get-in payload ["targetFile" "breadCrumb"]))]
+                                 "..")
+                               %))),
+               (get-in payload ["targetFile" "isDir"])
+               (swap! current-folder
+                      #(js/path.join % (get-in payload ["targetFile" "name"]))),
+               :else (do
+                       (reset! text data.target.name)
+                       (confirm-action))),
+             ChonkyActions.ClearSelection.id
+             (swap! menu pop),
+             (println data))))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
                                (confirm-action))}
