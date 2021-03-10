@@ -149,7 +149,8 @@
                             options]
                      :as db}
                     choice-text
-                    choice-callback]
+                    choice-callback
+                    & [ref]]
   (let [text (atom "")
         confirm-action (fn []
                          (when (not= @text "")
@@ -164,6 +165,7 @@
      [:> chonky/FileBrowser
       {:enable-drag-and-drop @(:enable-drag-and-drop options)
        :disable-drag-and-drop-provider true
+       :ref (or ref #js {:current nil})
        :files (for [file (fs.readdirSync @current-folder)]
                 (file-description fs (js/path.join @current-folder file)))
        :folder-chain (let [split (filter (partial not= "")
@@ -208,6 +210,8 @@
                        (confirm-action))),
              ChonkyActions.ClearSelection.id
              (swap! menu pop),
+             ChonkyActions.ChangeSelection.id
+             nil,
              (println data))))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
