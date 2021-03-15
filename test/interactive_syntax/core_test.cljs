@@ -121,21 +121,19 @@
       (is (= @(:current-file this) @(:current-file other)))
       (is (= @(:current-folder this) @(:current-folder other)))))
 
-(defn- test-do-helper [expected-state ui-state cmds]
+(defn- test-do-helper [expected-state ui-state cmds prev]
   (loop [cmds cmds
-         prev nil]
+         prev prev]
     (condp = (first cmds)
       nil nil
       :set
       (let [[_ path value & rest] cmds]
-        (do
-          (reset! (get-in expected-state path) value)
-          (recur rest nil)))
+        (reset! (get-in expected-state path) value)
+        (recur rest nil))
       :update
       (let [[_ path update & rest] cmds]
-        (do
-          (swap! (get-in expected-state path) update)
-          (recur rest nil)))
+        (swap! (get-in expected-state path) update)
+        (recur rest nil))
       :check
       (do
         (is-db= ui-state expected-state)
@@ -144,18 +142,25 @@
       (.then prev
              #(do (r/flush)
                   (r/flush)
-                  (test-do-helper expected-state ui-state (next cmds))))
+                  (test-do-helper expected-state ui-state (next cmds) %)))
+      :wait
+      (let [[_ timeout & rest] cmds]
+         (js/setTimeout (fn [] (test-do-helper expected-state ui-state rest nil))
+                        timeout))
+      :async
+      (let [[_ proc & rest] cmds]
+        (proc #(test-do-helper expected-state ui-state rest nil)))
       :done
       ((second cmds))
       :do
-      (let [p ((second cmds))]
+      (let [p ((second cmds) prev)]
         (r/flush)
         (r/flush)
         (recur (next (next cmds)) p)))))
 
 
 (defn test-do [ui-state & cmds]
-  (test-do-helper (default-db :temp) ui-state cmds))
+  (test-do-helper (default-db :temp) ui-state cmds nil))
 
 (deftest bad-input-buff
   (testing "Malformed string in input buffer"
@@ -330,18 +335,27 @@
 
 (deftest test-stopify
   (testing "Make sure stopify works"
-    (let [{:keys [fs input output menu current-file current-folder file-changed]
-           :as db}
-          (default-db :temp),
-          editor (atom nil),
-          repl (atom nil),
-          view (rtl/render (r/as-element [core/home-page db editor repl]))]
-      (reset! input "
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db editor repl]))
+           prog "
 (defn oh-no []
   (println \"Oh no!\")
   (recur))
 
-(oh-no)")
-      (r/flush)
-      ;(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
-      (r/flush))))
+(oh-no)"]
+       (test-do
+        db :check
+        :do #(reset! input prog)
+        :set [:input] prog
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+        :wait 2000
+        :async #(.pause @runner %)
+        :do #(js/console.log "Paused")
+        :check
+        :done #(done))))))

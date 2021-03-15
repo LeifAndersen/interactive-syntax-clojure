@@ -44,22 +44,41 @@
 ;; -------------------------
 ;; Evaluator
 
-(defn eval-str [s output]
+(defn eval-str [s output & [runner-box]]
   (compile-str (empty-state)
                s
                strings/UNTITLED
                {:eval js-eval
+                :load (fn [{:keys [name macros path]} cb]
+                        (letfn  [(rec [extensions]
+                                   (if (empty? extensions)
+                                     (cb nil)
+                                     (let [file-path
+                                           (str "/" path "." (first extensions))]
+                                       (pprint file-path)
+                                       (fs.readFile
+                                        file-path
+                                        (fn [err data]
+                                          (if err
+                                            (rec (rest extensions))
+                                            {:lang (if (= (first extensions) "js")
+                                                     :js
+                                                     :clj)
+                                             :source (.toString data)
+                                             :file file-path}))))))]
+                          (rec (if macros
+                                 ["clj" "cljc"]
+                                 ["cljs" "cljc" "js"]))))
                 :source-map true}
                (fn [program]
                  (binding [*print-fn* #(swap! output conj %)]
                    (cond
                      (contains? program :value)
                      (let [runner (stopify.stopifyLocally (:value program))]
+                       (when runner-box
+                         (reset! runner-box runner))
                        (set! runner.g #js {:cljs js/cljs})
-                       (.run runner #(swap! output conj nil))
-                       (js/setTimeout #(.pause runner (fn [] (js/console.log "Paused")))
-                                      2000)
-                       ),
+                       (.run runner #(swap! output conj nil))),
                      (contains? program :error) (pprint (-> program :error)))))))
 
 
@@ -344,7 +363,8 @@
                           current-folder
                           current-file
                           file-changed
-                          menu]
+                          menu
+                          runner]
                    :as db}]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
@@ -364,7 +384,7 @@
                          ""))
         run #(let []
                (reset! output #queue [])
-               (eval-str @input output))]
+               (eval-str @input output runner))]
     [:div
      [:div {:class-name "d-block d-md-none"}
       [:> Row {:class-name "align-items-center flex-nowrap"
