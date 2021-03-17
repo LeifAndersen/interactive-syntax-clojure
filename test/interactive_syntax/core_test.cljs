@@ -40,6 +40,9 @@
                (.getElementsByClassName "modal"))]
    (aget lst (or index (dec (alength lst))))))
 
+(defn click-run [view]
+  (.click rtl/fireEvent (first (.getAllByText view strings/RUN))))
+
 (use-fixtures :each
   {:after rtl/cleanup})
 
@@ -114,12 +117,10 @@
 
 ;; Checks all items in this that are in good
 ;; EXCEPT for fs and runner!
-(defn is-db= [this other]
-  (do (is (= @(:input this) @(:input other)))
-      (is (= @(:output this) @(:output other)))
-      (is (= @(:menu this) @(:menu other)))
-      (is (= @(:current-file this) @(:current-file other)))
-      (is (= @(:current-folder this) @(:current-folder other)))))
+(defn is-db= [this other & [keys]]
+  (let [test-keys (or keys [:input :output :menu :current-file :current-folder])]
+    (doseq [key test-keys]
+      (is (= @(key this) @(key other))))))
 
 (defn- test-do-helper [expected-state ui-state cmds prev]
   (loop [cmds cmds
@@ -134,10 +135,17 @@
       (let [[_ path update & rest] cmds]
         (swap! (get-in expected-state path) update)
         (recur rest nil))
+      :get
+      (let [[_ path & rest] cmds]
+        (recur rest @(get-in expected-state path)))
       :check
       (do
         (is-db= ui-state expected-state)
         (recur (next cmds) nil))
+      :check-item
+      (let [[_ path & rest] cmds]
+        (is (= (get-in ui-state path)
+               (get-in expected-state path))))
       :then
       (.then prev
              #(do (r/flush)
@@ -145,8 +153,8 @@
                   (test-do-helper expected-state ui-state (next cmds) %)))
       :wait
       (let [[_ timeout & rest] cmds]
-         (js/setTimeout (fn [] (test-do-helper expected-state ui-state rest nil))
-                        timeout))
+        (js/setTimeout (fn [] (test-do-helper expected-state ui-state rest nil))
+                       timeout))
       :async
       (let [[_ proc & rest] cmds]
         (proc #(test-do-helper expected-state ui-state rest nil)))
@@ -172,6 +180,32 @@
        :do #(-> @editor .getDoc (.setValue "(+ 1 2"))
        :set [:input] "(+ 1 2"
        :set [:file-changed] true :check))))
+
+
+(deftest bad-ns-buff
+  (testing "Requiring a namespace that does not exist"
+    (let [{:keys [input file-changed] :as db} (default-db :temp)
+          editor (atom nil)
+          view (rtl/render (r/as-element [core/home-page db editor]))
+          prog "
+(ns bob.core
+  (:require [bill.core :as bill]))"
+          err-msg (str "#error {:message \"No such namespace: "
+                       "bill.core, could not locate bill/core.cljs, "
+                       "bill/core.cljc, or JavaScript source providing "
+                       "\\\"bill.core\\\"\", :data {:tag "
+                       ":cljs/analysis-error}}\n")]
+      (test-do
+       db :check
+       :do #(-> @editor .getDoc (.setValue "(ns bob.core)"))
+       :set [:input] "(ns bob.core)"
+       :set [:file-changed] true :check
+       :do #(-> @editor .getDoc (.setValue prog))
+       :do #(click-run view)
+       :set [:input] prog
+       :set [:output] #queue [err-msg]
+       :set [:file-changed] true :check
+       ))))
 
 (deftest file-save-load-view
   (testing "File Save And load through view actions"
@@ -352,10 +386,16 @@
        (test-do
         db :check
         :do #(reset! input prog)
-        :set [:input] prog
-        :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
-        :wait 2000
+        :set [:input] prog :check
+        :do #(click-run view)
+        :wait 100
         :async #(.pause @runner %)
         :do #(js/console.log "Paused")
         :check
+        :get [:output]
+        :do #(do
+               (js/console.log %)
+               (is (seq %))
+               (is (> (count %) 1))
+               (is (every? (partial (= "Oh no!")) %)))
         :done #(done))))))

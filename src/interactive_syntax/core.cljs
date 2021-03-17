@@ -55,7 +55,6 @@
                                      (cb nil)
                                      (let [file-path
                                            (str "/" path "." (first extensions))]
-                                       (pprint file-path)
                                        (fs.readFile
                                         file-path
                                         (fn [err data]
