@@ -16,6 +16,7 @@
      [jquery]
      [popper.js]
      [bootstrap]
+     [alandipert.storage-atom :as storage]
      [react-bootstrap :refer [Button ButtonGroup SplitButton
                               Dropdown DropdownButton Tabs Tab
                               Row Col Form Container Modal]]
@@ -27,7 +28,9 @@
      ["codemirror/keymap/emacs"]
      ["codemirror/keymap/sublime"]
      ["codemirror/addon/search/searchcursor"]
-     ["@stopify/stopify" :as stopify]
+     ["@stopify/higher-order-functions" :as hof]
+     ["@babel/parser" :as babylon]
+     ["@babel/template" :as babel-template]
      [browserfs]
      [react-split-pane :refer [Pane]]
      [react-switch]
@@ -40,6 +43,7 @@
 ;; Components
 (def ^:private SplitPane (.-default react-split-pane))
 (def ^:private Switch (.-default react-switch))
+(def ^:private template (.-default babel-template))
 
 ;; -------------------------
 ;; Evaluator
@@ -70,13 +74,17 @@
                                  ["cljs" "cljc" "js"]))))
                 :source-map true}
                (fn [program]
+                 (js/console.log (:value program))
                  (binding [*print-fn* #(swap! output conj %)]
                    (cond
                      (contains? program :value)
-                     (let [runner (stopify.stopifyLocally (:value program))]
+                     (let [ast (babylon/parse (:value program))
+                           polyfilled (hof/polyfillHofFromAst ast)
+                           runner (js/stopify.stopifyLocallyFromAst polyfilled)]
                        (when runner-box
                          (reset! runner-box runner))
-                       (set! runner.g #js {:cljs js/cljs})
+                       (set! runner.g #js {:cljs js/cljs
+                                           :$stopifyArray js/stopifyArray})
                        (.run runner #(swap! output conj nil))),
                      (contains? program :error) (pprint (-> program :error)))))))
 
@@ -542,7 +550,6 @@
                   :keys [fs buffers]
                   :as db}
                  & [editor-ref repl-ref]]
-  (set! js/window.stopify stopify)
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})

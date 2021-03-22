@@ -66,6 +66,7 @@
 (swap! storage/transit-write-handlers assoc
        js/Function (FunctionHandler.))
 
+
 ;; -------------------------
 ;; Database Spec
 (s/def ::orientation (s/or :horizontal (partial = "horizontal")
@@ -92,8 +93,7 @@
 (s/def ::folder string?)
 (s/def ::file (s/nilable string?))
 (s/def ::changed? boolean?)
-(s/def ::buffer (s/keys :req-un [::input ::output ::runner
-                                 ::folder ::file ::changed?]))
+(s/def ::buffer (s/keys :req-un [::input ::output ::folder ::file ::changed?]))
 
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
@@ -126,8 +126,7 @@
    :file nil
    :changed? false
    :input ""
-   :output ""
-   :runner nil})
+   :output ""})
 
 (defn default-db
   ([] (default-db :temp))
@@ -159,12 +158,12 @@
                               :show-editors]]
                        [i (->DBAtom backed-db [:options i])]))
       :fs fs
+      :runner (atom nil)
       :backing backed-db
       :buffers (->DBAtom backed-db [:buffers])
       :menu (->DBAtom backed-db [:menu])
       :input (->DBAtom backed-db [:current :input])
       :output (->DBAtom backed-db [:current :output])
-      :runner (->DBAtom backed-db [:current :runner])
       :current-folder (->DBAtom backed-db [:current :folder])
       :current-file (->DBAtom backed-db [:current :file])
       :file-changed (->DBAtom backed-db [:current :changed?])})))

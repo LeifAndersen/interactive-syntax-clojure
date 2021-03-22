@@ -377,7 +377,8 @@
            editor (atom nil),
            repl (atom nil),
            view (rtl/render (r/as-element [core/home-page db editor repl]))
-           prog "
+           prog1 "(loop [x 0] (when (< x 10) (println x) (recur (inc x))))"
+           prog2 "
 (defn oh-no []
   (println \"Oh no!\")
   (recur))
@@ -385,8 +386,12 @@
 (oh-no)"]
        (test-do
         db :check
-        :do #(reset! input prog)
-        :set [:input] prog :check
+        :do @(reset! input prog1)
+        :set [:input] prog1 :check
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+        :set [:output] #queue ["0" "1" nil] :check
+        :do #(reset! input prog2)
+        :set [:input] prog2 :check
         :do #(click-run view)
         :wait 100
         :async #(.pause @runner %)
