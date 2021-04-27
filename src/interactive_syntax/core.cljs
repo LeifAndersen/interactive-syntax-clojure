@@ -8,11 +8,12 @@
      [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
                                              get-line-number
                                              get-column-number]]
-     [cljs.js :as cljs :refer [empty-state compile-str js-eval]]
+     [cljs.js :as cljs :refer [empty-state eval-str js-eval]]
      [cljs.pprint :refer [pprint]]
      [cljs.core.match :refer [match]]
      [interactive-syntax.db :as db]
      [interactive-syntax.strings :as strings]
+     [interactive-syntax.fakegoog :as fakegoog]
      [jquery]
      [popper.js]
      [bootstrap]
@@ -47,47 +48,54 @@
 
 ;; -------------------------
 ;; Evaluator
-
-(defn eval-str [s output & [runner-box]]
-  (compile-str (empty-state)
-               s
-               strings/UNTITLED
-               {:eval js-eval
-                :load (fn [{:keys [name macros path]} cb]
-                        (letfn  [(rec [extensions]
-                                   (if (empty? extensions)
-                                     (cb nil)
-                                     (let [file-path
-                                           (str "/" path "." (first extensions))]
-                                       (fs.readFile
-                                        file-path
-                                        (fn [err data]
-                                          (if err
-                                            (rec (rest extensions))
-                                            {:lang (if (= (first extensions) "js")
-                                                     :js
-                                                     :clj)
-                                             :source (.toString data)
-                                             :file file-path}))))))]
-                          (rec (if macros
-                                 ["clj" "cljc"]
-                                 ["cljs" "cljc" "js"]))))
-                :source-map true}
-               (fn [program]
-                 (js/console.log (:value program))
-                 (binding [*print-fn* #(swap! output conj %)]
-                   (cond
-                     (contains? program :value)
-                     (let [ast (babylon/parse (:value program))
-                           polyfilled (hof/polyfillHofFromAst ast)
-                           runner (js/stopify.stopifyLocallyFromAst polyfilled)]
-                       (when runner-box
-                         (reset! runner-box runner))
-                       (set! runner.g #js {:cljs js/cljs
-                                           :$stopifyArray js/stopifyArray})
-                       (.run runner #(swap! output conj nil))),
-                     (contains? program :error) (pprint (-> program :error)))))))
-
+(defn eval-buffer [{:keys [input
+                           output
+                           file-name]
+                    :as db}
+                   & [callback]]
+  (let [runner (js/stopify.stopifyLocally "")
+        cb (or callback js/console.log)]
+    (reset! (:runner db) runner)
+    (set! runner.g #js {:cljs js/cljs
+                        :goog #js {:provide (partial fakegoog/prov runner)
+                                   :require (partial fakegoog/req runner)}
+                        :console js/console
+                        :$stopifyArray js/stopifyArray})
+    (.run runner #())
+    (eval-str (empty-state)
+              @input
+              strings/UNTITLED
+              {:eval (fn [{:keys [source name cache]
+                           :as m}
+                          cb]
+                       (js/console.log m)
+                       (js/console.log source)
+                       (binding [*print-fn* #(swap! output conj %)]
+                         (let [ast (babylon/parse source)
+                               polyfilled (hof/polyfillHofFromAst ast)]
+                           (.evalAsyncFromAst runner polyfilled cb))))
+               :load (fn [{:keys [name macros path]} cb]
+                       (letfn  [(rec [extensions]
+                                  (if (empty? extensions)
+                                    (cb nil)
+                                    (let [file-path
+                                          (str "/" path "." (first extensions))]
+                                      (fs.readFile
+                                       file-path
+                                       (fn [err data]
+                                         (if err
+                                           (rec (rest extensions))
+                                           (cb {:lang (if (= (first extensions)
+                                                             "js")
+                                                        :js
+                                                        :clj)
+                                                :source (.toString data)
+                                                :file file-path})))))))]
+                         (rec (if macros
+                                ["clj" "cljc"]
+                                ["cljs" "cljc" "js"]))))
+               :source-map true}
+              cb)))
 
 ;; -------------------------
 ;; File Dialogs
@@ -232,7 +240,7 @@
                (swap! current-folder
                       #(js/path.join % (get-in payload ["targetFile" "name"]))),
                :else (do
-                       (reset! text data.target.name)
+                       (reset! text (get-in payload ["targetFile" "name"]))
                        (confirm-action))),
              ChonkyActions.ClearSelection.id
              (swap! menu pop),
@@ -391,7 +399,7 @@
                          ""))
         run #(let []
                (reset! output #queue [])
-               (eval-str @input output runner))]
+               (eval-buffer db))]
     [:div
      [:div {:class-name "d-block d-md-none"}
       [:> Row {:class-name "align-items-center flex-nowrap"
