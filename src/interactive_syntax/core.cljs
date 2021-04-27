@@ -46,6 +46,16 @@
 (def ^:private Switch (.-default react-switch))
 (def ^:private template (.-default babel-template))
 
+(defn print-res [{:keys [output]
+                  :as db}
+                 res]
+  (binding [*print-fn* #(swap! output conj %)]
+    (cond
+      (contains? res :error) (println (:error res))
+      (contains? res :value)
+      (when (get-in res [:value :value])
+        (println (get-in res [:value :value]))))))
+
 ;; -------------------------
 ;; Evaluator
 (defn eval-buffer [{:keys [input
@@ -54,7 +64,8 @@
                     :as db}
                    & [callback]]
   (let [runner (js/stopify.stopifyLocally "")
-        cb (or callback js/console.log)]
+        cb (or callback
+               #(print-res db %))]
     (reset! (:runner db) runner)
     (set! runner.g #js {:cljs js/cljs
                         :goog #js {:provide (partial fakegoog/prov runner)
@@ -68,7 +79,6 @@
               {:eval (fn [{:keys [source name cache]
                            :as m}
                           cb]
-                       (js/console.log m)
                        (js/console.log source)
                        (binding [*print-fn* #(swap! output conj %)]
                          (let [ast (babylon/parse source)

@@ -1,6 +1,7 @@
 (ns interactive-syntax.core-test
   (:require [cljs.test :refer-macros [deftest is testing use-fixtures async]]
             [cljs.pprint :refer [pprint]]
+            [clojure.string :as string]
             [reagent.core :as r :refer [atom]]
             [reagent.dom :as d]
             [chonky :refer [ChonkyActions]]
@@ -190,11 +191,11 @@
           prog "
 (ns bob.core
   (:require [bill.core :as bill]))"
-          err-msg (str "#error {:message \"No such namespace: "
-                       "bill.core, could not locate bill/core.cljs, "
-                       "bill/core.cljc, or JavaScript source providing "
-                       "\\\"bill.core\\\"\", :data {:tag "
-                       ":cljs/analysis-error}}\n")]
+          err-msg (str "#error {:message No such namespace: bill.core, "
+                       "could not locate bill/core.cljs, bill/core.cljc, "
+                       "or JavaScript source providing \"bill.core\", "
+                       ":data {:tag :cljs/analysis-error}}")]
+
       (test-do
        db :check
        :do #(-> @editor .getDoc (.setValue "(ns bob.core)"))
@@ -345,7 +346,7 @@
         :then
         :set [:menu] [:home :load :new-folder] :check
         :do #(reset! (-> db :menu) [:home :load])
-        :do #(fs.mkdir "dir")
+        :async #(fs.mkdir "dir" %)
         :do #(reset! (-> db :current-folder) "/dir")
         :set [:menu] [:home :load]
         :set [:current-folder] "/dir" :check
@@ -364,8 +365,8 @@
        :do #(-> @editor .getDoc (.setValue "(println (+ 1 2))"))
        :set [:input] "(println (+ 1 2))" :check
        :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
-       :set [:output] #queue ["3" nil] :check
-       :do #(is (= (-> @repl .getDoc .getValue) "3\n"))))))
+       :set [:output] #queue ["3"] :check
+       :do #(is (= (-> @repl .getDoc .getValue) "3"))))))
 
 (deftest test-stopify
   (testing "Make sure stopify works"
@@ -384,7 +385,9 @@
   (recur))
 
 (oh-no)"]
-       (test-do
+       (is (= "Warning" "Test not run!"))
+       (done)
+       (comment ;test-do
         db :check
         :do @(reset! input prog1)
         :set [:input] prog1 :check
@@ -403,4 +406,38 @@
                (is (seq %))
                (is (> (count %) 1))
                (is (every? (partial (= "Oh no!")) %)))
+        :done #(done))))))
+
+(deftest multiple-files-eval
+  (testing "Make sure eval works"
+    (async
+     done
+     (let [{:keys [fs input output menu current-file current-folder file-changed]
+            :as db}
+           (default-db :temp),
+           core-prog "
+(ns test.core)
+(defn main [] (println \"Hello World!\"))
+(println \"Loading Core...\")
+"
+           use-prog "
+(ns test.use (:require [test.core :as test]))
+(println \"Loading Use...\")
+(test/main)
+"
+           expected-res #queue ["Loading Core..."
+                                "Loading Use..."
+                                "Hello World!"]
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db editor repl]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir "/test" %)
+        :async #(fs.writeFile "/test/core.cljs" core-prog %)
+        :do #(-> @editor .getDoc (.setValue use-prog))
+        :set [:input] use-prog :check
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+        :set [:output] expected-res :check
+        :do #(is (= (-> @repl .getDoc .getValue) (string/join "\n" expected-res)))
         :done #(done))))))
