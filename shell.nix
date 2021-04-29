@@ -2,9 +2,9 @@
 
 pkgs.mkShell {
   name="visr-dev-environment";
-  buildImputs = [
-    pkgs.nodejs
+  buildInputs = [
     pkgs.clojure
+    pkgs.nodejs
   ];
   shellHook = ''
     npm ci
