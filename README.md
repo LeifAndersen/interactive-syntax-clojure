@@ -33,12 +33,14 @@ You should now be in a shell environment with both NPM and Clojure.
 
 ### Manually Install Dependencies
 
-1. Download [Java][java] and [Clojure][clojure] for your operating system.
+1. First, download [Java][java] and [Clojure][clojure] for your operating system.
 2. Next, download [Node.js][npm] for your operating system, it comes with
    [NPM][npm].
-3. Then, `cd` into the project folder and run `npm ci`.
+3. Finally, `cd` into the project folder and run `npm ci`.
 
-You should now be ready to build VSIr for ClojureScript.
+You should now be ready to build VISr for ClojureScript.
+
+## Build & Test VISr
 
 ### Development mode
 
