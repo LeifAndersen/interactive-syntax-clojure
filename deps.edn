@@ -12,5 +12,8 @@
         com.bhauman/figwheel-main {:mvn/version "0.2.12"}
         com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}}
  :aliases {:fig {:main-opts ["-m" "figwheel.main" "--build" "dev" "--repl"]}
+           :test {:main-opts ["-m" "figwheel.main"
+                              "--compile-opts" "test.cljs.edn"
+                              "--main" "interactive-syntax.core-test"]}
            :package {:main-opts ["-m" "figwheel.main" "--build-once" "prod"]}}
  :paths ["src" "test" "target" "resources" "env/dev" "env/prod"]}

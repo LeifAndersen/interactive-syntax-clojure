@@ -8,7 +8,7 @@
      [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
                                              get-line-number
                                              get-column-number]]
-     [cljs.js :as cljs :refer [empty-state eval-str js-eval]]
+     [cljs.js :as cljs :refer [empty-state eval-str js-eval *loaded*]]
      [cljs.pprint :refer [pprint]]
      [cljs.core.match :refer [match]]
      [interactive-syntax.db :as db]
@@ -63,51 +63,55 @@
                            file-name]
                     :as db}
                    & [callback]]
-  (let [runner (js/stopify.stopifyLocally "")
+  (let [old-loaded @*loaded*
+        runner (js/stopify.stopifyLocally "")
         cb (or callback
                #(print-res db %))]
-    (reset! (:runner db) runner)
-    (set! runner.g #js {:cljs js/cljs
-                        :goog #js {:provide (partial fakegoog/prov runner)
-                                   :require (partial fakegoog/req runner)}
-                        :console js/console
-                        :$stopifyArray js/stopifyArray})
-    (.run runner #())
-    (eval-str (empty-state)
-              @input
-              strings/UNTITLED
-              {:eval (fn [{:keys [source name cache]
-                           :as m}
-                          cb]
-                       (js/console.log source)
-                       (binding [*print-fn* #(swap! output conj %)]
-                         (let [ast (babylon/parse source)
-                               polyfilled (hof/polyfillHofFromAst ast)]
-                           (.evalAsyncFromAst runner polyfilled cb))))
-               :load (fn [{:keys [name macros path]} cb]
-                       (letfn  [(rec [extensions]
-                                  (if (empty? extensions)
-                                    (cb nil)
-                                    (let [file-path
-                                          (str "/" path "." (first extensions))]
-                                      (fs.readFile
-                                       file-path
-                                       (fn [err data]
-                                         (if err
-                                           (rec (rest extensions))
-                                           (cb {:lang (if (= (first extensions)
-                                                             "js")
-                                                        :js
-                                                        :clj)
-                                                :source (.toString data)
-                                                :file file-path})))))))]
-                         (rec (if macros
-                                ["clj" "cljc"]
-                                ["cljs" "cljc" "js"]))))
-               :source-map true}
-              cb)))
+    (try
+      (reset! *loaded* #{})
+      (reset! (:runner db) runner)
+      (set! runner.g #js {:cljs js/cljs
+                          :goog #js {:provide (partial fakegoog/prov runner)
+                                     :require (partial fakegoog/req runner)}
+                          :console js/console
+                          :$stopifyArray js/stopifyArray})
+      (.run runner #())
+      (eval-str (empty-state)
+                @input
+                strings/UNTITLED
+                {:eval (fn [{:keys [source name cache]
+                             :as m}
+                            cb]
+                         (js/console.log source)
+                         (binding [*print-fn* #(swap! output conj %)]
+                           (let [ast (babylon/parse source)
+                                 polyfilled (hof/polyfillHofFromAst ast)]
+                             (.evalAsyncFromAst runner polyfilled cb))))
+                 :load (fn [{:keys [name macros path]} cb]
+                         (letfn  [(rec [extensions]
+                                    (if (empty? extensions)
+                                      (cb nil)
+                                      (let [file-path
+                                            (str "/" path "." (first extensions))]
+                                        (fs.readFile
+                                         file-path
+                                         (fn [err data]
+                                           (if err
+                                             (rec (rest extensions))
+                                             (cb {:lang (if (= (first extensions)
+                                                               "js")
+                                                          :js
+                                                          :clj)
+                                                  :source (.toString data)
+                                                  :file file-path})))))))]
+                           (rec (if macros
+                                  ["clj" "cljc"]
+                                  ["cljs" "cljc" "js"]))))
+                 :source-map true}
+                cb)
+      (finally (reset! *loaded* old-loaded)))))
 
-;; -------------------------
+  ;; -------------------------
 ;; File Dialogs
 
 (defn file-description [fs filepath]

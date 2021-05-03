@@ -1,5 +1,6 @@
 (ns interactive-syntax.core-test
   (:require [cljs.test :refer-macros [deftest is testing use-fixtures async]]
+            [figwheel.main.testing :refer-macros [run-tests-async]]
             [cljs.pprint :refer [pprint]]
             [clojure.string :as string]
             [reagent.core :as r :refer [atom]]
@@ -46,6 +47,61 @@
 
 (use-fixtures :each
   {:after rtl/cleanup})
+
+;; Checks all items in this that are in good
+;; EXCEPT for fs and runner!
+(defn is-db= [this other & [keys]]
+  (let [test-keys (or keys [:input :output :menu :current-file :current-folder])]
+    (doseq [key test-keys]
+      (is (= @(key this) @(key other))))))
+
+(defn- test-do-helper [expected-state ui-state cmds prev]
+  (loop [cmds cmds
+         prev prev]
+    (condp = (first cmds)
+      nil nil
+      :set
+      (let [[_ path value & rest] cmds]
+        (reset! (get-in expected-state path) value)
+        (recur rest nil))
+      :update
+      (let [[_ path update & rest] cmds]
+        (swap! (get-in expected-state path) update)
+        (recur rest nil))
+      :get
+      (let [[_ path & rest] cmds]
+        (recur rest @(get-in expected-state path)))
+      :check
+      (do
+        (is-db= ui-state expected-state)
+        (recur (next cmds) nil))
+      :check-item
+      (let [[_ path & rest] cmds]
+        (is (= (get-in ui-state path)
+               (get-in expected-state path))))
+      :then
+      (.then prev
+             #(do (r/flush)
+                  (r/flush)
+                  (test-do-helper expected-state ui-state (next cmds) %)))
+      :wait
+      (let [[_ timeout & rest] cmds]
+        (js/setTimeout (fn [] (test-do-helper expected-state ui-state rest nil))
+                       timeout))
+      :async
+      (let [[_ proc & rest] cmds]
+        (proc #(test-do-helper expected-state ui-state rest nil)))
+      :done
+      ((second cmds))
+      :do
+      (let [p ((second cmds) prev)]
+        (r/flush)
+        (r/flush)
+        (recur (next (next cmds)) p)))))
+
+
+(defn test-do [ui-state & cmds]
+  (test-do-helper (default-db :temp) ui-state cmds nil))
 
 (deftest file-system-available
   (testing "File System Access"
@@ -116,60 +172,6 @@
                  (.-innerHTML))))
       )))
 
-;; Checks all items in this that are in good
-;; EXCEPT for fs and runner!
-(defn is-db= [this other & [keys]]
-  (let [test-keys (or keys [:input :output :menu :current-file :current-folder])]
-    (doseq [key test-keys]
-      (is (= @(key this) @(key other))))))
-
-(defn- test-do-helper [expected-state ui-state cmds prev]
-  (loop [cmds cmds
-         prev prev]
-    (condp = (first cmds)
-      nil nil
-      :set
-      (let [[_ path value & rest] cmds]
-        (reset! (get-in expected-state path) value)
-        (recur rest nil))
-      :update
-      (let [[_ path update & rest] cmds]
-        (swap! (get-in expected-state path) update)
-        (recur rest nil))
-      :get
-      (let [[_ path & rest] cmds]
-        (recur rest @(get-in expected-state path)))
-      :check
-      (do
-        (is-db= ui-state expected-state)
-        (recur (next cmds) nil))
-      :check-item
-      (let [[_ path & rest] cmds]
-        (is (= (get-in ui-state path)
-               (get-in expected-state path))))
-      :then
-      (.then prev
-             #(do (r/flush)
-                  (r/flush)
-                  (test-do-helper expected-state ui-state (next cmds) %)))
-      :wait
-      (let [[_ timeout & rest] cmds]
-        (js/setTimeout (fn [] (test-do-helper expected-state ui-state rest nil))
-                       timeout))
-      :async
-      (let [[_ proc & rest] cmds]
-        (proc #(test-do-helper expected-state ui-state rest nil)))
-      :done
-      ((second cmds))
-      :do
-      (let [p ((second cmds) prev)]
-        (r/flush)
-        (r/flush)
-        (recur (next (next cmds)) p)))))
-
-
-(defn test-do [ui-state & cmds]
-  (test-do-helper (default-db :temp) ui-state cmds nil))
 
 (deftest bad-input-buff
   (testing "Malformed string in input buffer"
@@ -368,6 +370,7 @@
        :set [:output] #queue ["3"] :check
        :do #(is (= (-> @repl .getDoc .getValue) "3"))))))
 
+(comment ;;; XXX UNCOMMENT!!!
 (deftest test-stopify
   (testing "Make sure stopify works"
     (async
@@ -407,6 +410,7 @@
                (is (> (count %) 1))
                (is (every? (partial (= "Oh no!")) %)))
         :done #(done))))))
+)
 
 (deftest multiple-files-eval
   (testing "Make sure eval works"
@@ -441,3 +445,6 @@
         :set [:output] expected-res :check
         :do #(is (= (-> @repl .getDoc .getValue) (string/join "\n" expected-res)))
         :done #(done))))))
+
+(defn -main [& args]
+  (run-tests-async 10000))
