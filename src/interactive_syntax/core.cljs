@@ -470,7 +470,9 @@
         [:> Button strings/STOP]]]]]))
 
 (defn reset-editors! [s editor instances options]
-  (doseq [i @instances] (.clear i))
+  (doseq [i @instances]
+    (do (.clear (:widget i))
+        (.clear (:range i))))
   (reset! instances [])
   (when (and @(:show-editors options) @editor)
     (let [prog (indexing-push-back-reader s)
@@ -482,28 +484,42 @@
               ((fn rec [form]
                  (let [info (meta form)]
                    (when (= (:tag info) 'editor)
-                     (swap! instances conj
-                            (-> @editor
-                                (.getDoc)
-                                (.markText
-                                 #js {:line (dec (:line info)),
-                                      :ch (dec (:column info))}
-                                 #js {:line (dec (:end-line info)),
-                                      :ch (dec (:end-column info))}
-                                 #js {:collapsed true}))))
+                     (let [element (.createElement js/document "div")
+                           hider (.createElement js/document "span")]
+                       (d/render [:> Button "Test!"] element)
+                       (d/render [:> Button "..."] hider)
+                       (swap! instances conj
+                              {:range
+                               (-> @editor
+                                   (.getDoc)
+                                   (.markText
+                                    #js {:line (dec (:line info)),
+                                         :ch (dec (:column info))}
+                                    #js {:line (dec (:end-line info)),
+                                         :ch (dec (:end-column info))}
+                                    #js {:collapsed true
+                                         :replacedWith hider}))
+                               :widget
+                               (-> @editor
+                                   (.getDoc)
+                                   (.addLineWidget
+                                    (dec (:line info))
+                                    element
+                                    false))})))
                    (doseq [e form]
                      (when (coll? e)
                        (rec e)))))
                form)
               (recur))))
         (catch js/Error e
+          ;;(js/console.log e)
           "TODO LOG")))))
 
 (defn editor-view [{:keys [menu input options file-changed current-file]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
-        instances (clojure.core/atom [])
+        editors (atom [])
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
@@ -532,7 +548,7 @@
         :onChange #(let []
                      (reset! file-changed true)
                      (reset! input %3)
-                     (reset-editors! %3 edit instances options))
+                     (reset-editors! %3 edit editors options))
         :editorDidMount #(do
                            (let [fc @file-changed]
                              (-> % .getDoc (.setValue @input))
@@ -540,7 +556,7 @@
                            (reset! edit %)
                            (when editor-ref
                              (reset! editor-ref %))
-                           (reset-editors! @input edit instances options))}])))
+                           (reset-editors! @input edit editors options))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}

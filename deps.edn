@@ -5,8 +5,7 @@
         ;; {:local/root "/path/to/clojurescript"} <-- For debugging only
         org.clojure/core.match {:mvn/version "1.0.0"}
         org.clojure/tools.reader {:mvn/version "1.3.3"}
-        reagent/reagent
-        {:mvn/version "0.10.0" :exclusions [cljsjs/react cljsjs/react-dom]}
+        reagent/reagent {:mvn/version "1.0.0" :exclusions [cljsjs/react cljsjs/react-dom]}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         alandipert/storage-atom {:mvn/version "2.0.1"}
         com.bhauman/figwheel-main {:mvn/version "0.2.12"}
