@@ -82,7 +82,6 @@
                 {:eval (fn [{:keys [source name cache]
                              :as m}
                             cb]
-                         (js/console.log source)
                          (binding [*print-fn* #(swap! output conj %)]
                            (let [ast (babylon/parse source)
                                  polyfilled (hof/polyfillHofFromAst ast)]
@@ -469,57 +468,73 @@
         [:> Button {:on-click run} strings/RUN]
         [:> Button strings/STOP]]]]]))
 
-(defn reset-editors! [s editor instances options]
-  (doseq [i @instances]
-    (do (.clear (:widget i))
+(defn reset-editors! [s editor instances options operation]
+  (doseq [[tag i] @instances]
+    (do (when (:widget i) (.clear (:widget i)))
         (.clear (:range i))))
-  (reset! instances [])
+  (reset! instances {})
   (when (and @(:show-editors options) @editor)
     (let [prog (indexing-push-back-reader s)
           eof (atom nil)]
       (try
-        (loop []
+        (loop [tag 0]
           (let [form (read {:eof eof} prog)]
             (when-not (identical? form eof)
-              ((fn rec [form]
+              ((fn rec [form tag]
                  (let [info (meta form)]
-                   (when (= (:tag info) 'editor)
-                     (let [element (.createElement js/document "div")
-                           hider (.createElement js/document "span")]
-                       (d/render [:> Button "Test!"] element)
-                       (d/render [:> Button "..."] hider)
+                   (condp = (:tag info)
+                     'editor
+                     (let [hider (.createElement js/document "span")]
+                       (d/render
+                        [:> Button
+                         {:size "sm"
+                          :style {:padding 0
+                                  :font-size "0.8em"}
+                          :on-click
+                          #(swap! instances update tag
+                                  (fn [old]
+                                    (if (= (:widget old) nil)
+                                      (let [element
+                                            (.createElement js/document "div")]
+                                        (d/render [:> Button "Test!"] element)
+                                        (assoc old :widget
+                                               (-> @editor
+                                                   (.getDoc)
+                                                   (.addLineWidget
+                                                    (dec (:line info))
+                                                    element
+                                                    false))))
+                                      (do (.clear (:widget old))
+                                          (assoc old :widget nil)))))}
+                         "..."]
+                        hider)
                        (swap! instances conj
-                              {:range
-                               (-> @editor
-                                   (.getDoc)
-                                   (.markText
-                                    #js {:line (dec (:line info)),
-                                         :ch (dec (:column info))}
-                                    #js {:line (dec (:end-line info)),
-                                         :ch (dec (:end-column info))}
-                                    #js {:collapsed true
-                                         :replacedWith hider}))
-                               :widget
-                               (-> @editor
-                                   (.getDoc)
-                                   (.addLineWidget
-                                    (dec (:line info))
-                                    element
-                                    false))})))
+                              {tag
+                               {:range
+                                (-> @editor
+                                    (.getDoc)
+                                    (.markText
+                                     #js {:line (dec (:line info)),
+                                          :ch (dec (:column info))}
+                                     #js {:line (dec (:end-line info)),
+                                          :ch (dec (:end-column info))}
+                                     #js {:collapsed true
+                                          :replacedWith hider}))
+                                :widget nil}}))
+                     nil)
                    (doseq [e form]
                      (when (coll? e)
-                       (rec e)))))
-               form)
-              (recur))))
+                       (rec e (inc tag))))))
+               form tag)
+              (recur (inc tag)))))
         (catch js/Error e
-          ;;(js/console.log e)
           "TODO LOG")))))
 
 (defn editor-view [{:keys [menu input options file-changed current-file]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
-        editors (atom [])
+        editors (atom {})
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
@@ -545,10 +560,10 @@
                   :showCursorWhenSelecting true
                   :lineWrapping @(:line-wrapping options)
                   :lineNumbers @(:line-numbers options)}
-        :onChange #(let []
-                     (reset! file-changed true)
-                     (reset! input %3)
-                     (reset-editors! %3 edit editors options))
+        :onChange (fn [this operation value]
+                    (reset! file-changed true)
+                    (reset! input value)
+                    (reset-editors! value edit editors options operation))
         :editorDidMount #(do
                            (let [fc @file-changed]
                              (-> % .getDoc (.setValue @input))
@@ -556,7 +571,7 @@
                            (reset! edit %)
                            (when editor-ref
                              (reset! editor-ref %))
-                           (reset-editors! @input edit editors options))}])))
+                           (reset-editors! @input edit editors options nil))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
