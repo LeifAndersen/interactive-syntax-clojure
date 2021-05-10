@@ -478,57 +478,67 @@
           eof (atom nil)]
       (try
         (loop [tag 0]
-          (let [form (read {:eof eof} prog)]
+          (let [form (try (read {:eof eof} prog)
+                          (catch js/Error e
+                            (ex-info (.-message e)
+                                     {:line (.-lineNumber e)
+                                      :char (.-columnNumber e)
+                                      :name (.-name e)
+                                      :file (.-fileName e)}
+                                     :read-error)))]
             (when-not (identical? form eof)
-              ((fn rec [form tag]
-                 (let [info (meta form)]
-                   (condp = (:tag info)
-                     'editor
-                     (let [hider (.createElement js/document "span")]
-                       (d/render
-                        [:> Button
-                         {:size "sm"
-                          :style {:padding 0
-                                  :font-size "0.8em"}
-                          :on-click
-                          #(swap! instances update tag
-                                  (fn [old]
-                                    (if (= (:widget old) nil)
-                                      (let [element
-                                            (.createElement js/document "div")]
-                                        (d/render [:> Button "Test!"] element)
-                                        (assoc old :widget
-                                               (-> @editor
-                                                   (.getDoc)
-                                                   (.addLineWidget
-                                                    (dec (:line info))
-                                                    element
-                                                    false))))
-                                      (do (.clear (:widget old))
-                                          (assoc old :widget nil)))))}
-                         "..."]
-                        hider)
-                       (swap! instances conj
-                              {tag
-                               {:range
-                                (-> @editor
-                                    (.getDoc)
-                                    (.markText
-                                     #js {:line (dec (:line info)),
-                                          :ch (dec (:column info))}
-                                     #js {:line (dec (:end-line info)),
-                                          :ch (dec (:end-column info))}
-                                     #js {:collapsed true
-                                          :replacedWith hider}))
-                                :widget nil}}))
-                     nil)
-                   (doseq [e form]
-                     (when (coll? e)
-                       (rec e (inc tag))))))
-               form tag)
+              (when (coll? form)
+                ((fn rec [form tag]
+                   (let [info (meta form)]
+                     (condp = (:tag info)
+                       'editor
+                       (let [hider (.createElement js/document "span")]
+                         (d/render
+                          [:> Button
+                           {:size "sm"
+                            :style {:padding 0
+                                    :font-size "0.8em"}
+                            :on-click
+                            #(swap! instances update tag
+                                    (fn [old]
+                                      (if (= (:widget old) nil)
+                                        (let [element
+                                              (.createElement js/document "div")]
+                                          (d/render [:> Button "Test!"] element)
+                                          (assoc old :widget
+                                                 (-> @editor
+                                                     (.getDoc)
+                                                     (.addLineWidget
+                                                      (dec (:line info))
+                                                      element
+                                                      false))))
+                                        (do (.clear (:widget old))
+                                            (assoc old :widget nil)))))}
+                           "..."]
+                          hider)
+                         (swap! instances conj
+                                {tag
+                                 {:range
+                                  (-> @editor
+                                      (.getDoc)
+                                      (.markText
+                                       #js {:line (dec (:line info)),
+                                            :ch (dec (:column info))}
+                                       #js {:line (dec (:end-line info)),
+                                            :ch (dec (:end-column info))}
+                                       #js {:collapsed true
+                                            :replacedWith hider}))
+                                  :widget nil}}))
+                       nil)
+                     (doseq [e form]
+                       (when (coll? e)
+                         (rec e (inc tag))))))
+                 form tag))
               (recur (inc tag)))))
+        (catch ExceptionInfo e
+          (js/console.log e))
         (catch js/Error e
-          "TODO LOG")))))
+          (throw e))))))
 
 (defn editor-view [{:keys [menu input options file-changed current-file]
                     :as db}
