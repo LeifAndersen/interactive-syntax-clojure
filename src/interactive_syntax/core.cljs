@@ -59,79 +59,88 @@
 ;; -------------------------
 ;; Evaluator
 
-(defn eval-opts [runner print-fn]
+
+(defn ns->string [fs {:keys [name macros path]} cb]
+  (letfn  [(rec [extensions]
+             (if (empty? extensions)
+               (cb nil)
+               (let [file-path (str "/" path "." (first extensions))]
+                 (.readFile
+                  fs
+                  file-path
+                  (fn [err data]
+                    (if err
+                      (rec (rest extensions))
+                      (cb {:lang (if (= (first extensions)
+                                        "js")
+                                   :js
+                                   :clj)
+                           :source (.toString data)
+                           :file file-path})))))))]
+    (rec (if macros
+           ["clj" "cljc"]
+           ["cljs" "cljc" "js"]))))
+
+(defn eval-opts [fs runner print-fn]
   {:eval (fn [{:keys [source name cache]} cb]
            (binding [*print-fn* print-fn]
              (let [ast (babylon/parse source)
                    polyfilled (hof/polyfillHofFromAst ast)]
                (.evalAsyncFromAst runner polyfilled cb))))
-   :load (fn [{:keys [name macros path]} cb]
-           (letfn  [(rec [extensions]
-                      (if (empty? extensions)
-                        (cb nil)
-                        (let [file-path (str "/" path "." (first extensions))]
-                          (fs.readFile
-                           file-path
-                           (fn [err data]
-                             (if err
-                               (rec (rest extensions))
-                               (cb {:lang (if (= (first extensions)
-                                                 "js")
-                                            :js
-                                            :clj)
-                                    :source (.toString data)
-                                    :file file-path})))))))]
-             (rec (if macros
-                    ["clj" "cljc"]
-                    ["cljs" "cljc" "js"]))))
+   :load (partial ns->string fs)
    :source-map true})
 
 (defn eval-str [src
                 {:keys [env
+                        fs
                         loaded
                         file-name
-                        runner-fn
                         print-fn]}
                 cb]
   (let [old-loaded @*loaded*
         runner (js/stopify.stopifyLocally "")
         globs (cond
-                (fn? env) (env runner)
-                env env
+                (fn? env) (clj->js (env runner))
+                env (clj->js env)
                 :else #js {})
         loaded (or loaded #{})
         file-name (or file-name strings/UNTITLED)
-        print-fn (or print-fn #())
-        runner-fn (or runner-fn #())]
+        print-fn (or print-fn #())]
     (try
       (reset! *loaded* loaded)
       (set! runner.g globs)
-      (.run runner runner-fn)
+      (.run runner #())
       (cljs/eval-str (empty-state)
                      src
                      file-name
-                     (eval-opts runner print-fn)
+                     (eval-opts fs runner print-fn)
                      cb)
+      runner
       (finally (reset! *loaded* old-loaded)))))
+
+(defn sandbox-env [runner]
+  {:cljs js/cljs
+   :goog {:provide (partial fakegoog/prov runner)
+          :require (partial fakegoog/req runner)}
+   :console js/console
+   :$stopifyArray js/stopifyArray})
 
 (defn eval-buffer [{:keys [input
                            output
-                           file-name]
+                           file-name
+                           fs]
                     :as db}
                    & [callback]]
   (let [cb (or callback
                #(print-res db %))]
-    (eval-str @input
-              {:env (fn [runner]
-                      #js {:cljs js/cljs
-                           :goog #js {:provide (partial fakegoog/prov runner)
-                                      :require (partial fakegoog/req runner)}
-                           :console js/console
-                           :$stopifyArray js/stopifyArray})
-               :file-name file-name
-               :print-fn #(swap! output conj %)
-               :runner-fn #(reset! (:runner db) %)}
-              cb)))
+    (reset!
+     (:runner db)
+     (eval-str @input
+               {:env sandbox-env
+                :fs fs
+                :file-name file-name
+                :print-fn #(swap! output conj %)}
+               cb))))
 
 ;; -------------------------
 ;; File Dialogs
@@ -493,10 +502,26 @@
         [:> Button {:on-click run} strings/RUN]
         [:> Button strings/STOP]]]]]))
 
-(defn mk-editor [data stx]
-  [:> Button "Test"])
+(defn mk-editor [{:keys [binding]
+                  :as data}
+                 stx fs cb]
+  (cond
+    (coll? binding)
+    (ns->string
+     fs (:ns binding)
+     (fn [src]
+       (let [src (if src (:source src) "(+ 1 2)") ;; TODO, better default...
+             runner (eval-str src
+                              {:env #(conj (sandbox-env %)
+                                           {:reagent.core js/reagent.core
+                                            :reagent.dom js/reagent.dom})
+                               :loaded #{'reagent.core 'reagent.dom}
+                               :fs fs}
+                              #())]
+         (cb [:> Button "Test"]))))
+    :else (throw "TODO")))
 
-(defn reset-editors! [s editor instances options operation]
+(defn reset-editors! [s editor instances options operation fs]
   (doseq [[tag i] @instances]
     (do (when (:widget i) (.clear (:widget i)))
         (.clear (:range i))))
@@ -528,11 +553,13 @@
                                     :font-size "0.8em"}
                             :on-click
                             #(swap! instances update tag
-                                    (fn [old]
+                                    (fn [old] ; Note, probably not safe?
                                       (if (= (:widget old) nil)
                                         (let [element
                                               (.createElement js/document "div")]
-                                          (d/render (mk-editor info form) element)
+                                          (mk-editor info form fs
+                                                     (fn [v]
+                                                       (d/render v element)))
                                           (assoc old :widget
                                                  (-> @editor
                                                      (.getDoc)
@@ -568,7 +595,7 @@
         (catch js/Error e
           (throw e))))))
 
-(defn editor-view [{:keys [menu input options file-changed current-file]
+(defn editor-view [{:keys [menu input options file-changed current-file fs]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
@@ -601,7 +628,7 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (reset-editors! value edit editors options operation))
+                    (reset-editors! value edit editors options operation fs))
         :editorDidMount #(do
                            (let [fc @file-changed]
                              (-> % .getDoc (.setValue @input))
@@ -609,7 +636,7 @@
                            (reset! edit %)
                            (when editor-ref
                              (reset! editor-ref %))
-                           (reset-editors! @input edit editors options nil))}])))
+                           (reset-editors! @input edit editors options nil fs))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
