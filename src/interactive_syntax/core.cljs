@@ -95,28 +95,47 @@
                         fs
                         loaded
                         file-name
-                        print-fn]}
+                        print-fn
+                        runner]}
                 cb]
-  (let [old-loaded @*loaded*
-        runner (js/stopify.stopifyLocally "")
+  (let [resume (and runner true)
+        old-loaded @*loaded*
+        runner (or runner (js/stopify.stopifyLocally ""))
         globs (cond
                 (fn? env) (clj->js (env runner))
                 env (clj->js env)
-                :else #js {})
-        loaded (or loaded #{})
+                :else nil)
+        _ (js/console.log loaded)
+        loaded (cond
+                 (coll? loaded) (atom loaded)
+                 (= nil loaded) (atom #{})
+                 :else loaded)
+        _ (js/console.log loaded)
         file-name (or file-name strings/UNTITLED)
         print-fn (or print-fn #())]
     (try
-      (reset! *loaded* loaded)
-      (set! runner.g globs)
-      (.run runner #())
+      (reset! *loaded* @loaded)
+      (js/console.log "================")
+      (js/console.log *loaded*)
+      (js/console.log globs)
+      (js/console.log src)
+      (js/console.log "================")
+      (when globs
+        (set! runner.g globs))
+      (when-not resume
+        (.run runner #()))
       (cljs/eval-str (empty-state)
                      src
                      file-name
                      (eval-opts fs runner print-fn)
-                     cb)
-      runner
-      (finally (reset! *loaded* old-loaded)))))
+                     (fn [res]
+                       (swap! loaded into @*loaded*)
+                       (reset! *loaded* old-loaded)
+                       (cb res)))
+      {:runner runner
+       :loaded loaded}
+      (catch :default e
+        (reset! *loaded* old-loaded)))))
 
 (defn sandbox-env [runner]
   {:cljs js/cljs
@@ -132,15 +151,14 @@
                     :as db}
                    & [callback]]
   (let [cb (or callback
-               #(print-res db %))]
-    (reset!
-     (:runner db)
-     (eval-str @input
-               {:env sandbox-env
-                :fs fs
-                :file-name file-name
-                :print-fn #(swap! output conj %)}
-               cb))))
+               #(print-res db %))
+        {:keys [runner loaded]} (eval-str @input
+                                          {:env sandbox-env
+                                           :fs fs
+                                           :file-name file-name
+                                           :print-fn #(swap! output conj %)}
+                                          cb)]
+    (reset! (:runner db) runner)))
 
 ;; -------------------------
 ;; File Dialogs
@@ -502,23 +520,31 @@
         [:> Button {:on-click run} strings/RUN]
         [:> Button strings/STOP]]]]]))
 
-(defn mk-editor [{:keys [binding]
+(defn mk-editor [{:keys [component]
                   :as data}
-                 stx fs cb]
+                 stx runner loaded fs cb]
   (cond
-    (coll? binding)
+    (map? component)
     (ns->string
-     fs (:ns binding)
+     fs (:ns component)
      (fn [src]
-       (let [src (if src (:source src) "(+ 1 2)") ;; TODO, better default...
-             runner (eval-str src
-                              {:env #(conj (sandbox-env %)
-                                           {:reagent.core js/reagent.core
-                                            :reagent.dom js/reagent.dom})
-                               :loaded #{'reagent.core 'reagent.dom}
-                               :fs fs}
-                              #())]
-         (cb [:> Button "Test"]))))
+       (let [src (if src (:source src) "")
+             ret (eval-str src
+                           {:runner runner
+                            :loaded @loaded
+                            :fs fs}
+                           #(cb [:> Button "Test"]))]
+         (reset! loaded (:loaded ret)))))
+    (vector? component)
+    (eval-str (str component)
+              {:runner runner
+               :loaded loaded
+               :fs fs}
+              (fn [ret]
+                (cb
+                 (cond
+                   (:value ret) (get-in ret [:value :value])
+                   :else ret))))
     :else (throw "TODO")))
 
 (defn reset-editors! [s editor instances options operation fs]
@@ -528,7 +554,20 @@
   (reset! instances {})
   (when (and @(:show-editors options) @editor)
     (let [prog (indexing-push-back-reader s)
-          eof (atom nil)]
+          eof (atom nil)
+          {:keys [runner loaded]}
+          (eval-str
+           ""
+           {:env #(conj (sandbox-env %)
+                        {:reagent.core js/reagent.core
+                         :reagent.dom js/reagent.dom
+                         :react_bootstrap
+                         js/interactive_syntax.core.node$module$react_bootstrap})
+            :loaded #{'reagent.core 'reagent.dom
+                      'react-bootstrap}
+            :fs fs}
+           #())
+          loaded (atom loaded)]
       (try
         (loop [tag 0]
           (let [form (try (read {:eof eof} prog)
@@ -557,7 +596,7 @@
                                       (if (= (:widget old) nil)
                                         (let [element
                                               (.createElement js/document "div")]
-                                          (mk-editor info form fs
+                                          (mk-editor info form runner loaded fs
                                                      (fn [v]
                                                        (d/render v element)))
                                           (assoc old :widget
