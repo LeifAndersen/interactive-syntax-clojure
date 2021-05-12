@@ -536,7 +536,7 @@
               (fn [ret]
                 (cb
                  (cond
-                   (:value ret) (get-in ret [:value :value])
+                   (:value ret) (.-value (:value ret))
                    :else ret))))
     :else (throw "TODO")))
 
@@ -556,11 +556,9 @@
                          :reagent.dom js/reagent.dom
                          :react_bootstrap
                          js/interactive_syntax.core.node$module$react_bootstrap})
-            :loaded #{'reagent.core 'reagent.dom
-                      'react-bootstrap}
+            :loaded #{'reagent.core 'reagent.dom}
             :fs fs}
-           #())
-          loaded (atom loaded)]
+           #())]
       (try
         (loop [tag 0]
           (let [form (try (read {:eof eof} prog)
