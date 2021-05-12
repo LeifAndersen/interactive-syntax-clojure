@@ -105,21 +105,14 @@
                 (fn? env) (clj->js (env runner))
                 env (clj->js env)
                 :else nil)
-        _ (js/console.log loaded)
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
                  :else loaded)
-        _ (js/console.log loaded)
         file-name (or file-name strings/UNTITLED)
         print-fn (or print-fn #())]
     (try
       (reset! *loaded* @loaded)
-      (js/console.log "================")
-      (js/console.log *loaded*)
-      (js/console.log globs)
-      (js/console.log src)
-      (js/console.log "================")
       (when globs
         (set! runner.g globs))
       (when-not resume
