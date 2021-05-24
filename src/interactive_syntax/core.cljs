@@ -56,9 +56,38 @@
       (when (get-in res [:value :value])
         (println (get-in res [:value :value]))))))
 
+
+;; -------------------------
+;; Package Manager
+
+;; XXX There is a 100% chance of some injection attack here.
+(defn get-package [{:keys [url name version]} cb]
+  (let [req (js/XMLHttpRequest.)
+        url (or url (str "https://unpkg.com/" name))]
+    (.addEventListener req "load" #(-> % .-target .-responseText cb))
+    (.open req "GET" url)
+    (.send req)))
+
+(defn setup-packages [db force-update]
+  nil)
+
 ;; -------------------------
 ;; Evaluator
 
+(defn sandbox-env [runner]
+  {:cljs js/cljs
+   :goog {:provide (partial fakegoog/prov runner)
+          :require (partial fakegoog/req runner)}
+   :console js/console
+   :navigator js/navigator
+   :document js/document
+   :window js/window
+   :String js/String
+   :Object js/Object
+   :Function js/Function
+   :Array js/Array
+   :Math js/Math
+   :$stopifyArray js/stopifyArray})
 
 (defn ns->string [fs {:keys [name macros path]} cb]
   (letfn  [(rec [extensions]
@@ -81,12 +110,14 @@
            ["clj" "cljc"]
            ["cljs" "cljc" "js"]))))
 
-(defn eval-opts [fs runner print-fn]
-  {:eval (fn [{:keys [source name cache]} cb]
-           (binding [*print-fn* print-fn]
-             (let [ast (babylon/parse source)
-                   polyfilled (hof/polyfillHofFromAst ast)]
-               (.evalAsyncFromAst runner polyfilled cb))))
+(defn eval-opts [fs runner print-fn sandbox?]
+  {:eval (if sandbox?
+           (fn [{:keys [source name cache]} cb]
+             (binding [*print-fn* print-fn]
+               (let [ast (babylon/parse source)
+                     polyfilled (hof/polyfillHofFromAst ast)]
+                 (.evalAsyncFromAst runner polyfilled cb))))
+           cljs.js/js-eval)
    :load (partial ns->string fs)
    :source-map true})
 
@@ -94,48 +125,44 @@
                 {:keys [env
                         fs
                         loaded
+                        lang
                         file-name
                         print-fn
-                        runner]}
+                        runner
+                        sandbox]}
                 cb]
   (let [resume (and runner true)
+        sandbox (if (nil? sandbox) true sandbox)
         old-loaded @*loaded*
         runner (or runner (js/stopify.stopifyLocally ""))
-        globs (cond
-                (fn? env) (clj->js (env runner))
-                env (clj->js env)
-                :else nil)
+        globs (clj->js (cond
+                         (fn? env) (env runner)
+                         env env
+                         :else (sandbox-env runner)))
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
                  :else loaded)
         file-name (or file-name strings/UNTITLED)
-        print-fn (or print-fn #())]
+        print-fn (or print-fn #())
+        opts (eval-opts fs runner print-fn sandbox)
+        lang (or lang :clj)
+        cb (fn [res]
+             (swap! loaded into @*loaded*)
+             (reset! *loaded* old-loaded)
+             (cb res))]
+    (when-not resume
+      (set! runner.g globs)
+      (.run runner #()))
     (try
       (reset! *loaded* @loaded)
-      (when globs
-        (set! runner.g globs))
-      (when-not resume
-        (.run runner #()))
-      (cljs/eval-str (empty-state)
-                     src
-                     file-name
-                     (eval-opts fs runner print-fn)
-                     (fn [res]
-                       (swap! loaded into @*loaded*)
-                       (reset! *loaded* old-loaded)
-                       (cb res)))
+      (condp = lang
+        :clj (cljs/eval-str (empty-state) src file-name opts cb)
+        :js ((:eval opts) {:source src :name file-name} cb))
       {:runner runner
        :loaded loaded}
       (catch :default e
         (reset! *loaded* old-loaded)))))
-
-(defn sandbox-env [runner]
-  {:cljs js/cljs
-   :goog {:provide (partial fakegoog/prov runner)
-          :require (partial fakegoog/req runner)}
-   :console js/console
-   :$stopifyArray js/stopifyArray})
 
 (defn eval-buffer [{:keys [input
                            output

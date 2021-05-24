@@ -87,6 +87,18 @@
                                   ::enable-drag-and-drop
                                   ::show-editors]))
 
+(s/def ::name string?)
+(s/def ::version string?)
+(s/def ::url string?)
+(s/def ::sandbox boolean?)
+(s/def ::code string?)
+(s/def ::dependency (s/keys :req-un [::sandbox]
+                            :opt-un [::name
+                                     ::version
+                                     ::url
+                                     ::code]))
+(s/def ::dependencies (s/+ ::dependency))
+
 (s/def ::input string?)
 (s/def ::output string?)
 (s/def ::runner any?)
@@ -102,7 +114,12 @@
 
 (s/def ::fs any?)
 
-(s/def ::database (s/keys :req-un [::fs ::buffers ::current ::options ::menu]))
+(s/def ::database (s/keys :req-un [::fs
+                                   ::buffers
+                                   ::current
+                                   ::options
+                                   ::dependencies
+                                   ::menu]))
 
 (defn current-buffer [{:keys [buffers current]
                        :as db}]
@@ -140,6 +157,7 @@
                :options default-options
                :current 0
                :buffers [default-buffer]
+               :dependencies []
                :menu [:home]}
          db (atom base)
          backed-db (case mode
@@ -166,5 +184,6 @@
       :output (->DBAtom backed-db [:current :output])
       :current-folder (->DBAtom backed-db [:current :folder])
       :current-file (->DBAtom backed-db [:current :file])
+      :dependencies (->DBAtom backed-db [:dependencies])
       :file-changed (->DBAtom backed-db [:current :changed?])})))
 
