@@ -30,17 +30,21 @@ const config = {
         // See: https://github.com/jvilk/BrowserFS/issues/201
         noParse: /browserfs\.js/,
     },
-    node: {
-        // For stopify
-        'fs': 'empty',
-        'child_process': 'empty',
-        'net': 'empty',
-        'module': 'empty',
-        // For BrowserFS
-        process: false,
-        Buffer: false
-    },
     resolve: {
+        fallback: {
+            // For stopify
+            fs: false,
+            child_process: false,
+            net: false,
+            module: false,
+            // For BrowserFS
+            process: false,
+            Buffer: false,
+            // For node polyfills
+            tty: require.resolve("tty-browserify"),
+            net: false,
+            stream:require.resolve("stream-browserify")
+        },
         // For BrowserFS
         // Use our versions of Node modules.
         alias: {

@@ -5,10 +5,10 @@
 {:main interactive-syntax.core-test ;interactive-syntax.dev
  ;;:deps-command "npm"
  :bundle-cmd
- {:none ["npx" "webpack" "--mode=development" "src/js/bundle.js" :output-to
+ {:none ["npx" "webpack" "--mode=development" "./src/js/bundle.js" :output-to
          "--output-path" :final-output-dir
          "--output-filename" :final-output-filename]
-  :default ["npx" "webpack" "--mode=production" "src/js/bundle.js" :output-to
+  :default ["npx" "webpack" "--mode=production" "./src/js/bundle.js" :output-to
             "--output-path" :final-output-dir
             "--output-filename" :final-output-filename]}}
 

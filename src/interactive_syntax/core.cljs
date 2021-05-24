@@ -24,6 +24,7 @@
      [react-hotkeys :refer [GlobalHotKeys]]
      [codemirror]
      [react-codemirror2 :as cm]
+     [crypto-browserify]
      ["codemirror/mode/clojure/clojure"]
      ["codemirror/keymap/vim"]
      ["codemirror/keymap/emacs"]
@@ -185,7 +186,7 @@
 
 (defn file-description [fs filepath]
   (let [stats (fs.statSync filepath)]
-    (cond-> {:id (-> js/nodeCrypto
+    (cond-> {:id (-> crypto-browserify
                      (.createHash "sha1")
                      (.update filepath)
                      (.digest "base64"))
@@ -771,5 +772,6 @@
    (.getElementById js/document "app")))
 
 (defn init! []
+  (js/console.log crypto-browserify)
   (mount-root))
 

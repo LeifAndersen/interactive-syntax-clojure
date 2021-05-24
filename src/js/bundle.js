@@ -4,7 +4,6 @@ import 'codemirror/theme/neat.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../css/site.css';
 
-window.nodeCrypto = require('crypto');
 window.path = require('path');
 
 // Horrible hack because stopify insists on being in the global namespace.
