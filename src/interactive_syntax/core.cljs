@@ -22,6 +22,7 @@
                               Dropdown DropdownButton Tabs Tab
                               Row Col Form Container Modal]]
      [react-hotkeys :refer [GlobalHotKeys]]
+
      [codemirror]
      [react-codemirror2 :as cm]
      [crypto-browserify]
@@ -34,6 +35,7 @@
      ["@babel/parser" :as babylon]
      ["@babel/template" :as babel-template]
      [browserfs]
+     [base64-js]
      [react-split-pane :refer [Pane]]
      [react-switch]
      [react-dnd :refer [DndProvider]]
@@ -71,6 +73,13 @@
 
 (defn setup-packages [db force-update]
   nil)
+
+(defn module->uri [module]
+  (str "data:text/javascript;base64,"
+       (.fromByteArray base64-js
+                       (-> module
+                           (.split "")
+                           (.map #(.charCodeAt % 0))))))
 
 ;; -------------------------
 ;; Evaluator
@@ -772,6 +781,5 @@
    (.getElementById js/document "app")))
 
 (defn init! []
-  (js/console.log crypto-browserify)
   (mount-root))
 

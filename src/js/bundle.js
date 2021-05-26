@@ -6,6 +6,10 @@ import '../css/site.css';
 
 window.path = require('path');
 
+// Puts System into global namespace
+import 'systemjs';
+import 'systemjs/dist/extras/amd';
+
 // Horrible hack because stopify insists on being in the global namespace.
 window.stopify = require('@stopify/stopify');
 window.stopifyArray = function(array) {

@@ -37,6 +37,7 @@
     "@cljs-oss/module-deps": "^1.1.1",
     "@stopify/higher-order-functions": "^0.7.3",
     "@stopify/stopify": "^0.7.2",
+    "base64-js": "^1.5.1",
     "bootstrap": "^5.0.1",
     "browserfs": "^1.4.3",
     "chonky": "^2.1.0",
@@ -58,6 +59,7 @@
     "react-tabtab": "^2.0.0",
     "stream-browserify": "^2.0.2",
     "styled-components": "^4.4.1",
+    "systemjs": "^6.9.0",
     "tty-browserify": "*"
   }
 }
