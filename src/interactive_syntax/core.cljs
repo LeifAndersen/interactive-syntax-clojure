@@ -20,7 +20,8 @@
      [alandipert.storage-atom :as storage]
      [react-bootstrap :refer [Button ButtonGroup SplitButton
                               Dropdown DropdownButton Tabs Tab
-                              Row Col Form Container Modal]]
+                              Row Col Form Container Modal
+                              Table]]
      [react-hotkeys :refer [GlobalHotKeys]]
 
      [codemirror]
@@ -64,15 +65,24 @@
 ;; Package Manager
 
 ;; XXX There is a 100% chance of some injection attack here.
-(defn get-package [{:keys [url name version]} cb]
+(defn get-pkg [{:keys [url name version]} cb]
   (let [req (js/XMLHttpRequest.)
         url (or url (str "https://unpkg.com/" name))]
     (.addEventListener req "load" #(-> % .-target .-responseText cb))
     (.open req "GET" url)
     (.send req)))
 
-(defn setup-packages [db force-update]
-  nil)
+(defn setup-deps [{:keys [deps]} force-update]
+  (letfn  [(rec [acc packages]
+             (if (empty? packages)
+               (reset! deps acc)
+               (let [[[key {:keys [source] :as package}] & remaining] packages]
+                 (if (or force-update (not source))
+                   (get-pkg package #(rec
+                                      (assoc acc key (assoc package :source %))
+                                      remaining))
+                   (rec (conj acc package) remaining)))))]
+    (rec {} @deps)))
 
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
@@ -80,6 +90,57 @@
                        (-> module
                            (.split "")
                            (.map #(.charCodeAt % 0))))))
+
+(defn deps-dialog [{:keys [deps menu] :as db}]
+  (let [new-deps (atom @deps)]
+    (fn [{:keys [deps menu] :as db}]
+      [:> Modal {:show (= (peek @menu) :deps)
+                 :size "xl"
+                 :on-hide (fn []
+                            (swap! menu pop)
+                            (reset! new-deps @deps))}
+       [:> Modal.Header {:close-button true}
+        [:h3 strings/DEPENDENCIES]]
+       [:> Modal.Body
+        [:> Form {:onSubmit #(do (.preventDefault %)
+                                 (.stopPropagation %))}
+         [:> Table {:striped true
+                    :bordered true
+                    :hover true
+                    :responsive true
+                    :size "sm"}
+          [:thead
+           [:tr
+            [:th strings/NAME]
+            [:th (str strings/VERSION " " strings/OPTIONAL)]
+            [:th (str strings/URL " " strings/OPTIONAL)]]]
+          [:tbody
+           (for [[key package] @new-deps]
+             (let [on-change (fn [prop]
+                               #(let [value (-> % .-target .-value)]
+                                  (swap! new-deps assoc-in [key prop] value)))]
+               [:tr {:key key}
+                [:td [:> Form.Control {:on-change (on-change :name)
+                                       :value (:name package)}]]
+                [:td [:> Form.Control {:on-change (on-change :version)
+                                       :value (:version package)}]]
+                [:td [:> Form.Control {:on-change (on-change :url)
+                                       :value (:url package)}]]
+                [:td [:> Button {:variant "danger"
+                                 :on-click #(swap! new-deps dissoc key)}
+                      "-"]]]))]]
+         [:> Row {:class-name "align-items-center flex-nowrap"
+                  :style {:margin-left 0
+                          :margin-right 0}}
+          [:> Col {:xs "auto"}
+           [:> Button {:on-click #(swap! new-deps assoc (js/Date.now) {})}
+            strings/NEW]]
+          [:> Col {:xs "auto"}
+           [:> Button {:on-click (fn []
+                                   (reset! deps @new-deps)
+                                   (setup-deps db true)
+                                   (swap! menu pop))}
+            strings/UPDATE]]]]]])))
 
 ;; -------------------------
 ;; Evaluator
@@ -486,6 +547,7 @@
                     #(swap! menu conj [:confirm-save :load])
                     #(swap! menu conj :load))
         options #(swap! menu conj :options)
+        deps #(swap! menu conj :deps)
         file-name (str (if @current-file
                          (js/path.join @current-folder @current-file)
                          strings/UNTITLED)
@@ -511,6 +573,7 @@
          [:> Dropdown.Item {:on-click load-file} strings/LOAD]
          [:> Dropdown.Item {:on-click options} strings/OPTIONS]
          [:> Dropdown.Item strings/NEW-PROJECT]
+         [:> Dropdown.Item {:on-click deps} strings/DEPENDENCIES]
          [:> Dropdown.Item strings/IMPORT-PROJECT]
          [:> Dropdown.Item strings/EXPORT-PROJECT]]]
        [:> Col
@@ -541,6 +604,7 @@
         [:> DropdownButton {:as ButtonGroup
                             :title strings/PROJECT}
          [:> Dropdown.Item strings/NEW-PROJECT]
+         [:> Dropdown.Item {:on-click deps} strings/DEPENDENCIES]
          [:> Dropdown.Item strings/IMPORT-PROJECT]
          [:> Dropdown.Item strings/EXPORT-PROJECT]]
         [:> Button {:on-click options} strings/OPTIONS]]
@@ -735,6 +799,7 @@
                   :keys [fs buffers]
                   :as db}
                  & [editor-ref repl-ref]]
+  (set! js/window.db db) ; <-- XXX For debugging, should remove
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
@@ -753,6 +818,7 @@
    [options-dialog db]
    [confirm-save-dialog db]
    [new-folder-dialog db]
+   [deps-dialog db]
    [:div {:style {:flex "0 1 auto"}}
     [button-row db]]
    (if (= (count @buffers) 1)

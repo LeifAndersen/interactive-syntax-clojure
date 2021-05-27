@@ -38,7 +38,7 @@
     "@stopify/higher-order-functions": "^0.7.3",
     "@stopify/stopify": "^0.7.2",
     "base64-js": "^1.5.1",
-    "bootstrap": "^5.0.1",
+    "bootstrap": "^4.6.0",
     "browserfs": "^1.4.3",
     "chonky": "^2.1.0",
     "chonky-icon-fontawesome": "^2.0.5",

@@ -1,6 +1,8 @@
 (ns interactive-syntax.strings)
 
 (def UNTITLED "UNTITLED.cljs")
+(def OPTIONAL "(Optional)")
+
 (def NEW "New")
 (def LOAD "Load")
 (def SAVE "Save")
@@ -16,6 +18,12 @@
 (def NEW-PROJECT "New Project")
 (def IMPORT-PROJECT "Import Project")
 (def EXPORT-PROJECT "Export Project")
+
+(def DEPENDENCIES "Dependencies")
+(def NAME "Name")
+(def VERSION "Version")
+(def URL "URL")
+(def UPDATE "Update")
 
 (def RUN "Run")
 (def STOP "Stop")
