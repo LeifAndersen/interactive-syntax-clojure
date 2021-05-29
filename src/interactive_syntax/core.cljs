@@ -23,7 +23,7 @@
                               Row Col Form Container Modal
                               Table]]
      [react-hotkeys :refer [GlobalHotKeys]]
-
+     [goog.object :as obj]
      [codemirror]
      [react-codemirror2 :as cm]
      [crypto-browserify]
@@ -64,25 +64,30 @@
 ;; -------------------------
 ;; Package Manager
 
-;; XXX There is a 100% chance of some injection attack here.
+;; Should do some other validation probably...
 (defn get-pkg [{:keys [url name version]} cb]
   (let [req (js/XMLHttpRequest.)
-        url (or url (str "https://unpkg.com/" name))]
+        sanatize-map {"@" "" "/" ""}
+        pkg-name (cond url ""
+                       version (str (string/escape name sanatize-map) "/"
+                                    (string/escape version sanatize-map))
+                       :else (string/escape name sanatize-map))
+        url (or url (str "https://unpkg.com/" pkg-name))]
     (.addEventListener req "load" #(-> % .-target .-responseText cb))
     (.open req "GET" url)
     (.send req)))
 
 (defn setup-deps [{:keys [deps]} force-update]
-  (letfn  [(rec [acc packages]
-             (if (empty? packages)
-               (reset! deps acc)
-               (let [[[key {:keys [source] :as package}] & remaining] packages]
-                 (if (or force-update (not source))
-                   (get-pkg package #(rec
-                                      (assoc acc key (assoc package :source %))
-                                      remaining))
-                   (rec (conj acc package) remaining)))))]
-    (rec {} @deps)))
+  ((fn rec [acc packages]
+     (if (empty? packages)
+       (reset! deps acc)
+       (let [[[key {:keys [source] :as package}] & remaining] packages]
+         (if (or force-update (not source))
+           (get-pkg package #(rec
+                              (assoc acc key (assoc package :source %))
+                              remaining))
+           (rec (conj acc package) remaining)))))
+   {} @deps))
 
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
@@ -90,6 +95,17 @@
                        (-> module
                            (.split "")
                            (.map #(.charCodeAt % 0))))))
+
+(defn deps->env [{:keys [dependencies] :as db} cb]
+  (let [system (new (obj/get js/System "constructor"))]
+    ((fn rec [deps-env deps]
+       (if (empty? deps)
+         (cb deps-env)
+         (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
+           (-> system (.import (module->uri source))
+               (.then #(rec (assoc deps-env name %) rest-deps))
+               (.catch #(js/console.log %))))))
+     {} dependencies)))
 
 (defn deps-dialog [{:keys [deps menu] :as db}]
   (let [new-deps (atom @deps)]
@@ -133,7 +149,9 @@
                   :style {:margin-left 0
                           :margin-right 0}}
           [:> Col {:xs "auto"}
-           [:> Button {:on-click #(swap! new-deps assoc (js/Date.now) {})}
+           [:> Button {:on-click #(swap! new-deps assoc (js/Date.now) {:name ""
+                                                                       :version ""
+                                                                       :url ""})}
             strings/NEW]]
           [:> Col {:xs "auto"}
            [:> Button {:on-click (fn []
@@ -161,25 +179,25 @@
    :$stopifyArray js/stopifyArray})
 
 (defn ns->string [fs {:keys [name macros path]} cb]
-  (letfn  [(rec [extensions]
-             (if (empty? extensions)
-               (cb nil)
-               (let [file-path (str "/" path "." (first extensions))]
-                 (.readFile
-                  fs
-                  file-path
-                  (fn [err data]
-                    (if err
-                      (rec (rest extensions))
-                      (cb {:lang (if (= (first extensions)
-                                        "js")
-                                   :js
-                                   :clj)
-                           :source (.toString data)
-                           :file file-path})))))))]
-    (rec (if macros
-           ["clj" "cljc"]
-           ["cljs" "cljc" "js"]))))
+  ((fn rec [extensions]
+     (if (empty? extensions)
+       (cb nil)
+       (let [file-path (str "/" path "." (first extensions))]
+         (.readFile
+          fs
+          file-path
+          (fn [err data]
+            (if err
+              (rec (rest extensions))
+              (cb {:lang (if (= (first extensions)
+                                "js")
+                           :js
+                           :clj)
+                   :source (.toString data)
+                   :file file-path})))))))
+   (if macros
+     ["clj" "cljc"]
+     ["cljs" "cljc" "js"])))
 
 (defn eval-opts [fs runner print-fn sandbox?]
   {:eval (if sandbox?
@@ -641,90 +659,97 @@
                    :else ret))))
     :else (throw "TODO")))
 
-(defn reset-editors! [s editor instances options operation fs]
+(defn reset-editors! [s editor instances operation
+                      {:keys [fs options deps] :as db}]
   (doseq [[tag i] @instances]
     (do (when (:widget i) (.clear (:widget i)))
         (.clear (:range i))))
   (reset! instances {})
-  (when (and @(:show-editors options) @editor)
-    (let [prog (indexing-push-back-reader s)
-          eof (atom nil)
-          {:keys [runner loaded]}
-          (eval-str
-           ""
-           {:env #(conj (sandbox-env %)
-                        {:reagent.core js/reagent.core
-                         :reagent.dom js/reagent.dom
-                         :react_bootstrap
-                         js/interactive_syntax.core.node$module$react_bootstrap})
-            :loaded #{'reagent.core 'reagent.dom}
-            :fs fs}
-           #())]
-      (try
-        (loop [tag 0]
-          (let [form (try (read {:eof eof} prog)
-                          (catch js/Error e
-                            (ex-info (.-message e)
-                                     {:line (.-lineNumber e)
-                                      :char (.-columnNumber e)
-                                      :name (.-name e)
-                                      :file (.-fileName e)}
-                                     :read-error)))]
-            (when-not (identical? form eof)
-              (when (coll? form)
-                ((fn rec [form tag]
-                   (let [info (meta form)]
-                     (condp = (:tag info)
-                       'editor
-                       (let [hider (.createElement js/document "span")]
-                         (d/render
-                          [:> Button
-                           {:size "sm"
-                            :style {:padding 0
-                                    :font-size "0.8em"}
-                            :on-click
-                            #(swap! instances update tag
-                                    (fn [old] ; Note, probably not safe?
-                                      (if (= (:widget old) nil)
-                                        (let [element
-                                              (.createElement js/document "div")]
-                                          (mk-editor info form runner loaded fs
-                                                     (fn [v]
-                                                       (d/render v element)))
-                                          (assoc old :widget
-                                                 (-> @editor
-                                                     (.getDoc)
-                                                     (.addLineWidget
-                                                      (dec (:line info))
-                                                      element
-                                                      false))))
-                                        (do (.clear (:widget old))
-                                            (assoc old :widget nil)))))}
-                           "..."]
-                          hider)
-                         (swap! instances conj
-                                {tag
-                                 {:range
-                                  (-> @editor
-                                      (.getDoc)
-                                      (.markText
-                                       #js {:line (dec (:line info)),
-                                            :ch (dec (:column info))}
-                                       #js {:line (dec (:end-line info)),
-                                            :ch (dec (:end-column info))}
-                                       #js {:collapsed true
-                                            :replacedWith hider}))
-                                  :widget nil}}))
-                       nil)
-                     (doseq [e form]
-                       (when (coll? e)
-                         (rec e (inc tag))))))
-                 form tag))
-              (recur (inc tag)))))
-        (catch ExceptionInfo e
-          (js/console.log e))
-        (catch js/Error e
-          (throw e))))))
+  (deps->env
+   db
+   (fn [deps-env]
+     (when (and @(:show-editors options) @editor)
+       (let [prog (indexing-push-back-reader s)
+             eof (atom nil)
+             {:keys [runner loaded]}
+             (eval-str
+              ""
+              {:env #(conj
+                      (sandbox-env %)
+                      deps-env
+                      {:reagent.core js/reagent.core
+                       :reagent.dom js/reagent.dom
+                       :react_bootstrap
+                       js/interactive_syntax.core.node$module$react_bootstrap})
+               :loaded #{'reagent.core 'reagent.dom}
+               :fs fs}
+              #())]
+         (try
+           (loop [tag 0]
+             (let [form (try (read {:eof eof} prog)
+                             (catch js/Error e
+                               (ex-info (.-message e)
+                                        {:line (.-lineNumber e)
+                                         :char (.-columnNumber e)
+                                         :name (.-name e)
+                                         :file (.-fileName e)}
+                                        :read-error)))]
+               (when-not (identical? form eof)
+                 (when (coll? form)
+                   ((fn rec [form tag]
+                      (let [info (meta form)]
+                        (condp = (:tag info)
+                          'editor
+                          (let [hider (.createElement js/document "span")]
+                            (d/render
+                             [:> Button
+                              {:size "sm"
+                               :style {:padding 0
+                                       :font-size "0.8em"}
+                               :on-click
+                               #(swap!
+                                 instances update tag
+                                 (fn [old] ; Note, probably not safe?
+                                   (if (= (:widget old) nil)
+                                     (let [element
+                                           (.createElement js/document "div")]
+                                       (mk-editor info form runner loaded fs
+                                                  (fn [v]
+                                                    (d/render v element)))
+                                       (assoc old :widget
+                                              (-> @editor
+                                                  (.getDoc)
+                                                  (.addLineWidget
+                                                   (dec (:line info))
+                                                   element
+                                                   false))))
+                                     (do (.clear (:widget old))
+                                         (assoc old :widget nil)))))}
+                              "..."]
+                             hider)
+                            (swap! instances conj
+                                   {tag
+                                    {:range
+                                     (-> @editor
+                                         (.getDoc)
+                                         (.markText
+                                          #js {:line (dec (:line info)),
+                                               :ch (dec (:column info))}
+                                          #js {:line (dec (:end-line info)),
+                                               :ch (dec (:end-column info))}
+                                          #js {:collapsed true
+                                               :replacedWith hider}))
+                                     :widget nil}}))
+                          nil)
+                        (doseq [e form]
+                          (when (coll? e)
+                            (rec e (inc tag))))))
+                    form tag))
+                 (recur (inc tag)))))
+           (catch ExceptionInfo e
+             (js/console.log e))
+           (catch js/Error e
+             (throw e))))))))
 
 (defn editor-view [{:keys [menu input options file-changed current-file fs]
                     :as db}
@@ -759,7 +784,7 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (reset-editors! value edit editors options operation fs))
+                    (reset-editors! value edit editors operation db))
         :editorDidMount #(do
                            (let [fc @file-changed]
                              (-> % .getDoc (.setValue @input))
@@ -767,7 +792,7 @@
                            (reset! edit %)
                            (when editor-ref
                              (reset! editor-ref %))
-                           (reset-editors! @input edit editors options nil fs))}])))
+                           (reset-editors! @input edit editors nil db))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}

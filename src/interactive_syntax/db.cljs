@@ -96,7 +96,7 @@
                             :opt-un [::name
                                      ::version
                                      ::url
-                                     ::code]))
+                                     ::source]))
 (s/def ::deps (s/map-of number? ::dep))
 
 (s/def ::input string?)
