@@ -11,3 +11,4 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
     - run: nix-shell --run "clojure -M:package"
+    - run: nix-shell --run "clojure -M:test"

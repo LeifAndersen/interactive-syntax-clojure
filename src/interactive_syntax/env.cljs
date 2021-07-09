@@ -152,8 +152,12 @@
              (binding [*print-fn* print-fn]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
-                 (.evalAsyncFromAst runner polyfilled #(do (println %)
-                                                           (cb %))))))
+                 (.evalAsyncFromAst runner polyfilled
+                                    (fn [res]
+                                      (when-not (or (= (:type res) "normal")
+                                                    (= (:value res) nil))
+                                        (println res))
+                                      (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    :source-map true})

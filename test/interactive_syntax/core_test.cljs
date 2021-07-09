@@ -206,7 +206,7 @@
        :do #(-> @editor .getDoc (.setValue prog))
        :do #(click-run view)
        :set [:input] prog
-       :set [:output] #queue [err-msg]
+       :set [:output] #queue [err-msg "\n"]
        :set [:file-changed] true :check
        ))))
 
