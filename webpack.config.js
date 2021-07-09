@@ -43,7 +43,8 @@ const config = {
             // For node polyfills
             tty: require.resolve("tty-browserify"),
             stream: require.resolve("stream-browserify"),
-            assert: require.resolve("assert")
+            assert: require.resolve("assert"),
+            util: require.resolve("util")
         },
         // For BrowserFS
         // Use our versions of Node modules.

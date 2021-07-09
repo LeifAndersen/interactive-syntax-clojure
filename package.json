@@ -61,6 +61,7 @@
     "stream-browserify": "^2.0.2",
     "styled-components": "^4.4.1",
     "systemjs": "^6.9.0",
-    "tty-browserify": "*"
+    "tty-browserify": "*",
+    "util": "^0.11.1"
   }
 }
