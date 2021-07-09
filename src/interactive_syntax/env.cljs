@@ -10,6 +10,7 @@
                                            get-column-number]]
    [cljs.js :as cljs :refer [empty-state js-eval *loaded*]]
    [goog.object :as obj]
+   [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.fakegoog :as fakegoog]
    ["@stopify/higher-order-functions" :as hof]
@@ -72,24 +73,28 @@
                            (.split "")
                            (.map #(.charCodeAt % 0))))))
 
-(defn deps->env [{:keys [dependencies] :as db} cb]
-  (let [system (new (obj/get js/System "constructor"))]
-    ((fn rec [deps-env deps]
+(defn deps->env [{:keys [deps deps-env env] :as db} cb]
+  (let [system (new (.-constructor js/System))]
+    ((fn rec [denv deps]
        (if (empty? deps)
-         (cb deps-env)
+         (do
+           (reset! deps-env denv)
+           (reset! env nil)
+           (cb denv))
          (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
            (-> system (.import (module->uri source))
-               (.then #(rec (assoc deps-env name %) rest-deps))
+               (.then #(rec (assoc denv name %) rest-deps))
                (.catch #(js/console.log %))))))
-     {} dependencies)))
+     {} @deps)))
 
+(defn deps->env+caching [{:keys [deps-env] :as db} cb]
+  (let [denv @deps-env]
+    (if denv
+      (cb denv)
+      (deps->env db cb))))
 
 ;; -------------------------
 ;; Evaluator
-
-;; XXX
-(defn reagent-opts []
-  {:loaded nil})
 
 (defn sandbox-env [runner]
   {:cljs js/cljs
@@ -99,12 +104,26 @@
    :navigator js/navigator
    :document js/document
    :window js/window
+   :global runner
    :String js/String
    :Object js/Object
    :Function js/Function
    :Array js/Array
    :Math js/Math
    :$stopifyArray js/stopifyArray})
+
+(defn reagent-opts [opts db]
+  (conj opts
+        {:env #(conj
+                (sandbox-env %)
+                (:env opts)
+                {:visr {:core {:render (partial stdlib/render db)}}
+                 :reagent.core js/reagent.core
+                 :reagent.dom js/reagent.dom
+                 :react_bootstrap
+                  js/interactive_syntax.core.node$module$react_bootstrap})
+         :loaded (conj (into #{} (:loaded opts))
+                       'visr.core 'reagent.core 'reagent.dom)}))
 
 (defn ns->string [fs {:keys [name macros path]} cb]
   ((fn rec [extensions]
@@ -133,7 +152,8 @@
              (binding [*print-fn* print-fn]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
-                 (.evalAsyncFromAst runner polyfilled cb))))
+                 (.evalAsyncFromAst runner polyfilled #(do (println %)
+                                                           (cb %))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    :source-map true})
@@ -193,10 +213,12 @@
      (let [cb (or callback
                   #(print-res db %))
            {:keys [runner loaded]} (eval-str @input
-                                             {:env sandbox-env
-                                              :fs fs
-                                              :file-name file-name
-                                              :print-fn #(swap! output conj %)}
+                                             (reagent-opts
+                                              {:env deps-env
+                                               :fs fs
+                                               :file-name file-name
+                                               :print-fn #(swap! output conj %)}
+                                              db)
                                              cb)]
        (reset! (:runner db) runner)))))
 
@@ -228,30 +250,28 @@
     :else (throw "TODO")))
 
 (defn reset-editors! [s editor instances operation
-                      {:keys [fs options deps] :as db}]
+                      {:keys [fs options deps env] :as db}]
+  nil
   (doseq [[tag i] @instances]
     (do (when (:widget i) (.clear (:widget i)))
         (.clear (:range i))))
   (reset! instances {})
-  (deps->env
+  (deps->env+caching
    db
    (fn [deps-env]
      (when (and @(:show-editors options) @editor)
        (let [prog (indexing-push-back-reader s)
              eof (atom nil)
              {:keys [runner loaded]}
-             (eval-str
-              ""
-              {:env #(conj
-                      (sandbox-env %)
-                      deps-env
-                      {:reagent.core js/reagent.core
-                       :reagent.dom js/reagent.dom
-                       :react_bootstrap
-                       js/interactive_syntax.core.node$module$react_bootstrap})
-               :loaded #{'reagent.core 'reagent.dom}
-               :fs fs}
-              #())]
+             (if env
+               env
+               (let [cache (eval-str ""
+                                     (reagent-opts {:env deps-env
+                                                    :fs fs}
+                                                   db)
+                                     #())]
+                 (reset! env cache)
+                 cache))]
          (try
            (loop [tag 0]
              (let [form (try (read {:eof eof} prog)

@@ -39,7 +39,8 @@
 (def ^:private SplitPane (.-default react-split-pane))
 (def ^:private Switch (.-default react-switch))
 
-(defn deps-dialog [{:keys [deps menu] :as db}]
+(defn deps-dialog [{:keys [deps-env deps menu] :as db}]
+  (reset! deps-env nil)
   (let [new-deps (atom @deps)]
     (fn [{:keys [deps menu] :as db}]
       [:> Modal {:show (= (peek @menu) :deps)
@@ -501,20 +502,47 @@
 (defn result-view [{:keys [output options]
                     :as db}
                    & [repl-ref]]
-  (let [edit (atom nil)]
-    (fn []
+  (let [edit (atom nil)
+        instances (atom [])
+        watch-updater
+        (fn [k r o n]
+          (when (and @edit (not= o n))
+            (-> @edit .getDoc
+                (.setValue (string/join
+                            "\n" (filter string? n))))
+            (doseq [i @instances]
+              (.clear i))
+            (loop [line 0
+                   out n]
+               (let [[i & rest] out]
+                 (cond
+                   (string? i)
+                   (recur (+ line (-> i (.split #"\r\n|\r|\n") .-length)) rest),
+                   (vector? i)
+                   (let [element (.createElement js/document "div")]
+                     (d/render i element)
+                     (swap! instances conj
+                            (-> @edit
+                                (.getDoc)
+                                (.addLineWidget (dec line) element)))
+                     (recur (inc line) rest)))))))]
+    (add-watch output ::result-view watch-updater)
+    (fn [{:keys [output options]
+        :as db}
+       & [repl-ref]]
       (when (not= @edit nil)
         (set! (-> @edit .getWrapperElement .-style .-fontSize)
               (str @(:font-size options) "px"))
         (-> @edit .refresh))
-      [:> cm/Controlled
-       {:value (string/join "\n" @output)
+      [:> cm/UnControlled
+       {:value (string/join "\n" (filter string? @output))
         :options {:mode "clojure"
                   :theme @(:theme options)
                   :matchBrackets true
                   :showCursorWhenSelecting true
                   :lineWrapping @(:line-wrapping options)
-                  :lineNumbers false}
+                  :lineNumbers false
+                  :readOnly true}
         :editorDidMount #(do
                            (when repl-ref
                              (reset! repl-ref %))

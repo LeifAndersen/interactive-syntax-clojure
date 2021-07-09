@@ -181,9 +181,11 @@
       :buffers (->DBAtom backed-db [:buffers])
       :menu (->DBAtom backed-db [:menu])
       :input (->DBAtom backed-db [:current :input])
-      :output (->DBAtom backed-db [:current :output])
+      :output (atom "") ;;(->DBAtom backed-db [:current :output])
       :current-folder (->DBAtom backed-db [:current :folder])
       :current-file (->DBAtom backed-db [:current :file])
       :deps (->DBAtom backed-db [:deps])
+      :deps-env (atom nil)
+      :env (atom nil)
       :file-changed (->DBAtom backed-db [:current :changed?])})))
 
