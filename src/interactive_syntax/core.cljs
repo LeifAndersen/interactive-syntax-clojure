@@ -524,7 +524,7 @@
                      (swap! instances conj
                             (-> @edit
                                 (.getDoc)
-                                (.addLineWidget (dec line) element)))
+                                (.addLineWidget (max 0 (dec line)) element)))
                      (recur (inc line) rest)))))))]
     (add-watch output ::result-view watch-updater)
     (fn [{:keys [output options]

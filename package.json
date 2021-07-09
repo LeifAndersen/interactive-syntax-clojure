@@ -37,6 +37,7 @@
     "@cljs-oss/module-deps": "^1.1.1",
     "@stopify/higher-order-functions": "^0.7.3",
     "@stopify/stopify": "^0.7.2",
+    "assert": "^1.5.0",
     "base64-js": "^1.5.1",
     "bootstrap": "^4.6.0",
     "browserfs": "^1.4.3",

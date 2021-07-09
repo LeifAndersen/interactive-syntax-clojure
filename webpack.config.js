@@ -42,7 +42,8 @@ const config = {
             Buffer: false,
             // For node polyfills
             tty: require.resolve("tty-browserify"),
-            stream: require.resolve("stream-browserify")
+            stream: require.resolve("stream-browserify"),
+            assert: require.resolve("assert")
         },
         // For BrowserFS
         // Use our versions of Node modules.
