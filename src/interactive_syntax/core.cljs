@@ -89,6 +89,7 @@
           [:> Col {:xs "auto"}
            [:> Button {:on-click (fn []
                                    (reset! deps @new-deps)
+                                   (reset! deps-env nil)
                                    (env/setup-deps db true)
                                    (swap! menu pop))}
             strings/UPDATE]]]]]])))

@@ -75,17 +75,19 @@
 
 (defn deps->env [{:keys [deps deps-env env] :as db} cb]
   (let [system (new (.-constructor js/System))]
-    ((fn rec [denv deps]
+    ((fn rec [denv dloaded deps]
        (if (empty? deps)
          (do
-           (reset! deps-env denv)
+           (reset! deps-env {:env denv :loaded dloaded})
            (reset! env nil)
-           (cb denv))
+           (cb {:env denv :loaded dloaded}))
          (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
            (-> system (.import (module->uri source))
-               (.then #(rec (assoc denv name %) rest-deps))
+               (.then #(rec (assoc denv (munge name) %)
+                            (conj dloaded (symbol name))
+                            rest-deps))
                (.catch #(js/console.log %))))))
-     {} @deps)))
+     {} [] @deps)))
 
 (defn deps->env+caching [{:keys [deps-env] :as db} cb]
   (let [denv @deps-env]
@@ -121,7 +123,7 @@
                  :reagent.core js/reagent.core
                  :reagent.dom js/reagent.dom
                  :react_bootstrap
-                  js/interactive_syntax.core.node$module$react_bootstrap})
+                 js/interactive_syntax.core.node$module$react_bootstrap})
          :loaded (conj (into #{} (:loaded opts))
                        'visr.core 'reagent.core 'reagent.dom)}))
 
@@ -218,7 +220,8 @@
                   #(print-res db %))
            {:keys [runner loaded]} (eval-str @input
                                              (reagent-opts
-                                              {:env deps-env
+                                              {:env (:env deps-env)
+                                               :loaded (:loaded deps-env)
                                                :fs fs
                                                :file-name file-name
                                                :print-fn #(swap! output conj %)}
@@ -270,7 +273,8 @@
              (if env
                env
                (let [cache (eval-str ""
-                                     (reagent-opts {:env deps-env
+                                     (reagent-opts {:env (:env deps-env)
+                                                    :loaded (:loaded deps-env)
                                                     :fs fs}
                                                    db)
                                      #())]

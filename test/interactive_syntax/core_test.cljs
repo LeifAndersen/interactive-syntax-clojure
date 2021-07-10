@@ -49,9 +49,14 @@
   {:after rtl/cleanup})
 
 ;; Checks all items in this that are in good
-;; EXCEPT for fs and runner!
+;; EXCEPTIONS:
+;;  - Does not check fs, runner, env, etc.
+;;  - output has pure newlines stripped
 (defn is-db= [this other & [keys]]
-  (let [test-keys (or keys [:input :output :menu :current-file :current-folder])]
+  (when (or (not keys) (some #{:output} key))
+    (is (= (filter #(not (= % "\n")) @(:output this))
+           (filter #(not (= % "\n")) @(:output other)))))
+  (let [test-keys (or keys [:input :menu :current-file :current-folder])]
     (doseq [key test-keys]
       (is (= @(key this) @(key other))))))
 
@@ -169,8 +174,7 @@
              (-> component
                  (.getAllByText strings/UNTITLED)
                  first
-                 (.-innerHTML))))
-      )))
+                 (.-innerHTML)))))))
 
 
 (deftest bad-input-buff
@@ -206,9 +210,8 @@
        :do #(-> @editor .getDoc (.setValue prog))
        :do #(click-run view)
        :set [:input] prog
-       :set [:output] #queue [err-msg "\n"]
-       :set [:file-changed] true :check
-       ))))
+       :set [:output] #queue [err-msg]
+       :set [:file-changed] true :check))))
 
 (deftest file-save-load-view
   (testing "File Save And load through view actions"
