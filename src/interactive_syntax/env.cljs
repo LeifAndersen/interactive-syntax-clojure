@@ -114,14 +114,19 @@
    :Math js/Math
    :$stopifyArray js/stopifyArray})
 
+(defn builtin-libs []
+  {:env {:react_bootstrap js/interactive_syntax.core.node$module$react_bootstrap}
+   :loaded ['react-bootstrap]})
+
 (defn reagent-opts [opts db]
   (conj opts
         {:env #(conj
                 (sandbox-env %)
                 (:env opts)
-                {:visr {:core {:render (partial stdlib/render db)}}
-                 :reagent.core js/reagent.core
-                 :reagent.dom js/reagent.dom
+                {:visr {:core {;;:VISR stdlib/VISR
+                               :render (partial stdlib/render-visr db)}}
+                 :reagent {:core js/reagent.core
+                           :dom js/reagent.dom}
                  :react_bootstrap
                  js/interactive_syntax.core.node$module$react_bootstrap})
          :loaded (conj (into #{} (:loaded opts))
@@ -151,6 +156,7 @@
 (defn eval-opts [fs runner print-fn sandbox?]
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
+             ;(js/console.log source)
              (binding [*print-fn* print-fn]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
