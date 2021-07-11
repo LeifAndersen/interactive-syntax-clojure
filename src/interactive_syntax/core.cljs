@@ -196,8 +196,8 @@
                                             rest)))))]
     [:div {:style #js {:height "450px"}}
      [:> chonky/FileBrowser
-      {:enable-drag-and-drop @(:enable-drag-and-drop options)
-       :disable-drag-and-drop-provider true
+      {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
+       ;;:disable-drag-and-drop-provider true
        :ref (or ref #js {:current nil})
        :files (for [file (fs.readdirSync @current-folder)]
                 (file-description fs (js/path.join @current-folder file)))
@@ -206,6 +206,7 @@
                        (for [[i folder] (map list (range) (conj split " "))]
                          #js {:id (str "folder" i)
                               :breadCrumb (- (count split) i)
+                              :isDir true
                               :name folder}))
        :file-actions [ChonkyActions.CreateFolder
                       ChonkyActions.DeleteFiles
@@ -221,12 +222,14 @@
                (js->clj data-js)]
            (condp = id
              ChonkyActions.OpenParentFolder.id nil,
+             ChonkyActions.StartDragNDrop.id nil,
+             ChonkyActions.EndDragNDrop.id nil,
+             ChonkyActions.MouseClickFile.id nil,
              ChonkyActions.CreateFolder.id
              (swap! menu conj :new-folder),
              ChonkyActions.OpenFiles.id
              (cond
-               (contains? (get-in payload ["targetFile"])
-                          "breadCrumb")
+               (get-in payload ["targetFile" "breadCrumb"])
                (swap! current-folder
                       #(apply js/path.join
                               (conj
@@ -245,7 +248,31 @@
              (swap! menu pop),
              ChonkyActions.ChangeSelection.id
              nil,
-             (println data))))}
+             ChonkyActions.MoveFiles.id
+             (do
+               (fs.renameSync
+                (js/path.join @current-folder
+                              (get-in payload ["draggedFile" "name"]))
+                (cond
+                  (get-in payload ["destination" "breadCrumb"])
+                  (let [split (filter (partial not= "")
+                                      (.split @current-folder js/path.sep))
+                        total (count split)
+                        crumbs (get-in payload ["destination" "breadCrumb"])]
+                    (if (= total crumbs)
+                      (js/path.join "/" (get-in payload ["draggedFile" "name"]))
+                      (js/path.join
+                       "/"
+                       (apply js/path.join (take (- total crumbs) split))
+                       (get-in payload ["draggedFile" "name"])))),
+                  (get-in payload ["destination" "isDir"])
+                  (js/path.join @current-folder
+                                (get-in payload ["destination" "name"])
+                                (get-in payload ["draggedFile" "name"])),
+                  :else (js/path.join @current-folder
+                                      (get-in payload ["destination" "name"]))))
+               (reset! current-folder @current-folder))
+             (js/console.log data))))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
                                (confirm-action))}
@@ -600,8 +627,7 @@
 
 (defn mount-root []
   (d/render
-   [:> DndProvider {:backend HTML5Backend}
-    [home-page (db/default-db :local)]]
+   [home-page (db/default-db :local)]
    (.getElementById js/document "app")))
 
 (defn init! []

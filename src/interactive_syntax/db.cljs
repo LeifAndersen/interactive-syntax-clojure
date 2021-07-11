@@ -115,6 +115,7 @@
 (s/def ::fs any?)
 
 (s/def ::database (s/keys :req-un [::fs
+                                   ::folder
                                    ::buffers
                                    ::current
                                    ::options
@@ -156,6 +157,7 @@
          base {:fs fs
                :options default-options
                :current 0
+               :folder "/"
                :buffers [default-buffer]
                :deps {}
                :menu [:home]}
