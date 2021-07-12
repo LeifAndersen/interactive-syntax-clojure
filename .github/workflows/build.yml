@@ -10,5 +10,19 @@ jobs:
     - uses: cachix/install-nix-action@v13
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - run: nix-shell --run "clojure -M:package"
-    - run: nix-shell --run "clojure -M:test"
+# Uncomment for ssh
+#   - name: Setup upterm session
+#     uses: lhotari/action-upterm@v1
+    - name: Run Tests
+      run: nix-shell --run "clojure -M:test"
+    - name: Deploy Preview
+      run: |
+        git clean -fxd
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "noreply@visr.pl"
+        nix-shell --run "clojure -M:package"
+        cp public/index.html .
+        git add -A -f
+        git checkout -b preview
+        git commit --allow-empty -m "** deploy visr/website@$GITHUB_SHA"
+        git push origin preview -f
