@@ -200,6 +200,7 @@
       :output (atom "") ;;(->DBAtom backed-db [:current :output])
       :current-folder (->DBAtom backed-db [:current :folder])
       :current-file (->DBAtom backed-db [:current :file])
+      :file-browser-folder (->DBAtom backed-db [:folder])
       :deps (->DBAtom backed-db [:deps])
       :deps-env (atom nil)
       :env (atom nil)

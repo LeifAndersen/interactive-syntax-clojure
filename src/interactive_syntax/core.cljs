@@ -182,6 +182,7 @@
                             menu
                             current-folder
                             current-file
+                            file-browser-folder
                             options]
                      :as db}
                     choice-text
@@ -203,10 +204,10 @@
       {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
        ;;:disable-drag-and-drop-provider true
        :ref ref
-       :files (for [file (fs.readdirSync @current-folder)]
-                (file-description fs (js/path.join @current-folder file)))
+       :files (for [file (fs.readdirSync @file-browser-folder)]
+                (file-description fs (js/path.join @file-browser-folder file)))
        :folder-chain (let [split (filter (partial not= "")
-                                         (.split @current-folder js/path.sep))]
+                                         (.split @file-browser-folder js/path.sep))]
                        (for [[i folder] (map list (range) (conj split " "))]
                          #js {:id (str "folder" i)
                               :breadCrumb (- (count split) i)
@@ -234,7 +235,7 @@
              ChonkyActions.OpenFiles.id
              (cond
                (get-in payload ["targetFile" "breadCrumb"])
-               (swap! current-folder
+               (swap! file-browser-folder
                       #(apply js/path.join
                               (conj
                                (for [i
@@ -243,7 +244,7 @@
                                  "..")
                                %))),
                (get-in payload ["targetFile" "isDir"])
-               (swap! current-folder
+               (swap! file-browser-folder
                       #(js/path.join % (get-in payload ["targetFile" "name"]))),
                :else (do
                        (reset! text (get-in payload ["targetFile" "name"]))
@@ -255,12 +256,12 @@
              ChonkyActions.MoveFiles.id
              (do
                (fs.renameSync
-                (js/path.join @current-folder
+                (js/path.join @file-browser-folder
                               (get-in payload ["draggedFile" "name"]))
                 (cond
                   (get-in payload ["destination" "breadCrumb"])
                   (let [split (filter (partial not= "")
-                                      (.split @current-folder js/path.sep))
+                                      (.split @file-browser-folder js/path.sep))
                         total (count split)
                         crumbs (get-in payload ["destination" "breadCrumb"])]
                     (if (= total crumbs)
@@ -270,12 +271,12 @@
                        (apply js/path.join (take (- total crumbs) split))
                        (get-in payload ["draggedFile" "name"])))),
                   (get-in payload ["destination" "isDir"])
-                  (js/path.join @current-folder
+                  (js/path.join @file-browser-folder
                                 (get-in payload ["destination" "name"])
                                 (get-in payload ["draggedFile" "name"])),
-                  :else (js/path.join @current-folder
+                  :else (js/path.join @file-browser-folder
                                       (get-in payload ["destination" "name"]))))
-               (reset! current-folder @current-folder))
+               (reset! file-browser-folder @file-browser-folder))
              (js/console.log data))))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
@@ -295,7 +296,10 @@
       [:> chonky/FileToolbar]
       [:> chonky/FileList]]]))
 
-(defn save-dialog [{:keys [menu current-file]
+(defn save-dialog [{:keys [menu
+                           file-browser-folder
+                           current-folder
+                           current-file]
                     :as db}
                    & [ref]]
   (let [item (peek @menu)]
@@ -306,11 +310,15 @@
       [:h3 strings/SAVE]]
      [file-browser db strings/SAVE
       (fn [file]
+        (reset! current-folder @file-browser-folder)
         (reset! current-file file)
         (save-buffer db))
       ref]]))
 
-(defn load-dialog [{:keys [menu current-file]
+(defn load-dialog [{:keys [menu
+                           file-browser-folder
+                           current-folder
+                           current-file]
                     :as db}
                    & [ref]]
   [:> Modal {:show (= (peek @menu) :load)
@@ -321,6 +329,7 @@
    [:> Modal.Body
     [file-browser db strings/LOAD
      (fn [file]
+       (reset! current-folder @file-browser-folder)
        (reset! current-file file)
        (load-buffer db))
      ref]]])

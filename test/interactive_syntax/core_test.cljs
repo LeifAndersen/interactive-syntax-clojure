@@ -56,7 +56,11 @@
   (when (or (not keys) (some #{:output} key))
     (is (= (filter #(not (= % "\n")) @(:output this))
            (filter #(not (= % "\n")) @(:output other)))))
-  (let [test-keys (or keys [:input :menu :current-file :current-folder])]
+  (let [test-keys (or keys [:input
+                            :menu
+                            :current-file
+                            :current-folder
+                            :file-browser-folder])]
     (doseq [key test-keys]
       (is (= @(key this) @(key other))))))
 
@@ -481,10 +485,9 @@
                                  (clj->js {:targetFile {:isDir true :name "A"}}))
         :then
         :set [:menu] [:home :load]
-        :set [:current-folder] "/A" :check
+        :set [:file-browser-folder] "/A" :check
         :do #(reset! menu [:home])
-        :set [:menu] [:home]
-        :set [:current-folder] "/" :check
+        :set [:menu] [:home] :check
         :done #(done)
         )))))
 
