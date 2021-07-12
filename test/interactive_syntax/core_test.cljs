@@ -378,7 +378,6 @@
        :set [:output] #queue ["3"] :check
        :do #(is (= (-> @repl .getDoc .getValue) "3"))))))
 
-(comment ;;; XXX UNCOMMENT!!!
 (deftest test-stopify
   (testing "Make sure stopify works"
     (async
@@ -390,36 +389,37 @@
            repl (atom nil),
            view (rtl/render (r/as-element [core/home-page db {:editor editor
                                                               :repl repl}]))
-           prog1 "(loop [x 0] (when (< x 10) (println x) (recur (inc x))))"
+           prog1 "(loop [x 0] (when (< x 5) (println x) (recur (inc x))))"
            prog2 "
 (defn oh-no []
   (println \"Oh no!\")
   (recur))
 
 (oh-no)"]
-       (is (= "Warning" "Test not run!"))
-       (done)
-       (comment ;test-do
+       (test-do
         db :check
-        :do @(reset! input prog1)
+        :do #(reset! input prog1)
         :set [:input] prog1 :check
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
-        :set [:output] #queue ["0" "1" nil] :check
+        :set [:output] #queue ["0" "1" "2" "3" "4"] :check
         :do #(reset! input prog2)
         :set [:input] prog2 :check
-        :do #(click-run view)
-        :wait 100
-        :async #(.pause @runner %)
-        :do #(js/console.log "Paused")
-        :check
-        :get [:output]
-        :do #(do
-               (js/console.log %)
-               (is (seq %))
-               (is (> (count %) 1))
-               (is (every? (partial (= "Oh no!")) %)))
+        ;; XXX UNCOMMENT (stopify bug)
+   ;;   :do #(click-run view)
+   ;;   :do #(js/console.log @runner)
+   ;;   :do #(set! js/window.runner @runner)
+   ;;   :do #(js/console.log "Running!")
+   ;;   :wait 10
+   ;;   :do #(js/console.log "requesting stop...")
+   ;;   :async #(.pause @runner %)
+   ;;   :do #(js/console.log "Stopped?")
+   ;;   :check
+   ;;   :get [:output]
+   ;;   :do #(do
+   ;;          (is (seq %))
+   ;;          (is (> (count %) 1))
+   ;;          (is (every? (partial (= "Oh no!")) %)))
         :done #(done))))))
-)
 
 (deftest multiple-files-eval
   (testing "Make sure eval works"
