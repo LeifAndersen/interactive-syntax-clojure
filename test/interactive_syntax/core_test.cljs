@@ -7,7 +7,7 @@
             [reagent.dom :as d]
             [chonky :refer [ChonkyActions]]
             ["@testing-library/react" :as rtl]
-            [interactive-syntax.db :as db :refer [default-db]]
+            [interactive-syntax.db :as db :refer [default-db ->RefAtom]]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]))
 
@@ -193,7 +193,7 @@
   (testing "Requiring a namespace that does not exist"
     (let [{:keys [input file-changed] :as db} (default-db :temp)
           editor (atom nil)
-          view (rtl/render (r/as-element [core/home-page db editor]))
+          view (rtl/render (r/as-element [core/home-page db {:editor editor}]))
           prog "
 (ns bob.core
   (:require [bill.core :as bill]))"
@@ -219,7 +219,7 @@
            :as db}
           (default-db :temp),
           editor (atom nil),
-          view (rtl/render (r/as-element [core/home-page db editor]))]
+          view (rtl/render (r/as-element [core/home-page db {:editor editor}]))]
       (reset! (-> db :options :enable-drag-and-drop) false)
       (test-do
        db :check
@@ -252,7 +252,7 @@
            :as db}
           (default-db :temp),
           editor (atom nil),
-          view (rtl/render (r/as-element [core/home-page db editor]))]
+          view (rtl/render (r/as-element [core/home-page db {:editor editor}]))]
       (reset! (-> db :options :enable-drag-and-drop) false)
       (test-do
        db :check
@@ -285,7 +285,7 @@
            :as db}
           (default-db :temp),
           editor (atom nil),
-          view (rtl/render (r/as-element [core/home-page db editor]))]
+          view (rtl/render (r/as-element [core/home-page db {:editor editor}]))]
       (reset! (-> db :options :enable-drag-and-drop) false)
       (test-do
        db :check
@@ -364,7 +364,8 @@
           (default-db :temp),
           editor (atom nil),
           repl (atom nil),
-          view (rtl/render (r/as-element [core/home-page db editor repl]))]
+          view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                             :repl repl}]))]
       (test-do
        db :check
        :do #(-> @editor .getDoc (.setValue "(println (+ 1 2))"))
@@ -383,7 +384,8 @@
            (default-db :temp),
            editor (atom nil),
            repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db editor repl]))
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))
            prog1 "(loop [x 0] (when (< x 10) (println x) (recur (inc x))))"
            prog2 "
 (defn oh-no []
@@ -437,7 +439,8 @@
                                 "Hello World!"]
            editor (atom nil),
            repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db editor repl]))]
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
        (test-do
         db :check
         :async #(fs.mkdir "/test" %)
@@ -448,6 +451,42 @@
         :set [:output] expected-res :check
         :do #(is (= (-> @repl .getDoc .getValue) (string/join "\n" expected-res)))
         :done #(done))))))
+
+(deftest change-folder-in-browser
+  (testing "Change folder in file browser and ensure buffer doesn't change"
+    (async
+     done
+     (let [{:keys [fs input output menu current-file current-folder file-changed]
+            :as db}
+           (default-db :temp)
+           file-body "(+ 1 2)"
+           new-body "(+ 4 5)"
+           file-browser #js {:current nil}
+           view (rtl/render
+                 (r/as-element
+                  [core/home-page db {:load-file-browser file-browser}]))
+           file-browser (->RefAtom file-browser)]
+       (test-do
+        db :check
+        :async #(fs.mkdir "/A" %)
+        :async #(fs.writeFile "/f.cljs" file-body %)
+        :do #(reset! input file-body)
+        :set [:input] file-body
+        :do #(reset! current-folder "/")
+        :set [:current-folder] "/"
+        :do #(reset! current-file "f.cljs")
+        :set [:current-file] "f.cljs" :check
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+        :do #(.requestFileAction @file-browser ChonkyActions.OpenFiles
+                                 (clj->js {:targetFile {:isDir true :name "A"}}))
+        :then
+        :set [:menu] [:home :load]
+        :set [:current-folder] "/A" :check
+        :do #(reset! menu [:home])
+        :set [:menu] [:home]
+        :set [:current-folder] "/" :check
+        :done #(done)
+        )))))
 
 (defn -main [& args]
   (run-tests-async 10000))

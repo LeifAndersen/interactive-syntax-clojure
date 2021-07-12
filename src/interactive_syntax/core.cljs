@@ -97,12 +97,15 @@
 ;; -------------------------
 ;; File Dialogs
 
+(defn filepath->id [filepath]
+  (-> crypto-browserify
+      (.createHash "sha1")
+      (.update filepath)
+      (.digest "base64")))
+
 (defn file-description [fs filepath]
   (let [stats (fs.statSync filepath)]
-    (cond-> {:id (-> crypto-browserify
-                     (.createHash "sha1")
-                     (.update filepath)
-                     (.digest "base64"))
+    (cond-> {:id (filepath->id filepath)
              :name (js/path.basename filepath)
              :isDir (.isDirectory stats)
              :modDate stats.ctime}
@@ -193,12 +196,13 @@
                                           (if (and (coll? item)
                                                    (= (count item) 2))
                                             (conj rest (second item))
-                                            rest)))))]
+                                            rest)))))
+        ref (or ref #js {:current nil})]
     [:div {:style #js {:height "450px"}}
      [:> chonky/FileBrowser
       {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
        ;;:disable-drag-and-drop-provider true
-       :ref (or ref #js {:current nil})
+       :ref ref
        :files (for [file (fs.readdirSync @current-folder)]
                 (file-description fs (js/path.join @current-folder file)))
        :folder-chain (let [split (filter (partial not= "")
@@ -292,7 +296,8 @@
       [:> chonky/FileList]]]))
 
 (defn save-dialog [{:keys [menu current-file]
-                    :as db}]
+                    :as db}
+                   & [ref]]
   (let [item (peek @menu)]
     [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
@@ -302,10 +307,12 @@
      [file-browser db strings/SAVE
       (fn [file]
         (reset! current-file file)
-        (save-buffer db))]]))
+        (save-buffer db))
+      ref]]))
 
 (defn load-dialog [{:keys [menu current-file]
-                    :as db}]
+                    :as db}
+                   & [ref]]
   [:> Modal {:show (= (peek @menu) :load)
              :size "xl"
              :on-hide #(swap! menu pop)}
@@ -315,7 +322,8 @@
     [file-browser db strings/LOAD
      (fn [file]
        (reset! current-file file)
-       (load-buffer db))]]])
+       (load-buffer db))
+     ref]]])
 
 (defn new-file-action [{:keys [menu current-file input file-changed]
                         :as db}]
@@ -583,7 +591,10 @@
 (defn home-page [{{:keys [orientation]} :options
                   :keys [fs buffers]
                   :as db}
-                 & [editor-ref repl-ref]]
+                 & [{editor-ref :editor
+                     repl-ref :repl
+                     save-fb-ref :save-file-browser
+                     load-fb-ref :load-file-browser}]]
   (set! js/window.db db) ; <-- XXX For debugging, should remove
   (set! js/window.fs fs) ; <-- XXX For debugging, should remove
   (chonky/setChonkyDefaults
@@ -598,8 +609,8 @@
      :handlers {:save-file #(do (.preventDefault %)
                                 (save-file db))}}]
    [new-file-action db]
-   [save-dialog db]
-   [load-dialog db]
+   [save-dialog db save-fb-ref]
+   [load-dialog db load-fb-ref]
    [options-dialog db]
    [confirm-save-dialog db]
    [new-folder-dialog db]

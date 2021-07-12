@@ -5,6 +5,20 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
+(deftype RefAtom [ref]
+  IAtom
+  IDeref
+  (-deref [_]
+    (.-current ref))
+  IReset
+  (-reset! [_ new-value]
+    (set! (.-current ref) new-value))
+  ISwap
+  (-swap! [_ f] (set! (.-current ref) (f (.-current ref))))
+  (-swap! [_ f a] (set! (.-current ref) (f (.-current ref) a)))
+  (-swap! [_ f a b] (set! (.-current ref) (f (.-current ref) a b)))
+  (-swap! [_ f a b more]
+    (set! (.-current ref) (apply f (.-current ref) a b more))))
 
 ;; -------------------------
 ;; Atom into datastructure
