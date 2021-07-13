@@ -5,6 +5,8 @@
      [clojure.string :as string]
      [cljs.pprint :refer [pprint]]
      [cljs.core.match :refer [match]]
+     [oops.core :refer [oget oset! ocall oapply ocall! oapply!
+                        oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
      [interactive-syntax.db :as db]
      [interactive-syntax.strings :as strings]
      [interactive-syntax.env :as env]
@@ -306,7 +308,7 @@
     [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
                :on-hide #(swap! menu pop)}
-     [:> Modal.Header {:close-button true}
+     [:> (.-Header Modal) {:close-button true}
       [:h3 strings/SAVE]]
      [file-browser db strings/SAVE
       (fn [file]
@@ -359,37 +361,37 @@
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
              :on-hide #(swap! menu pop)}
-   [:> Modal.Header {:close-button true}
+   [:> (.-Header Modal) {:close-button true}
     [:h3 strings/OPTIONS-MENU]]
-   [:> Modal.Body
+   [:> (.-Body Modal)
     [:> Form {:onSubmit #(do (.preventDefault %)
                               (.stopPropagation %))}
-     [:> Form.Group {:as Row}
-      [:> Form.Label {:column true}
+     [:> (.-Group Form) {:as Row}
+      [:> (.-Label Form) {:column true}
        [:h4 (str strings/VISUAL-EDITORS ":")]]
       [:> Col [:> Switch {:checked @show-editors
                           :on-change #(reset! show-editors %)}]]]
-     [:> Form.Group {:as Row}
-      [:> Form.Label {:column true}
+     [:> (.-Group Form) {:as Row}
+      [:> (.-Label Form) {:column true}
        [:h4 (str strings/SPLIT ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/SPLIT}
                [option-button orientation "horizontal" strings/HORIZONTAL]
                [option-button orientation "vertical" strings/VERTICAL]]]]
-     [:> Form.Group {:as Row}
-      [:> Form.Label {:column true}
+     [:> (.-Group Form) {:as Row}
+      [:> (.-Label Form) {:column true}
        [:h4 (str strings/KEYMAP ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/KEYMAP}
                [option-button keymap "vim" "Vim"]
                [option-button keymap "emacs" "Emacs"]
                [option-button keymap "sublime" "Sublime"]]]]
-     [:> Form.Group {:as Row}
-      [:> Form.Label {:column true}
+     [:> (.-Group Form) {:as Row}
+      [:> (.-Label Form) {:column true}
        [:h4 (str strings/FONT-SIZE ":")]]
       [:> Col [:> Row [:> Col {:xs "auto"}
                        [:> Button {:on-click #(swap! font-size dec)}
                         "-"]]
         [:> Col {:xs 4}
-         [:> Form.Control
+         [:> (.-Control Form)
           {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
                          (when-not (js/isNaN value)
                            (reset! font-size (max 1 value))))
@@ -397,13 +399,13 @@
         [:> Col {:xs "auto"}
          [:> Button {:on-click #(swap! font-size inc)}
           "+"]]]]]
-     [:> Form.Group {:as Row}
-      [:> Form.Label {:column true}
+     [:> (.-Group Form) {:as Row}
+      [:> (.-Label Form) {:column true}
        [:h4 (str strings/THEME ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/THEME}
                [option-button theme "neat" strings/LIGHT]
         [option-button theme "material" strings/DARK]]]]]]
-   [:> Modal.Footer
+   [:> (.-Footer Modal)
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}
      strings/CLOSE]]])
@@ -454,15 +456,15 @@
         [:> DropdownButton {:as ButtonGroup
                             :title strings/MENU
                             :size "sm"}
-         [:> Dropdown.Item {:on-click new-file} strings/NEW]
-         [:> Dropdown.Item {:on-click save-file} strings/SAVE]
-         [:> Dropdown.Item {:on-click save-file-as} strings/SAVE-AS]
-         [:> Dropdown.Item {:on-click load-file} strings/LOAD]
-         [:> Dropdown.Item {:on-click options} strings/OPTIONS]
-         [:> Dropdown.Item strings/NEW-PROJECT]
-         [:> Dropdown.Item {:on-click deps} strings/DEPENDENCIES]
-         [:> Dropdown.Item strings/IMPORT-PROJECT]
-         [:> Dropdown.Item strings/EXPORT-PROJECT]]]
+         [:> (.-Item Dropdown) {:on-click new-file} strings/NEW]
+         [:> (.-Item Dropdown) {:on-click save-file} strings/SAVE]
+         [:> (.-Item Dropdown) {:on-click save-file-as} strings/SAVE-AS]
+         [:> (.-Item Dropdown) {:on-click load-file} strings/LOAD]
+         [:> (.-Item Dropdown) {:on-click options} strings/OPTIONS]
+         [:> (.-Item Dropdown) strings/NEW-PROJECT]
+         [:> (.-Item Dropdown) {:on-click deps} strings/DEPENDENCIES]
+         [:> (.-Item Dropdown) strings/IMPORT-PROJECT]
+         [:> (.-Item Dropdown) strings/EXPORT-PROJECT]]]
        [:> Col
         [:> Container {:class-name "d-none d-sm-block"
                        :fluid true
@@ -475,7 +477,7 @@
         [:> SplitButton {:title strings/RUN
                          :size "sm"
                          :on-click run}
-         [:> Dropdown.Item strings/STOP]]]]]
+         [:> (.-Item Dropdown) strings/STOP]]]]]
      [:div {:className "d-none d-md-block"}
       [:> Row {:className "align-items-center"
                :style {:margin-left 0
@@ -486,14 +488,14 @@
         [:> SplitButton
          {:title strings/SAVE
           :on-click save-file}
-         [:> Dropdown.Item {:on-click save-file-as} strings/SAVE-AS]]
+         [:> (.-Item Dropdown) {:on-click save-file-as} strings/SAVE-AS]]
         [:> Button {:on-click load-file} strings/LOAD]
         [:> DropdownButton {:as ButtonGroup
                             :title strings/PROJECT}
-         [:> Dropdown.Item strings/NEW-PROJECT]
-         [:> Dropdown.Item {:on-click deps} strings/DEPENDENCIES]
-         [:> Dropdown.Item strings/IMPORT-PROJECT]
-         [:> Dropdown.Item strings/EXPORT-PROJECT]]
+         [:> (.-Item Dropdown) strings/NEW-PROJECT]
+         [:> (.-Item Dropdown) {:on-click deps} strings/DEPENDENCIES]
+         [:> (.-Item Dropdown) strings/IMPORT-PROJECT]
+         [:> (.-Item Dropdown) strings/EXPORT-PROJECT]]
         [:> Button {:on-click options} strings/OPTIONS]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"
@@ -509,7 +511,7 @@
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
-                            (-> @edit .getDoc (.setValue @input))
+                            (-> @edit (ocall "getDoc") (ocall "setValue" @input))
                             (reset! file-changed fc))))]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
@@ -519,10 +521,9 @@
       @current-file
       @menu
       (when (not= @edit nil)
-        ;(-> @edit .getDoc .getValue pprint)
-        (set! (-> @edit .getWrapperElement .-style .-fontSize)
-              (str @(:font-size options) "px"))
-        (-> @edit .refresh))
+        (oset! (ocall @edit "getWrapperElement") "style.fontSize"
+               (str @(:font-size options) "px"))
+        (ocall @edit "refresh"))
       [:> cm/UnControlled
        {:options {:mode "clojure"
                   :keyMap @(:keymap options)
@@ -535,14 +536,14 @@
                     (reset! file-changed true)
                     (reset! input value)
                     (env/reset-editors! value edit editors operation db))
-        :editorDidMount #(do
-                           (let [fc @file-changed]
-                             (-> % .getDoc (.setValue @input))
-                             (reset! file-changed fc))
-                           (reset! edit %)
-                           (when editor-ref
-                             (reset! editor-ref %))
-                           (env/reset-editors! @input edit editors nil db))}])))
+        :editorDidMount (fn [e]
+                          (let [fc @file-changed]
+                            (-> e (ocall "getDoc") (ocall "setValue" @input))
+                            (reset! file-changed fc))
+                          (reset! edit e)
+                          (when editor-ref
+                            (reset! editor-ref e))
+                          (env/reset-editors! @input edit editors nil db))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
@@ -552,9 +553,8 @@
         watch-updater
         (fn [k r o n]
           (when (and @edit (not= o n))
-            (-> @edit .getDoc
-                (.setValue (string/join
-                            "\n" (filter string? n))))
+            (-> @edit (ocall "getDoc")
+                (ocall "setValue" (string/join "\n" (filter string? n))))
             (doseq [i @instances]
               (.clear i))
             (loop [line 0
@@ -567,18 +567,17 @@
                    (let [element (.createElement js/document "div")]
                      (d/render i element)
                      (swap! instances conj
-                            (-> @edit
-                                (.getDoc)
-                                (.addLineWidget (max 0 (dec line)) element)))
+                            (-> @edit (ocall "getDoc")
+                                (ocall "addLineWidget" (max 0 (dec line)) element)))
                      (recur (inc line) rest)))))))]
     (add-watch output ::result-view watch-updater)
     (fn [{:keys [output options]
         :as db}
        & [repl-ref]]
       (when (not= @edit nil)
-        (set! (-> @edit .getWrapperElement .-style .-fontSize)
-              (str @(:font-size options) "px"))
-        (-> @edit .refresh))
+        (oset! (ocall @edit "getWrapperElement") "style.fontSize"
+               (str @(:font-size options) "px"))
+        (ocall @edit "refresh"))
       [:> cm/UnControlled
        {:value (string/join "\n" (filter string? @output))
         :options {:mode "clojure"
