@@ -4,6 +4,7 @@
    [reagent.dom :as d]
    [clojure.string :as string]
    [clojure.walk :as walk]
+   [clojure.set :refer [union]]
    [cljs.tools.reader :refer [read read-string]]
    [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
                                            get-line-number
@@ -109,6 +110,7 @@
    :document js/document
    :window js/window
    :global runner
+   :alert js/alert
    :String js/String
    :Object js/Object
    :Function js/Function
@@ -117,22 +119,22 @@
    :$stopifyArray js/stopifyArray})
 
 (defn builtin-libs []
-  {:env {:react_bootstrap js/interactive_syntax.core.node$module$react_bootstrap}
-   :loaded ['react-bootstrap]})
+  {:env {:react_bootstrap react-bootstrap}
+   :loaded #{'react-bootstrap}})
 
 (defn reagent-opts [opts db]
-  (conj opts
-        {:env #(conj
-                (sandbox-env %)
-                (:env opts)
-                {:visr {:core {;;:VISR stdlib/VISR
-                               :render (partial stdlib/render-visr db)}}
-                 :reagent {:core js/reagent.core
-                           :dom js/reagent.dom}
-                 :react_bootstrap
-                 js/interactive_syntax.core.node$module$react_bootstrap})
-         :loaded (conj (into #{} (:loaded opts))
-                       'visr.core 'reagent.core 'reagent.dom)}))
+  (let [builtins (builtin-libs)]
+    (conj opts
+          {:env #(conj
+                  (sandbox-env %)
+                  (:env opts)
+                  (:env builtins)
+                  {:visr {:core {;;:VISR stdlib/VISR
+                                 :render (partial stdlib/render-visr db)}}
+                   :reagent {:core reagent.core
+                             :dom reagent.dom}})
+           :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
+                         'visr.core 'reagent.core 'reagent.dom)})))
 
 (defn ns->string [fs {:keys [name macros path]} cb]
   ((fn rec [extensions]

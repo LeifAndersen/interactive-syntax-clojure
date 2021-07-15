@@ -109,23 +109,23 @@
   (let [stats (fs.statSync filepath)]
     (cond-> {:id (filepath->id filepath)
              :name (js/path.basename filepath)
-             :isDir (.isDirectory stats)
+             :isDir (ocall stats :isDirectory)
              :modDate stats.ctime}
-      (= (.charAt filepath 0) ".") (assoc :isHidden true)
-      (.isSymbolicLink stats) (assoc :isSymlink true)
-      (not (.isDirectory stats)) (assoc :size stats.size)
+      (= (ocall filepath :charAt 0) ".") (assoc :isHidden true)
+      (ocall stats :isSymbolicLink) (assoc :isSymlink true)
+      (not (ocall stats :isDirectory)) (assoc :size (oget stats :size))
       :always clj->js)))
 
 (defn save-buffer [{:keys [fs current-folder current-file input file-changed]
                     :as db}]
-  (fs.writeFileSync (js/path.join @current-folder @current-file) @input)
+  (ocall fs :writeFileSync (js/path.join @current-folder @current-file) @input)
   (reset! file-changed false))
 
 (defn load-buffer [{:keys [fs current-folder current-file input file-changed]
                     :as db}]
-  (reset! input (-> (js/path.join @current-folder @current-file)
-                    fs.readFileSync
-                    .toString))
+  (reset! input (as-> (js/path.join @current-folder @current-file) v
+                  (ocall fs :readFileSync v)
+                  (ocall v :toString)))
   (reset! file-changed false))
 
 (defn make-control-dialog [menu key title confirm action]
