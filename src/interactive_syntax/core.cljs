@@ -111,7 +111,7 @@
              :name (js/path.basename filepath)
              :isDir (ocall stats :isDirectory)
              :modDate stats.ctime}
-      (= (ocall filepath :charAt 0) ".") (assoc :isHidden true)
+      (= (.charAt filepath 0) ".") (assoc :isHidden true)
       (ocall stats :isSymbolicLink) (assoc :isSymlink true)
       (not (ocall stats :isDirectory)) (assoc :size (oget stats :size))
       :always clj->js)))
