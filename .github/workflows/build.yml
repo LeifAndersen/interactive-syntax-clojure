@@ -23,6 +23,7 @@ jobs:
         nix-shell --run "clojure -M:package"
         rm -r node_modules
         cp public/index.html .
+        echo "visr.pl" > CNAME
         git add -A -f
         git checkout -b preview
         git commit --allow-empty -m "** deploy visr/website@$GITHUB_SHA"
