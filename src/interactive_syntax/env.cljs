@@ -9,6 +9,8 @@
                                            get-line-number
                                            get-column-number]]
    [cljs.js :as cljs :refer [empty-state js-eval *loaded*]]
+   [oops.core :refer [oget oset! ocall oapply ocall! oapply!
+                      oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
@@ -50,9 +52,9 @@
                                     (string/escape version sanatize-map))
                        :else (string/escape name sanatize-map))
         url (or url (str "https://unpkg.com/" pkg-name))]
-    (.addEventListener req "load" #(-> % .-target .-responseText cb))
-    (.open req "GET" url)
-    (.send req)))
+    (ocall req "addEventListener" "load" #(cb (oget % "target.responseText")))
+    (ocall req "open" "GET" url)
+    (ocall req "send")))
 
 (defn setup-deps [{:keys [deps]} force-update]
   ((fn rec [acc packages]
@@ -258,7 +260,7 @@
               (fn [ret]
                 (cb
                  (cond
-                   (:value ret) (.-value (:value ret))
+                   (:value ret) (oget (:value ret) "value")
                    :else ret))))
     :else (throw "TODO")))
 
@@ -291,10 +293,10 @@
              (let [form (try (read {:eof eof} prog)
                              (catch js/Error e
                                (ex-info (.-message e)
-                                        {:line (.-lineNumber e)
-                                         :char (.-columnNumber e)
-                                         :name (.-name e)
-                                         :file (.-fileName e)}
+                                        {:line (oget e "lineNumber")
+                                         :char (oget e "columnNumber")
+                                         :name (oget e "name")
+                                         :file (oget e "fileName")}
                                         :read-error)))]
                (when-not (identical? form eof)
                  (when (coll? form)

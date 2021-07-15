@@ -68,7 +68,7 @@
           [:tbody
            (for [[key package] @new-deps]
              (let [on-change (fn [prop]
-                               #(let [value (-> % .-target .-value)]
+                               #(let [value (oget % "target.value")]
                                   (swap! new-deps assoc-in [key prop] value)))]
                [:tr {:key key}
                 [:td [:> Form.Control {:on-change (on-change :name)
@@ -144,7 +144,7 @@
            [:> Form.Label {:sr-only true}
             title]]
           [:> Col {:xs 8}
-           [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
+           [:> Form.Control {:on-change #(reset! text (oget % "target.value"))}]]
           [:> Col {:xs "auto"}
            [:> Button
             {:on-click (action text)}
@@ -288,7 +288,7 @@
          [:> Form.Label {:column true}
           strings/FILE]]
         [:> Col {:xs 10}
-         [:> Form.Control {:on-change #(reset! text (-> % .-target .-value))}]]
+         [:> Form.Control {:on-change #(reset! text (oget % "target.value"))}]]
         [:> Col {:xs "auto"}
          [:> Button
           {:on-click
@@ -392,7 +392,7 @@
                         "-"]]
         [:> Col {:xs 4}
          [:> (.-Control Form)
-          {:on-change #(let [value (js/parseInt (-> % .-target .-value))]
+          {:on-change #(let [value (js/parseInt (oget % "target.value"))]
                          (when-not (js/isNaN value)
                            (reset! font-size (max 1 value))))
            :value @font-size}]]
