@@ -70,13 +70,13 @@
 
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
-       (.fromByteArray base64-js
-                       (-> module
-                           (.split "")
-                           (.map #(.charCodeAt % 0))))))
+       (ocall base64-js :fromByteArray
+              (-> module
+                  (ocall :split "")
+                  (ocall :map #(ocall % :charCodeAt 0))))))
 
 (defn deps->env [{:keys [deps deps-env env] :as db} cb]
-  (let [system (new (.-constructor js/System))]
+  (let [system (new (oget js/System :constructor))]
     ((fn rec [denv dloaded deps]
        (if (empty? deps)
          (do
@@ -84,7 +84,7 @@
            (reset! env nil)
            (cb {:env denv :loaded dloaded}))
          (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
-           (-> system (.import (module->uri source))
+           (-> system (ocall :import (module->uri source))
                (.then #(rec (assoc denv (munge name) %)
                             (conj dloaded (symbol name))
                             rest-deps))
@@ -139,8 +139,8 @@
      (if (empty? extensions)
        (cb nil)
        (let [file-path (str "/" path "." (first extensions))]
-         (.readFile
-          fs
+         (ocall
+          fs :readFile
           file-path
           (fn [err data]
             (if err
@@ -162,12 +162,12 @@
              (binding [*print-fn* print-fn]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
-                 (.evalAsyncFromAst runner polyfilled
-                                    (fn [res]
-                                      (when-not (or (= (:type res) "normal")
-                                                    (= (:value res) nil))
-                                        (println res))
-                                      (cb res))))))
+                 (ocall runner :evalAsyncFromAst polyfilled
+                        (fn [res]
+                          (when-not (or (= (:type res) "normal")
+                                        (= (:value res) nil))
+                            (println res))
+                          (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    :source-map true})
@@ -204,7 +204,7 @@
              (cb res))]
     (when-not resume
       (set! runner.g globs)
-      (.run runner #()))
+      (ocall runner :run #()))
     (try
       (reset! *loaded* @loaded)
       (condp = lang
@@ -268,8 +268,8 @@
                       {:keys [fs options deps env] :as db}]
   nil
   (doseq [[tag i] @instances]
-    (do (when (:widget i) (.clear (:widget i)))
-        (.clear (:range i))))
+    (do (when (:widget i) (ocall (:widget i) :clear))
+        (ocall (:range i) :clear)))
   (reset! instances {})
   (deps->env+caching
    db
@@ -322,12 +322,12 @@
                                                     (d/render v element)))
                                        (assoc old :widget
                                               (-> @editor
-                                                  (.getDoc)
-                                                  (.addLineWidget
-                                                   (dec (:line info))
-                                                   element
-                                                   false))))
-                                     (do (.clear (:widget old))
+                                                  (ocall :getDoc)
+                                                  (ocall :addLineWidget
+                                                         (dec (:line info))
+                                                         element
+                                                         false))))
+                                     (do (ocall (:widget old) :clear)
                                          (assoc old :widget nil)))))}
                               "..."]
                              hider)
@@ -335,14 +335,14 @@
                                    {tag
                                     {:range
                                      (-> @editor
-                                         (.getDoc)
-                                         (.markText
-                                          #js {:line (dec (:line info)),
-                                               :ch (dec (:column info))}
-                                          #js {:line (dec (:end-line info)),
-                                               :ch (dec (:end-column info))}
-                                          #js {:collapsed true
-                                               :replacedWith hider}))
+                                         (ocall :getDoc)
+                                         (ocall :markText
+                                                #js {:line (dec (:line info)),
+                                                     :ch (dec (:column info))}
+                                                #js {:line (dec (:end-line info)),
+                                                     :ch (dec (:end-column info))}
+                                                #js {:collapsed true
+                                                     :replacedWith hider}))
                                      :widget nil}}))
                           nil)
                         (doseq [e form]
