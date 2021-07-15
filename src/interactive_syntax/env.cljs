@@ -52,7 +52,10 @@
                        version (str (string/escape name sanatize-map) "/"
                                     (string/escape version sanatize-map))
                        :else (string/escape name sanatize-map))
-        url (or url (str "https://unpkg.com/" pkg-name))]
+        url (or url
+                (str
+                 "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/"
+                 pkg-name ".js"))]
     (ocall req "addEventListener" "load" #(cb (oget % "target.responseText")))
     (ocall req "open" "GET" url)
     (ocall req "send")))
