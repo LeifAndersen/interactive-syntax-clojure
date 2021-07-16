@@ -27,6 +27,9 @@
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
                             Table]]
+   [react-codemirror2]
+   [react-split-pane]
+   [react-switch]
    [base64-js]))
 
 (def ^:private template (.-default babel-template))
@@ -118,12 +121,15 @@
    :Object js/Object
    :Function js/Function
    :Array js/Array
+   :Set js/Set
    :Math js/Math
    :$stopifyArray js/stopifyArray})
 
 (defn builtin-libs []
-  {:env {:react_bootstrap react-bootstrap}
-   :loaded #{'react-bootstrap}})
+  {:env {:react_bootstrap react-bootstrap
+         :react_split_pane react-split-pane
+         :react_switch react-switch}
+   :loaded #{'react-bootstrap 'react-split-pane 'react-switch}})
 
 (defn reagent-opts [opts db]
   (let [builtins (builtin-libs)]
@@ -163,7 +169,6 @@
 (defn eval-opts [fs runner print-fn sandbox?]
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
-             ;(js/console.log source)
              (binding [*print-fn* print-fn]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
@@ -175,6 +180,7 @@
                           (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
+   ;;:verbose true
    :source-map true})
 
 (defn eval-str [src

@@ -10,7 +10,7 @@
 (defn render-visr [{:keys [output] :as db} visr]
   (swap! output conj visr))
 
-(defn println [x]
+(defn wrap-printer [printer db x]
   (if (satisfies? VISR x)
-    (clojure.core/println "VISR-TODO")
-    (clojure.core/println x)))
+    (render-visr db x)
+    (printer x)))

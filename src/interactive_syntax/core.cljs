@@ -105,6 +105,17 @@
       (.update filepath)
       (.digest "base64")))
 
+
+(defn recursive-rm [fs dir]
+  (doseq [i (fs.readdirSync dir)]
+    (let [fullpath (js/path.join dir i)
+          stats (fs.statSync fullpath)]
+      (if (ocall stats :isDirectory)
+        (recursive-rm fs fullpath)
+        (fs.unlinkSync fullpath))))
+  (fs.rmdirSync dir))
+
+
 (defn file-description [fs filepath]
   (let [stats (fs.statSync filepath)]
     (cond-> {:id (filepath->id filepath)
@@ -225,8 +236,10 @@
          (let [{id "id"
                 action "action"
                 payload "payload"
+                state "state"
                 :as data}
                (js->clj data-js)]
+           ;;(js/console.log data)
            (condp = id
              ChonkyActions.OpenParentFolder.id nil,
              ChonkyActions.StartDragNDrop.id nil,
@@ -256,30 +269,35 @@
              ChonkyActions.ChangeSelection.id
              nil,
              ChonkyActions.MoveFiles.id
-             (do
-               (fs.renameSync
+             (fs.renameSync
+              (js/path.join @file-browser-folder
+                            (get-in payload ["draggedFile" "name"]))
+              (cond
+                (get-in payload ["destination" "breadCrumb"])
+                (let [split (filter (partial not= "")
+                                    (.split @file-browser-folder js/path.sep))
+                      total (count split)
+                      crumbs (get-in payload ["destination" "breadCrumb"])]
+                  (if (= total crumbs)
+                    (js/path.join "/" (get-in payload ["draggedFile" "name"]))
+                    (js/path.join
+                     "/"
+                     (apply js/path.join (take (- total crumbs) split))
+                     (get-in payload ["draggedFile" "name"])))),
+                (get-in payload ["destination" "isDir"])
                 (js/path.join @file-browser-folder
-                              (get-in payload ["draggedFile" "name"]))
-                (cond
-                  (get-in payload ["destination" "breadCrumb"])
-                  (let [split (filter (partial not= "")
-                                      (.split @file-browser-folder js/path.sep))
-                        total (count split)
-                        crumbs (get-in payload ["destination" "breadCrumb"])]
-                    (if (= total crumbs)
-                      (js/path.join "/" (get-in payload ["draggedFile" "name"]))
-                      (js/path.join
-                       "/"
-                       (apply js/path.join (take (- total crumbs) split))
-                       (get-in payload ["draggedFile" "name"])))),
-                  (get-in payload ["destination" "isDir"])
-                  (js/path.join @file-browser-folder
-                                (get-in payload ["destination" "name"])
-                                (get-in payload ["draggedFile" "name"])),
-                  :else (js/path.join @file-browser-folder
-                                      (get-in payload ["destination" "name"]))))
-               (reset! file-browser-folder @file-browser-folder))
-             (js/console.log data))))}
+                              (get-in payload ["destination" "name"])
+                              (get-in payload ["draggedFile" "name"])),
+                :else (js/path.join @file-browser-folder
+                                    (get-in payload ["destination" "name"])))),
+             ChonkyActions.DeleteFiles.id
+             (doseq [f (get-in state ["selectedFilesForAction"])]
+               (let [name (js/path.join @file-browser-folder (get-in f ["name"]))]
+                 (if (get-in f ["isDir"])
+                   (recursive-rm fs name)
+                   (fs.unlinkSync name)))),
+             (js/console.log data))
+           (reset! file-browser-folder @file-browser-folder)))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
                                (confirm-action))}
