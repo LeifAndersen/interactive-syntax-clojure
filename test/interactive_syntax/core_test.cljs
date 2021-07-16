@@ -515,25 +515,25 @@
         :do #(is (= (count (fs.readdirSync "/")) 3))
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
         :do #(let [file (js/Set.)]
-                  (ocall file :add (core/filepath->id "/A.cljs"))
-                  (ocall @file-browser :setFileSelection
-                         file)
-                  (ocall @file-browser :requestFileAction
-                         ChonkyActions.DeleteFiles))
+                  (ocall+ file :add (core/filepath->id "/A.cljs"))
+                  (ocall+ @file-browser :setFileSelection
+                          file)
+                  (ocall+ @file-browser :requestFileAction
+                          ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 2))
         :do #(let [file (js/Set.)]
-               (ocall file :add (core/filepath->id "/B"))
-               (ocall @file-browser :setFileSelection
-                      file)
-               (ocall @file-browser :requestFileAction
-                      ChonkyActions.DeleteFiles))
+               (ocall+ file :add (core/filepath->id "/B"))
+               (ocall+ @file-browser :setFileSelection
+                       file)
+               (ocall+ @file-browser :requestFileAction
+                       ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 1))
         :do #(let [file (js/Set.)]
-               (ocall file :add (core/filepath->id "/C"))
-               (ocall @file-browser :setFileSelection
-                      file)
-               (ocall @file-browser :requestFileAction
-                      ChonkyActions.DeleteFiles))
+               (ocall+ file :add (core/filepath->id "/C"))
+               (ocall+ @file-browser :setFileSelection
+                       file)
+               (ocall+ @file-browser :requestFileAction
+                       ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 0))
         :do #(swap! menu pop) :check
         :done #(done)
