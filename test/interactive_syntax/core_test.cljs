@@ -5,8 +5,6 @@
             [clojure.string :as string]
             [reagent.core :as r :refer [atom]]
             [reagent.dom :as d]
-            [oops.core :refer [oget oset! ocall oapply ocall! oapply!
-                               oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
             [chonky :refer [ChonkyActions]]
             ["@testing-library/react" :as rtl]
             [interactive-syntax.db :as db :refer [default-db ->RefAtom]]
@@ -515,29 +513,22 @@
         :do #(is (= (count (fs.readdirSync "/")) 3))
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
         :do #(let [file (js/Set.)]
-                  (ocall+ file :add (core/filepath->id "/A.cljs"))
-                  (ocall+ @file-browser :setFileSelection
-                          file)
-                  (ocall+ @file-browser :requestFileAction
-                          ChonkyActions.DeleteFiles))
+                  (.add file (core/filepath->id "/A.cljs"))
+                  (.setFileSelection @file-browser file)
+                  (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 2))
         :do #(let [file (js/Set.)]
-               (ocall+ file :add (core/filepath->id "/B"))
-               (ocall+ @file-browser :setFileSelection
-                       file)
-               (ocall+ @file-browser :requestFileAction
-                       ChonkyActions.DeleteFiles))
+               (.add file (core/filepath->id "/B"))
+               (.setFileSelection @file-browser file)
+               (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 1))
         :do #(let [file (js/Set.)]
-               (ocall+ file :add (core/filepath->id "/C"))
-               (ocall+ @file-browser :setFileSelection
-                       file)
-               (ocall+ @file-browser :requestFileAction
-                       ChonkyActions.DeleteFiles))
+               (.add file (core/filepath->id "/C"))
+               (.setFileSelection @file-browser file)
+               (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 0))
         :do #(swap! menu pop) :check
-        :done #(done)
-        )))))
+        :done #(done))))))
 
 (defn -main [& args]
   (run-tests-async 10000))

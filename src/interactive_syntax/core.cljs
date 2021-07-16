@@ -314,7 +314,8 @@
           choice-text]]]]
       [:> chonky/FileNavbar]
       [:> chonky/FileToolbar]
-      [:> chonky/FileList]]]))
+      [:> chonky/FileList]
+      [:> chonky/FileContextMenu]]]))
 
 (defn save-dialog [{:keys [menu
                            file-browser-folder
