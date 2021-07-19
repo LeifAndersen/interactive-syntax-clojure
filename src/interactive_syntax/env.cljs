@@ -167,7 +167,7 @@
                      :source source
                      :file file-path}))))))))
    (if macros
-     ["clj" "cljc"]
+     ["clj" "cljc" "cljs"]
      ["cljs" "cljc" "js"])))
 
 (defn eval-opts [fs runner print-fn sandbox?]
@@ -185,7 +185,7 @@
                           (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   ;:verbose true
+   :verbose true
    :source-map true})
 
 (defn eval-str [src
