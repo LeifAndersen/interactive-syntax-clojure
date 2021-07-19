@@ -123,6 +123,8 @@
    :Array js/Array
    :Set js/Set
    :Math js/Math
+   :atob js/atob
+   :btoa js/btoa
    :$stopifyArray js/stopifyArray})
 
 (defn builtin-libs []
@@ -156,12 +158,14 @@
           (fn [err data]
             (if err
               (rec (rest extensions))
-              (cb {:lang (if (= (first extensions)
-                                "js")
-                           :js
-                           :clj)
-                   :source (.toString data)
-                   :file file-path})))))))
+              (let [source (.toString data)
+                    state (empty-state)]
+                (cb {:lang (if (= (first extensions)
+                                  "js")
+                             :js
+                             :clj)
+                     :source source
+                     :file file-path}))))))))
    (if macros
      ["clj" "cljc"]
      ["cljs" "cljc" "js"])))
@@ -169,7 +173,8 @@
 (defn eval-opts [fs runner print-fn sandbox?]
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
-             (binding [*print-fn* print-fn]
+             (binding [*print-fn* print-fn
+                       *sandbox-global* runner.g]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
                  (ocall runner :evalAsyncFromAst polyfilled
@@ -180,7 +185,7 @@
                           (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   ;;:verbose true
+   ;:verbose true
    :source-map true})
 
 (defn eval-str [src
