@@ -28,10 +28,9 @@
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
                             Table]]
-   [react-codemirror2]
+   [base64-js]
    [react-split-pane]
-   [react-switch]
-   [base64-js]))
+   [react-switch]))
 
 (def ^:private template (.-default babel-template))
 

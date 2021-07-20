@@ -20,7 +20,7 @@
                               Table]]
      [react-hotkeys :refer [GlobalHotKeys]]
      [codemirror]
-     [react-codemirror2 :as cm]
+     ["@leifandersen/react-codemirror2" :as cm]
      [crypto-browserify]
      ["codemirror/mode/clojure/clojure"]
      ["codemirror/keymap/vim"]
