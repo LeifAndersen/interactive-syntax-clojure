@@ -1,8 +1,8 @@
 {:deps {org.clojure/clojure {:mvn/version "1.10.1"}
         org.clojure/clojurescript
         {:git/url "https://github.com/LeifAndersen/clojurescript"
-         :sha "455c250f9fdbf018c57e6f21310a9cd88a259d17"}
-        ;; {:local/root "/path/to/clojurescript"} <-- For debugging only
+         :sha "9cb15b951d7be771d1e9357a5e7dcbd75143634a"}
+        ;; {:local/root "/path/to/clojurescript"} ;<-- For debugging only
         org.clojure/core.match {:mvn/version "1.0.0"}
         org.clojure/tools.reader {:mvn/version "1.3.3"}
         reagent/reagent {:mvn/version "1.0.0" :exclusions [cljsjs/react cljsjs/react-dom]}

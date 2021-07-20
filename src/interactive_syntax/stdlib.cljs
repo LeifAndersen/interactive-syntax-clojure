@@ -4,6 +4,15 @@
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]))
 
+(def injectable "
+(ns visr.core
+  (:require [visr.private]))
+(def render visr.private/render)
+(def a-constant 42)
+(defmacro defvisr []
+ `(+ 1 2))
+")
+
 (defprotocol VISR
   (render [this]))
 

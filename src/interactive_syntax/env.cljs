@@ -10,6 +10,7 @@
                                            get-line-number
                                            get-column-number]]
    [cljs.js :as cljs :refer [empty-state js-eval *loaded*]]
+   [cljs.analyzer :refer [*additional-core*]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
@@ -140,12 +141,11 @@
                   (sandbox-env %)
                   (:env opts)
                   (:env builtins)
-                  {:visr {:core {;;:VISR stdlib/VISR
-                                 :render (partial stdlib/render-visr db)}}
+                  {:visr {:private$ {:render (partial stdlib/render-visr db)}}
                    :reagent {:core reagent.core
                              :dom reagent.dom}})
            :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
-                         'visr.core 'reagent.core 'reagent.dom)})))
+                         'visr.private 'reagent.core 'reagent.dom)})))
 
 (defn ns->string [fs {:keys [name macros path]} cb]
   ((fn rec [extensions]
@@ -158,8 +158,7 @@
           (fn [err data]
             (if err
               (rec (rest extensions))
-              (let [source (.toString data)
-                    state (empty-state)]
+              (let [source (.toString data)]
                 (cb {:lang (if (= (first extensions)
                                   "js")
                              :js
@@ -174,7 +173,8 @@
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
              (binding [*print-fn* print-fn
-                       *sandbox-global* runner.g]
+                       *sandbox-global* runner.g
+                       *additional-core* 'visr.core]
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
                  (ocall runner :evalAsyncFromAst polyfilled
@@ -185,7 +185,7 @@
                           (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   :verbose true
+   ;;:verbose true
    :source-map true})
 
 (defn eval-str [src
@@ -196,7 +196,8 @@
                         file-name
                         print-fn
                         runner
-                        sandbox]}
+                        sandbox
+                        state]}
                 cb]
   (let [resume (and runner true)
         sandbox (if (nil? sandbox) true sandbox)
@@ -214,20 +215,33 @@
         print-fn (or print-fn #())
         opts (eval-opts fs runner print-fn sandbox)
         lang (or lang :clj)
+        state (or state (empty-state))
         cb (fn [res]
              (swap! loaded into @*loaded*)
              (reset! *loaded* old-loaded)
-             (cb res))]
-    (when-not resume
-      (set! runner.g globs)
-      (ocall runner :run #()))
+             (cb res))
+        post-load (fn []
+                    (condp = lang
+                      :clj (cljs/eval-str state src file-name opts cb)
+                      :js ((:eval opts) {:source src :name file-name} cb))
+                    {:runner runner
+                     :loaded loaded
+                     :state state})]
     (try
       (reset! *loaded* @loaded)
-      (condp = lang
-        :clj (cljs/eval-str (empty-state) src file-name opts cb)
-        :js ((:eval opts) {:source src :name file-name} cb))
-      {:runner runner
-       :loaded loaded}
+      (if resume
+        (post-load)
+        (do
+          (set! runner.g globs)
+          (binding [*print-fn* print-fn
+                    *sandbox-global* runner.g
+                    *additional-core* 'visr.core]
+            (ocall runner :run
+                   #(cljs/eval-str state
+                                   interactive-syntax.stdlib/injectable
+                                   "core.cljs"
+                                   opts
+                                   post-load)))))
       (catch :default e
         (reset! *loaded* old-loaded)))))
 
@@ -242,20 +256,21 @@
    (fn [deps-env]
      (let [cb (or callback
                   #(print-res db %))
-           {:keys [runner loaded]} (eval-str @input
-                                             (reagent-opts
-                                              {:env (:env deps-env)
-                                               :loaded (:loaded deps-env)
-                                               :fs fs
-                                               :file-name file-name
-                                               :print-fn #(swap! output conj %)}
-                                              db)
-                                             cb)]
+           {:keys [runner loaded state]}
+           (eval-str @input
+                     (reagent-opts
+                      {:env (:env deps-env)
+                       :loaded (:loaded deps-env)
+                       :fs fs
+                       :file-name file-name
+                       :print-fn #(swap! output conj %)}
+                      db)
+                     cb)]
        (reset! (:runner db) runner)))))
 
 (defn mk-editor [{:keys [component]
                   :as data}
-                 stx runner loaded fs cb]
+                 stx runner loaded state fs cb]
   (cond
     (map? component)
     (ns->string
@@ -265,6 +280,7 @@
              ret (eval-str src
                            {:runner runner
                             :loaded @loaded
+                            :state state
                             :fs fs}
                            #(cb [:> Button "Test"]))]
          (reset! loaded (:loaded ret)))))
@@ -293,7 +309,7 @@
      (when (and @(:show-editors options) @editor)
        (let [prog (indexing-push-back-reader s)
              eof (atom nil)
-             {:keys [runner loaded]}
+             {:keys [runner loaded state]}
              (if env
                env
                (let [cache (eval-str ""
@@ -333,7 +349,7 @@
                                    (if (= (:widget old) nil)
                                      (let [element
                                            (.createElement js/document "div")]
-                                       (mk-editor info form runner loaded fs
+                                       (mk-editor info form runner loaded state fs
                                                   (fn [v]
                                                     (d/render v element)))
                                        (assoc old :widget
