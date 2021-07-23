@@ -71,12 +71,12 @@
                                #(let [value (oget % "target.value")]
                                   (swap! new-deps assoc-in [key prop] value)))]
                [:tr {:key key}
-                [:td [:> Form.Control {:on-change (on-change :name)
-                                       :value (:name package)}]]
-                [:td [:> Form.Control {:on-change (on-change :version)
-                                       :value (:version package)}]]
-                [:td [:> Form.Control {:on-change (on-change :url)
-                                       :value (:url package)}]]
+                [:td [:> (oget Form :Control) {:on-change (on-change :name)
+                                               :value (:name package)}]]
+                [:td [:> (oget Form :Control) {:on-change (on-change :version)
+                                               :value (:version package)}]]
+                [:td [:> (oget Form :Control) {:on-change (on-change :url)
+                                               :value (:url package)}]]
                 [:td [:> Button {:variant "danger"
                                  :on-click #(swap! new-deps dissoc key)}
                       "-"]]]))]]
@@ -107,17 +107,17 @@
 
 
 (defn recursive-rm [fs dir]
-  (doseq [i (fs.readdirSync dir)]
+  (doseq [i (ocall fs :readdirSync dir)]
     (let [fullpath (js/path.join dir i)
-          stats (fs.statSync fullpath)]
+          stats (ocall fs :statSync fullpath)]
       (if (ocall stats :isDirectory)
         (recursive-rm fs fullpath)
-        (fs.unlinkSync fullpath))))
-  (fs.rmdirSync dir))
+        (ocall fs :unlinkSync fullpath))))
+  (ocall fs :rmdirSync dir))
 
 
 (defn file-description [fs filepath]
-  (let [stats (fs.statSync filepath)]
+  (let [stats (ocall fs :statSync filepath)]
     (cond-> {:id (filepath->id filepath)
              :name (js/path.basename filepath)
              :isDir (ocall stats :isDirectory)
@@ -150,12 +150,13 @@
         [:> Form {:onSubmit #(do (.preventDefault %)
                                  (.stopPropagation %)
                                  (confirm))}
-         [:> Form.Group {:as Row}
+         [:> (oget Form :Group) {:as Row}
           [:> Col {:xs "auto"}
-           [:> Form.Label {:sr-only true}
+           [:> (oget Form :Label) {:sr-only true}
             title]]
           [:> Col {:xs 8}
-           [:> Form.Control {:on-change #(reset! text (oget % "target.value"))}]]
+           [:> (oget Form :Control)
+            {:on-change #(reset! text (oget % "target.value"))}]]
           [:> Col {:xs "auto"}
            [:> Button
             {:on-click (action text)}
@@ -168,7 +169,7 @@
                          (fn []
                            (when (not= @text "")
                              (let [new-path (js/path.join @current-folder @text)]
-                               (fs.mkdir new-path)
+                               (ocall fs :mkdir new-path)
                                (reset! current-folder new-path))
                              (swap! menu pop))))))
 
@@ -177,9 +178,9 @@
   (let [item (peek @menu)]
     [:> Modal {:show (and (coll? item) (= (first item) :confirm-save))
                :on-hide #(swap! menu pop)}
-     [:> Modal.Header {:close-button true}
+     [:> (oget Modal :Header) {:close-button true}
       [:h3 strings/UNSAVED-CHANGES]]
-     [:> Modal.Footer
+     [:> (oget Modal :Footer)
       [:> Button
        {:variant "primary"
         :on-click (fn []
@@ -217,7 +218,7 @@
       {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
        ;;:disable-drag-and-drop-provider true
        :ref ref
-       :files (for [file (fs.readdirSync @file-browser-folder)]
+       :files (for [file (ocall fs :readdirSync @file-browser-folder)]
                 (file-description fs (js/path.join @file-browser-folder file)))
        :folder-chain (let [split (filter (partial not= "")
                                          (.split @file-browser-folder js/path.sep))]
@@ -226,11 +227,11 @@
                               :breadCrumb (- (count split) i)
                               :isDir true
                               :name folder}))
-       :file-actions [ChonkyActions.CreateFolder
-                      ChonkyActions.DeleteFiles
-                      ChonkyActions.UploadFiles
-                      ChonkyActions.DownloadFiles
-                      ChonkyActions.CopyFiles]
+       :file-actions [(oget ChonkyActions :CreateFolder)
+                      (oget ChonkyActions :DeleteFiles)
+                      (oget ChonkyActions :UploadFiles)
+                      (oget ChonkyActions :DownloadFiles)
+                      (oget ChonkyActions :CopyFiles)]
        :on-file-action
        (fn [data-js]
          (let [{id "id"
@@ -241,11 +242,11 @@
                (js->clj data-js)]
            ;;(js/console.log data)
            (condp = id
-             ChonkyActions.OpenParentFolder.id nil,
-             ChonkyActions.StartDragNDrop.id nil,
-             ChonkyActions.EndDragNDrop.id nil,
-             ChonkyActions.MouseClickFile.id nil,
-             ChonkyActions.CreateFolder.id
+             (oget ChonkyActions :OpenParentFolder.id) nil,
+             (oget ChonkyActions :StartDragNDrop.id) nil,
+             (oget ChonkyActions :EndDragNDrop.id) nil,
+             (oget ChonkyActions :MouseClickFile.id) nil,
+             (oget ChonkyActions :CreateFolder.id)
              (swap! menu conj :new-folder),
              ChonkyActions.OpenFiles.id
              (cond
@@ -264,14 +265,14 @@
                :else (do
                        (reset! text (get-in payload ["targetFile" "name"]))
                        (confirm-action))),
-             ChonkyActions.ClearSelection.id
+             (oget ChonkyActions :ClearSelection.id)
              (swap! menu pop),
-             ChonkyActions.ChangeSelection.id
+             (oget ChonkyActions :ChangeSelection.id)
              nil,
-             ChonkyActions.MoveFiles.id
-             (fs.renameSync
-              (js/path.join @file-browser-folder
-                            (get-in payload ["draggedFile" "name"]))
+             (oget ChonkyActions :MoveFiles.id)
+             (ocall fs :renameSync
+                    (js/path.join @file-browser-folder
+                                  (get-in payload ["draggedFile" "name"]))
               (cond
                 (get-in payload ["destination" "breadCrumb"])
                 (let [split (filter (partial not= "")
@@ -290,23 +291,24 @@
                               (get-in payload ["draggedFile" "name"])),
                 :else (js/path.join @file-browser-folder
                                     (get-in payload ["destination" "name"])))),
-             ChonkyActions.DeleteFiles.id
+             (oget ChonkyActions :DeleteFiles.id)
              (doseq [f (get-in state ["selectedFilesForAction"])]
                (let [name (js/path.join @file-browser-folder (get-in f ["name"]))]
                  (if (get-in f ["isDir"])
                    (recursive-rm fs name)
-                   (fs.unlinkSync name)))),
+                   (ocall fs :unlinkSync name)))),
              (js/console.log data))
            (reset! file-browser-folder @file-browser-folder)))}
       [:> Form {:onSubmit #(do (.preventDefault %)
                                (.stopPropagation %)
                                (confirm-action))}
-       [:> Form.Group {:as Row}
+       [:> (oget Form :Group) {:as Row}
         [:> Col {:xs "auto"}
-         [:> Form.Label {:column true}
+         [:> (oget Form :Label) {:column true}
           strings/FILE]]
         [:> Col {:xs 10}
-         [:> Form.Control {:on-change #(reset! text (oget % "target.value"))}]]
+         [:> (oget Form :Control)
+          {:on-change #(reset! text (oget % "target.value"))}]]
         [:> Col {:xs "auto"}
          [:> Button
           {:on-click
@@ -327,7 +329,7 @@
     [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
                :on-hide #(swap! menu pop)}
-     [:> (.-Header Modal) {:close-button true}
+     [:> (oget Modal :Header) {:close-button true}
       [:h3 strings/SAVE]]
      [file-browser db strings/SAVE
       (fn [file]
@@ -345,9 +347,9 @@
   [:> Modal {:show (= (peek @menu) :load)
              :size "xl"
              :on-hide #(swap! menu pop)}
-   [:> Modal.Header {:close-button true}
+   [:> (oget Modal :Header) {:close-button true}
     [:h3 strings/LOAD]]
-   [:> Modal.Body
+   [:> (oget Modal :Body)
     [file-browser db strings/LOAD
      (fn [file]
        (reset! current-folder @file-browser-folder)
@@ -380,37 +382,37 @@
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
              :on-hide #(swap! menu pop)}
-   [:> (.-Header Modal) {:close-button true}
+   [:> (oget Modal :Header) {:close-button true}
     [:h3 strings/OPTIONS-MENU]]
-   [:> (.-Body Modal)
+   [:> (oget Modal :Body)
     [:> Form {:onSubmit #(do (.preventDefault %)
                               (.stopPropagation %))}
-     [:> (.-Group Form) {:as Row}
-      [:> (.-Label Form) {:column true}
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
        [:h4 (str strings/VISUAL-EDITORS ":")]]
       [:> Col [:> Switch {:checked @show-editors
                           :on-change #(reset! show-editors %)}]]]
-     [:> (.-Group Form) {:as Row}
-      [:> (.-Label Form) {:column true}
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
        [:h4 (str strings/SPLIT ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/SPLIT}
                [option-button orientation "horizontal" strings/HORIZONTAL]
                [option-button orientation "vertical" strings/VERTICAL]]]]
-     [:> (.-Group Form) {:as Row}
-      [:> (.-Label Form) {:column true}
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
        [:h4 (str strings/KEYMAP ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/KEYMAP}
                [option-button keymap "vim" "Vim"]
                [option-button keymap "emacs" "Emacs"]
                [option-button keymap "sublime" "Sublime"]]]]
-     [:> (.-Group Form) {:as Row}
-      [:> (.-Label Form) {:column true}
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
        [:h4 (str strings/FONT-SIZE ":")]]
       [:> Col [:> Row [:> Col {:xs "auto"}
                        [:> Button {:on-click #(swap! font-size dec)}
                         "-"]]
         [:> Col {:xs 4}
-         [:> (.-Control Form)
+         [:> (oget Form :Control)
           {:on-change #(let [value (js/parseInt (oget % "target.value"))]
                          (when-not (js/isNaN value)
                            (reset! font-size (max 1 value))))
@@ -418,13 +420,13 @@
         [:> Col {:xs "auto"}
          [:> Button {:on-click #(swap! font-size inc)}
           "+"]]]]]
-     [:> (.-Group Form) {:as Row}
-      [:> (.-Label Form) {:column true}
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
        [:h4 (str strings/THEME ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/THEME}
                [option-button theme "neat" strings/LIGHT]
         [option-button theme "material" strings/DARK]]]]]]
-   [:> (.-Footer Modal)
+   [:> (oget Modal :Footer)
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}
      strings/CLOSE]]])
@@ -475,15 +477,15 @@
         [:> DropdownButton {:as ButtonGroup
                             :title strings/MENU
                             :size "sm"}
-         [:> (.-Item Dropdown) {:on-click new-file} strings/NEW]
-         [:> (.-Item Dropdown) {:on-click save-file} strings/SAVE]
-         [:> (.-Item Dropdown) {:on-click save-file-as} strings/SAVE-AS]
-         [:> (.-Item Dropdown) {:on-click load-file} strings/LOAD]
-         [:> (.-Item Dropdown) {:on-click options} strings/OPTIONS]
-         [:> (.-Item Dropdown) strings/NEW-PROJECT]
-         [:> (.-Item Dropdown) {:on-click deps} strings/DEPENDENCIES]
-         [:> (.-Item Dropdown) strings/IMPORT-PROJECT]
-         [:> (.-Item Dropdown) strings/EXPORT-PROJECT]]]
+         [:> (oget Dropdown :Item) {:on-click new-file} strings/NEW]
+         [:> (oget Dropdown :Item) {:on-click save-file} strings/SAVE]
+         [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]
+         [:> (oget Dropdown :Item) {:on-click load-file} strings/LOAD]
+         [:> (oget Dropdown :Item) {:on-click options} strings/OPTIONS]
+         [:> (oget Dropdown :Item) strings/NEW-PROJECT]
+         [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
+         [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
+         [:> (oget Dropdown :Item) strings/EXPORT-PROJECT]]]
        [:> Col
         [:> Container {:class-name "d-none d-sm-block"
                        :fluid true
@@ -496,7 +498,7 @@
         [:> SplitButton {:title strings/RUN
                          :size "sm"
                          :on-click run}
-         [:> (.-Item Dropdown) strings/STOP]]]]]
+         [:> (oget Dropdown :Item) strings/STOP]]]]]
      [:div {:className "d-none d-md-block"}
       [:> Row {:className "align-items-center"
                :style {:margin-left 0
@@ -507,14 +509,14 @@
         [:> SplitButton
          {:title strings/SAVE
           :on-click save-file}
-         [:> (.-Item Dropdown) {:on-click save-file-as} strings/SAVE-AS]]
+         [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]]
         [:> Button {:on-click load-file} strings/LOAD]
         [:> DropdownButton {:as ButtonGroup
                             :title strings/PROJECT}
-         [:> (.-Item Dropdown) strings/NEW-PROJECT]
-         [:> (.-Item Dropdown) {:on-click deps} strings/DEPENDENCIES]
-         [:> (.-Item Dropdown) strings/IMPORT-PROJECT]
-         [:> (.-Item Dropdown) strings/EXPORT-PROJECT]]
+         [:> (oget Dropdown :Item) strings/NEW-PROJECT]
+         [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
+         [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
+         [:> (oget Dropdown :Item) strings/EXPORT-PROJECT]]
         [:> Button {:on-click options} strings/OPTIONS]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"
@@ -575,7 +577,7 @@
             (-> @edit (ocall "getDoc")
                 (ocall "setValue" (string/join "\n" (filter string? n))))
             (doseq [i @instances]
-              (.clear i))
+              (ocall i :clear))
             (loop [line 0
                    out n]
                (let [[i & rest] out]
