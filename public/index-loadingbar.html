@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <title>"VISr for ClojureScript"</title>
+    <meta name="description" content="An IDE for Visual and Interactive-Syntax realized for Clojurescript">
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1" name="viewport">
   </head>
   <body>
     <div id="app">
-        <h3>Loading...</h3>
+        <h1>VISr for ClojureScript is Loading...</h1>
         <progress id="progress" value="0" max="100"></progress>
     </div>
     <script type="text/javascript">
@@ -26,7 +28,7 @@
        document.documentElement.appendChild(s);
        s.addEventListener("load", function() {});
      }, false);
-     req.open("GET", "js/main.js");
+     req.open("GET", "target/public/cljs-out/prod/main_bundle.js");
      req.send();
     </script>
   </body>
