@@ -6,15 +6,17 @@
 
 (def injectable "
 (ns visr.core
+  (:refer-clojure :exclude [print println])
   (:require [visr.private]))
-(def render visr.private/render)
-(def a-constant 42)
+(def print visr.private/print)
+(def println visr.private/println)
 (defmacro defvisr []
- `(+ 1 2))
+  `(+ 1 2))
 ")
 
 (defprotocol VISR
-  (render [this]))
+  (render [this])
+  (elaborate [this]))
 
 (defn render-visr [{:keys [output] :as db} visr]
   (swap! output conj visr))

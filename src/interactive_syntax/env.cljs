@@ -10,7 +10,8 @@
                                            get-line-number
                                            get-column-number]]
    [cljs.js :as cljs :refer [empty-state js-eval *loaded*]]
-   [cljs.analyzer :refer [*additional-core*]]
+   [cljs.analyzer :as ana :refer [*additional-core*]]
+   [cljs.env :refer [*compiler*]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
@@ -140,7 +141,9 @@
                   (sandbox-env %)
                   (:env opts)
                   (:env builtins)
-                  {:visr {:private$ {:render (partial stdlib/render-visr db)}}
+                  {:visr {:private$
+                          {:print (partial stdlib/wrap-printer print db)
+                           :println (partial stdlib/wrap-printer println db)}}
                    :reagent {:core reagent.core
                              :dom reagent.dom}})
            :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
@@ -168,23 +171,27 @@
      ["clj" "cljc" "cljs"]
      ["cljs" "cljc" "js"])))
 
-(defn eval-opts [fs runner print-fn sandbox?]
+(defn eval-opts [fs runner print-fn sandbox? bootstrapping?]
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
-             (binding [*print-fn* print-fn
-                       *sandbox-global* runner.g
-                       *additional-core* 'visr.core]
-               (let [ast (babylon/parse source)
-                     polyfilled (hof/polyfillHofFromAst ast)]
-                 (ocall runner :evalAsyncFromAst polyfilled
-                        (fn [res]
-                          (when-not (or (= (:type res) "normal")
-                                        (= (:value res) nil))
-                            (println res))
-                          (cb res))))))
+             (let [run (fn []
+                         (binding [*print-fn* print-fn
+                                   *sandbox-global* runner.g]
+                           (let [ast (babylon/parse source)
+                                 polyfilled (hof/polyfillHofFromAst ast)]
+                             (ocall runner :evalAsyncFromAst polyfilled
+                                    (fn [res]
+                                      (when-not (or (= (:type res) "normal")
+                                                    (= (:value res) nil))
+                                        (println res))
+                                      (cb res))))))]
+               (if bootstrapping?
+                 (run)
+                 (binding [*additional-core* 'visr.core]
+                   (run)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   ;;:verbose true
+   :verbose true
    :source-map true})
 
 (defn eval-str [src
@@ -212,7 +219,8 @@
                  :else loaded)
         file-name (or file-name strings/UNTITLED)
         print-fn (or print-fn #())
-        opts (eval-opts fs runner print-fn sandbox)
+        opts (eval-opts fs runner print-fn sandbox false)
+        bootstrap-opts (eval-opts fs runner print-fn sandbox true)
         lang (or lang :clj)
         state (or state (empty-state))
         cb (fn [res]
@@ -220,12 +228,16 @@
              (reset! *loaded* old-loaded)
              (cb res))
         post-load (fn []
-                    (condp = lang
-                      :clj (cljs/eval-str state src file-name opts cb)
-                      :js ((:eval opts) {:source src :name file-name} cb))
-                    {:runner runner
-                     :loaded loaded
-                     :state state})]
+                    (binding [*print-fn* print-fn
+                              *sandbox-global* runner.g
+                              *additional-core* 'visr.core
+                              *compiler* state]
+                      (condp = lang
+                        :clj (cljs/eval-str state src file-name opts cb)
+                        :js ((:eval opts) {:source src :name file-name} cb))
+                      {:runner runner
+                       :loaded loaded
+                       :state state}))]
     (try
       (reset! *loaded* @loaded)
       (if resume
@@ -233,14 +245,18 @@
         (do
           (set! runner.g globs)
           (binding [*print-fn* print-fn
-                    *sandbox-global* runner.g
-                    *additional-core* 'visr.core]
+                    *sandbox-global* runner.g]
             (ocall runner :run
-                   #(cljs/eval-str state
-                                   interactive-syntax.stdlib/injectable
-                                   "core.cljs"
-                                   opts
-                                   post-load)))))
+                   #(cljs/eval-str
+                     state interactive-syntax.stdlib/injectable
+                     "core.cljs" bootstrap-opts
+                     (fn [res]
+                       (binding [*additional-core* 'visr.core
+                                 *compiler* state]
+                         (set! runner.g.visr.core$macros
+                               runner.g.visr.core)
+                         (ana/intern-macros 'visr.core)
+                         (post-load))))))))
       (catch :default e
         (reset! *loaded* old-loaded)))))
 
