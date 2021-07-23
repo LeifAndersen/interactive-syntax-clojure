@@ -191,7 +191,7 @@
                    (run)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   :verbose true
+   ;;:verbose true
    :source-map true})
 
 (defn eval-str [src
