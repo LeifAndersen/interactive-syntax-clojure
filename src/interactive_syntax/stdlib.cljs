@@ -1,20 +1,12 @@
 (ns interactive-syntax.stdlib
   (:refer-clojure :exclude [print println])
+  (:require-macros
+   [interactive-syntax.slurp :refer [slurp]])
   (:require
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]))
 
-(def injectable "
-(ns visr.core
-  (:refer-clojure :exclude [print println])
-  (:require [visr.private]))
-(def print visr.private/print)
-(def println visr.private/println)
-(defmacro defvisr []
-  (let [{:keys [render elaborate]} (rest &form)]
-    42))
-")
-
+(def injectable (slurp "src/injectable/core.inject"))
 
 (defprotocol VISR
   (render [this updater])

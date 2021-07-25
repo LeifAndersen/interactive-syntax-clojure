@@ -1,0 +1,8 @@
+(ns visr.core
+  (:refer-clojure :exclude [print println])
+  (:require [visr.private]))
+(def print visr.private/print)
+(def println visr.private/println)
+(defmacro defvisr []
+  (let [{:keys [render elaborate]} (rest &form)]
+    42))
