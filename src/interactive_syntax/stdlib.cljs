@@ -11,11 +11,13 @@
 (def print visr.private/print)
 (def println visr.private/println)
 (defmacro defvisr []
-  `(+ 1 2))
+  (let [{:keys [render elaborate]} (rest &form)]
+    42))
 ")
 
+
 (defprotocol VISR
-  (render [this])
+  (render [this updater])
   (elaborate [this]))
 
 (defn render-visr [{:keys [output] :as db} visr]

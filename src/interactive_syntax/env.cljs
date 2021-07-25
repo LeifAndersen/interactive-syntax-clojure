@@ -203,7 +203,8 @@
                         print-fn
                         runner
                         sandbox
-                        state]}
+                        state
+                        ns-cache]}
                 cb]
   (let [resume (and runner true)
         sandbox (if (nil? sandbox) true sandbox)
@@ -223,9 +224,13 @@
         bootstrap-opts (eval-opts fs runner print-fn sandbox true)
         lang (or lang :clj)
         state (or state (empty-state))
+        old-ns-cache NS_CACHE
+        ns-cache (or ns-cache (atom nil))
         cb (fn [res]
              (swap! loaded into @*loaded*)
              (reset! *loaded* old-loaded)
+             (reset! ns-cache NS_CACHE)
+             (set! NS_CACHE old-ns-cache)
              (cb res))
         post-load (fn []
                     (binding [*print-fn* print-fn
@@ -237,9 +242,11 @@
                         :js ((:eval opts) {:source src :name file-name} cb))
                       {:runner runner
                        :loaded loaded
-                       :state state}))]
+                       :state state
+                       :ns-cache ns-cache}))]
     (try
       (reset! *loaded* @loaded)
+      (set! NS_CACHE @ns-cache)
       (if resume
         (post-load)
         (do
@@ -258,7 +265,8 @@
                          (ana/intern-macros 'visr.core)
                          (post-load))))))))
       (catch :default e
-        (reset! *loaded* old-loaded)))))
+        (reset! *loaded* old-loaded)
+        (set! NS_CACHE old-ns-cache)))))
 
 (defn eval-buffer [{:keys [input
                            output
@@ -271,7 +279,7 @@
    (fn [deps-env]
      (let [cb (or callback
                   #(print-res db %))
-           {:keys [runner loaded state]}
+           {:keys [runner loaded state ns-cache]}
            (eval-str @input
                      (reagent-opts
                       {:env (:env deps-env)
@@ -285,7 +293,7 @@
 
 (defn mk-editor [{:keys [component]
                   :as data}
-                 stx runner loaded state fs cb]
+                 stx runner loaded state ns-cache fs cb]
   (cond
     (map? component)
     (ns->string
@@ -296,6 +304,7 @@
                            {:runner runner
                             :loaded @loaded
                             :state state
+                            :ns-cache ns-cache
                             :fs fs}
                            #(cb [:> Button "Test"]))]
          (reset! loaded (:loaded ret)))))
@@ -324,7 +333,7 @@
      (when (and @(:show-editors options) @editor)
        (let [prog (indexing-push-back-reader s)
              eof (atom nil)
-             {:keys [runner loaded state]}
+             {:keys [runner loaded state ns-cache]}
              (if env
                env
                (let [cache (eval-str ""
@@ -364,7 +373,8 @@
                                    (if (= (:widget old) nil)
                                      (let [element
                                            (.createElement js/document "div")]
-                                       (mk-editor info form runner loaded state fs
+                                       (mk-editor info form runner loaded state
+                                                  ns-cache fs
                                                   (fn [v]
                                                     (d/render v element)))
                                        (assoc old :widget
