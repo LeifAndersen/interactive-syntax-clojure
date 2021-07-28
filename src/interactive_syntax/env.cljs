@@ -4,7 +4,6 @@
    [reagent.dom :as d]
    [clojure.string :as string]
    [clojure.walk :as walk]
-   [clojure.set :refer [union]]
    [cljs.tools.reader :refer [read read-string]]
    [cljs.tools.reader.reader-types :refer [indexing-push-back-reader
                                            get-line-number
@@ -17,7 +16,6 @@
    [goog.object :as obj]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
-   [interactive-syntax.fakegoog :as fakegoog]
    ["@stopify/higher-order-functions" :as hof]
    ["@babel/parser" :as babylon]
    ["@babel/template" :as babel-template]
@@ -30,7 +28,6 @@
                             Row Col Form Container Modal
                             Table]]
    [base64-js]
-   [react-split-pane]
    [react-switch]))
 
 (def ^:private template (.-default babel-template))
@@ -108,47 +105,6 @@
 ;; -------------------------
 ;; Evaluator
 
-(defn sandbox-env [runner]
-  {:cljs js/cljs
-   :goog {:provide (partial fakegoog/prov runner)
-          :require (partial fakegoog/req runner)}
-   :console js/console
-   :navigator js/navigator
-   :document js/document
-   :window js/window
-   :global runner
-   :alert js/alert
-   :String js/String
-   :Object js/Object
-   :Function js/Function
-   :Array js/Array
-   :Set js/Set
-   :Math js/Math
-   :atob js/atob
-   :btoa js/btoa
-   :$stopifyArray js/stopifyArray})
-
-(defn builtin-libs []
-  {:env {:react_bootstrap react-bootstrap
-         :react_split_pane react-split-pane
-         :react_switch react-switch}
-   :loaded #{'react-bootstrap 'react-split-pane 'react-switch}})
-
-(defn reagent-opts [opts db]
-  (let [builtins (builtin-libs)]
-    (conj opts
-          {:env #(conj
-                  (sandbox-env %)
-                  (:env opts)
-                  (:env builtins)
-                  {:visr {:private$
-                          {:print (partial stdlib/wrap-printer print db)
-                           :println (partial stdlib/wrap-printer println db)}}
-                   :reagent {:core reagent.core
-                             :dom reagent.dom}})
-           :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
-                         'visr.private 'reagent.core 'reagent.dom)})))
-
 (defn ns->string [fs {:keys [name macros path]} cb]
   ((fn rec [extensions]
      (if (empty? extensions)
@@ -191,7 +147,7 @@
                    (run)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   ;;:verbose true
+   ;:verbose true
    :source-map true})
 
 (defn eval-str [src
@@ -213,7 +169,7 @@
         globs (clj->js (cond
                          (fn? env) (env runner)
                          env env
-                         :else (sandbox-env runner)))
+                         :else (stdlib/sandbox-env runner)))
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
@@ -255,7 +211,7 @@
                     *sandbox-global* runner.g]
             (ocall runner :run
                    #(cljs/eval-str
-                     state interactive-syntax.stdlib/injectable
+                     state stdlib/injectable
                      "core.cljs" bootstrap-opts
                      (fn [res]
                        (binding [*additional-core* 'visr.core
@@ -281,7 +237,7 @@
                   #(print-res db %))
            {:keys [runner loaded state ns-cache]}
            (eval-str @input
-                     (reagent-opts
+                     (stdlib/reagent-opts
                       {:env (:env deps-env)
                        :loaded (:loaded deps-env)
                        :fs fs
@@ -291,38 +247,44 @@
                      cb)]
        (reset! (:runner db) runner)))))
 
-(defn mk-editor [{:keys [component]
+(defn write-editor []
+  nil)
+
+(defn mk-editor [{:keys [editor]
                   :as data}
                  stx runner loaded state ns-cache fs cb]
-  (cond
-    (map? component)
-    (ns->string
-     fs (:ns component)
-     (fn [src]
-       (let [src (if src (:source src) "")
-             ret (eval-str src
-                           {:runner runner
-                            :loaded @loaded
-                            :state state
-                            :ns-cache ns-cache
-                            :fs fs}
-                           #(cb [:> Button "Test"]))]
-         (reset! loaded (:loaded ret)))))
-    (vector? component)
-    (eval-str (str component)
-              {:runner runner
-               :loaded loaded
-               :fs fs}
-              (fn [ret]
-                (cb
-                 (cond
-                   (:value ret) (oget (:value ret) "value")
-                   :else ret))))
-    :else (throw "TODO")))
+  (let [ns (namespace editor)
+        mk-fn (fn [res]
+                (when (and res (:error res))
+                  (throw res))
+                (eval-str (str "(" (stdlib/visr->render editor) ")")
+                          {:runner runner
+                           :loaded @loaded
+                           :state state
+                           :ns-cache ns-cache
+                           :fs fs}
+                          (fn [ret]
+                            (cb
+                             (cond
+                               (:value ret) (oget (:value ret) "value")
+                               :else ret)))))]
+    (cond
+      ns (ns->string fs {:name ns
+                         :macros false
+                         :path (apply js/path.join (.split ns "."))}
+                     (fn [src]
+                       (let [src (if src (:source src) "")]
+                         (eval-str src
+                                   {:runner runner
+                                    :loaded @loaded
+                                    :state state
+                                    :ns-cache ns-cache
+                                    :fs fs}
+                                   mk-fn))))
+      :else (mk-fn nil))))
 
 (defn reset-editors! [s editor instances operation
                       {:keys [fs options deps env] :as db}]
-  nil
   (doseq [[tag i] @instances]
     (do (when (:widget i) (ocall (:widget i) :clear))
         (ocall (:range i) :clear)))
@@ -336,12 +298,13 @@
              {:keys [runner loaded state ns-cache]}
              (if env
                env
-               (let [cache (eval-str ""
-                                     (reagent-opts {:env (:env deps-env)
-                                                    :loaded (:loaded deps-env)
-                                                    :fs fs}
-                                                   db)
-                                     #())]
+               (let [cache (eval-str
+                            ""
+                            (stdlib/reagent-opts {:env (:env deps-env)
+                                                  :loaded (:loaded deps-env)
+                                                  :fs fs}
+                                                 db)
+                            #())]
                  (reset! env cache)
                  cache))]
          (try
@@ -358,8 +321,7 @@
                  (when (coll? form)
                    ((fn rec [form tag]
                       (let [info (meta form)]
-                        (condp = (:tag info)
-                          'editor
+                        (when (:editor info)
                           (let [hider (.createElement js/document "span")]
                             (d/render
                              [:> Button
@@ -400,8 +362,7 @@
                                                      :ch (dec (:end-column info))}
                                                 #js {:collapsed true
                                                      :replacedWith hider}))
-                                     :widget nil}}))
-                          nil)
+                                     :widget nil}})))
                         (doseq [e form]
                           (when (coll? e)
                             (rec e (inc tag))))))
