@@ -8,7 +8,7 @@
                 elaborate
                 name+render
                 name+elaborate]} (private/parse-defvisr name props)]
-    `(do (defn ~name+render []
+    `(do (defn ~name+render
            ~render)
-         (defmacro ~name+elaborate []
+         (defmacro ~name+elaborate
            ~elaborate))))

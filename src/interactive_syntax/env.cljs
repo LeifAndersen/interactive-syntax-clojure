@@ -127,7 +127,7 @@
      ["clj" "cljc" "cljs"]
      ["cljs" "cljc" "js"])))
 
-(defn eval-opts [fs runner print-fn sandbox? bootstrapping?]
+(defn eval-opts [fs runner print-fn sandbox? bootstrapping? ns]
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
              (let [run (fn []
@@ -147,7 +147,8 @@
                    (run)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   ;:verbose true
+   :verbose true
+   :ns ns
    :source-map true})
 
 (defn eval-str [src
@@ -160,7 +161,8 @@
                         runner
                         sandbox
                         state
-                        ns-cache]}
+                        ns-cache
+                        ns]}
                 cb]
   (let [resume (and runner true)
         sandbox (if (nil? sandbox) true sandbox)
@@ -176,8 +178,8 @@
                  :else loaded)
         file-name (or file-name strings/UNTITLED)
         print-fn (or print-fn #())
-        opts (eval-opts fs runner print-fn sandbox false)
-        bootstrap-opts (eval-opts fs runner print-fn sandbox true)
+        opts (eval-opts fs runner print-fn sandbox false ns)
+        bootstrap-opts (eval-opts fs runner print-fn sandbox true nil)
         lang (or lang :clj)
         state (or state (empty-state))
         old-ns-cache NS_CACHE
@@ -219,10 +221,15 @@
                          (set! runner.g.visr.core$macros
                                runner.g.visr.core)
                          (ana/intern-macros 'visr.core)
-                         (post-load))))))))
+                         (post-load))))))
+          {:runner runner
+           :loaded loaded
+           :state state
+           :ns-cache ns-cache}))
       (catch :default e
         (reset! *loaded* old-loaded)
-        (set! NS_CACHE old-ns-cache)))))
+        (set! NS_CACHE old-ns-cache)
+        (throw e)))))
 
 (defn eval-buffer [{:keys [input
                            output
@@ -262,6 +269,7 @@
                            :loaded @loaded
                            :state state
                            :ns-cache ns-cache
+                           :ns ns
                            :fs fs}
                           (fn [ret]
                             (cb
@@ -296,8 +304,8 @@
        (let [prog (indexing-push-back-reader s)
              eof (atom nil)
              {:keys [runner loaded state ns-cache]}
-             (if env
-               env
+             (if @env
+               @env
                (let [cache (eval-str
                             ""
                             (stdlib/reagent-opts {:env (:env deps-env)
