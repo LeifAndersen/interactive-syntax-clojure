@@ -73,12 +73,16 @@
   {:env {:react_bootstrap react-bootstrap
          :react_split_pane react-split-pane
          :react_switch react-switch}
-   :loaded #{'react-bootstrap 'react-split-pane 'react-switch}})
+   :loaded #{'react-bootstrap 'react-split-pane 'react-switch}
+   :js-deps (into {}
+                  (for [k '[react-bootstrap react-split-pane react-switch]]
+                    [(str k) {:global-exports {k (munge k)}}]))})
 
 (defn reagent-opts [opts db]
   (let [builtins (builtin-libs)]
     (conj opts
-          {:env #(conj
+          {:fakegoog-global true
+           :env #(conj
                   (sandbox-env %)
                   (:env opts)
                   (:env builtins)
@@ -89,4 +93,6 @@
                    :reagent {:core reagent.core
                              :dom reagent.dom}})
            :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
-                         'visr.private 'reagent.core 'reagent.dom)})))
+                         'visr.private 'reagent.core 'reagent.dom)
+           :js-deps (conj (into {} (:js-deps opts))
+                          (:js-deps builtins))})))

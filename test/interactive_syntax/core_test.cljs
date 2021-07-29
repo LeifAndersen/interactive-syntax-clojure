@@ -488,8 +488,7 @@
         :set [:file-browser-folder] "/A" :check
         :do #(reset! menu [:home])
         :set [:menu] [:home] :check
-        :done #(done)
-        )))))
+        :done #(done))))))
 
 (deftest delete-file-and-folder
   (testing "Change folder in file browser and ensure buffer doesn't change"
@@ -528,6 +527,44 @@
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/")) 0))
         :do #(swap! menu pop) :check
+        :done #(done))))))
+
+(deftest test-dep-reqs
+  (testing "Test :require on dependencies"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))
+           prog1 "
+(ns test.core
+  (:require [react-bootstrap]))
+(println (nil? react-bootstrap/Button))
+"
+           interum "(println (+ 1 2))"
+           prog2 "
+(ns test.core
+  (:require [react-bootstrap :refer [Button]]))
+(println (nil? Button))
+"]
+       (test-do
+        db :check
+        :do #(reset! input prog1)
+        :set [:input] prog1 :check
+        :do #(click-run view)
+        :set [:output] #queue ["false"] :check
+        :do #(reset! input interum)
+        :set [:input] interum
+        :do #(click-run view)
+        :set [:output] #queue ["3"] :check
+        :do #(reset! input prog2)
+        :set [:input] prog2
+        :do #(click-run view)
+        :set [:output] #queue ["false"] :check
         :done #(done))))))
 
 (defn -main [& args]

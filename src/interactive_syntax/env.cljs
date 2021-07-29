@@ -82,16 +82,18 @@
 
 (defn deps->env [{:keys [deps deps-env env] :as db} cb]
   (let [system (new (oget js/System :constructor))]
-    ((fn rec [denv dloaded deps]
+    ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
          (do
-           (reset! deps-env {:env denv :loaded dloaded})
+           (reset! deps-env {:env denv :loaded dloaded :js-deps djs})
            (reset! env nil)
            (cb {:env denv :loaded dloaded}))
          (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
            (-> system (ocall :import (module->uri source))
                (.then #(rec (assoc denv (munge name) %)
                             (conj dloaded (symbol name))
+                            (assoc djs (str name)
+                                   {:global-exports {(symbol name) (munge name)}})
                             rest-deps))
                (.catch #(js/console.log %))))))
      {} [] @deps)))
@@ -147,7 +149,7 @@
                    (run)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   :verbose true
+   ;:verbose true
    :ns ns
    :source-map true})
 
@@ -161,17 +163,19 @@
                         runner
                         sandbox
                         state
+                        js-deps
                         ns-cache
+                        fakegoog-global
                         ns]}
                 cb]
   (let [resume (and runner true)
         sandbox (if (nil? sandbox) true sandbox)
         old-loaded @*loaded*
         runner (or runner (js/stopify.stopifyLocally ""))
-        globs (clj->js (cond
-                         (fn? env) (env runner)
-                         env env
-                         :else (stdlib/sandbox-env runner)))
+        runner-globs (clj->js (cond
+                                (fn? env) (env runner)
+                                env env
+                                :else (stdlib/sandbox-env runner)))
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
@@ -208,7 +212,9 @@
       (if resume
         (post-load)
         (do
-          (set! runner.g globs)
+          (set! runner.g runner-globs)
+          (when fakegoog-global
+            (set! runner.g.goog.global runner.g))
           (binding [*print-fn* print-fn
                     *sandbox-global* runner.g]
             (ocall runner :run
@@ -216,6 +222,7 @@
                      state stdlib/injectable
                      "core.cljs" bootstrap-opts
                      (fn [res]
+                       (swap! state assoc :js-dependency-index js-deps)
                        (binding [*additional-core* 'visr.core
                                  *compiler* state]
                          (set! runner.g.visr.core$macros
@@ -247,6 +254,7 @@
                      (stdlib/reagent-opts
                       {:env (:env deps-env)
                        :loaded (:loaded deps-env)
+                       :js-deps (:js-deps deps-env)
                        :fs fs
                        :file-name file-name
                        :print-fn #(swap! output conj %)}
@@ -310,6 +318,7 @@
                             ""
                             (stdlib/reagent-opts {:env (:env deps-env)
                                                   :loaded (:loaded deps-env)
+                                                  :js-deps (:js-deps deps-env)
                                                   :fs fs}
                                                  db)
                             #())]

@@ -8,7 +8,7 @@
       (obj/setIfUndefined acc (first n) #js {})
       (recur (obj/get acc (first n)) (rest n)))))
 
-;; Unsure of difference with prov
+;; TODO, req should check for matching prev
 (defn req [runner name]
   (loop [acc runner.g
          n (.split name ".")]
