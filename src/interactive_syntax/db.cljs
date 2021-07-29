@@ -119,7 +119,14 @@
 (s/def ::folder string?)
 (s/def ::file (s/nilable string?))
 (s/def ::changed? boolean?)
-(s/def ::buffer (s/keys :req-un [::input ::output ::folder ::file ::changed?]))
+(s/def ::running? boolean?)
+(s/def ::buffer (s/keys :req-un [::input
+                                 ::output
+                                 ::folder
+                                 ::file
+                                 ::changed?
+                                 ::runner
+                                 ::running?]))
 
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
@@ -158,7 +165,9 @@
    :file nil
    :changed? false
    :input ""
-   :output ""})
+   :output ""
+   :runner nil
+   :running? false})
 
 (defn default-db
   ([] (default-db :temp))
@@ -204,5 +213,6 @@
       :deps (->DBAtom backed-db [:deps])
       :deps-env (atom nil)
       :env (atom nil)
-      :file-changed (->DBAtom backed-db [:current :changed?])})))
+      :file-changed (->DBAtom backed-db [:current :changed?])
+      :running? (->DBAtom backed-db [:current :running?])})))
 

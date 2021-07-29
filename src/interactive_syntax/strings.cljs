@@ -26,6 +26,7 @@
 (def UPDATE "Update")
 
 (def RUN "Run")
+(def PAUSE "Pause")
 (def STOP "Stop")
 
 (def OPTIONS-MENU "Options Menu")

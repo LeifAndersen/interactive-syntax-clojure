@@ -445,7 +445,8 @@
                           current-file
                           file-changed
                           menu
-                          runner]
+                          runner
+                          running?]
                    :as db}]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
@@ -464,9 +465,9 @@
                        (if @file-changed
                          "*"
                          ""))
-        run #(let []
-               (reset! output #queue [])
-               (env/eval-buffer db))]
+        run+pause #(let []
+                     (reset! output #queue [])
+                     (env/eval-buffer db))]
     [:div
      [:div {:class-name "d-block d-md-none"}
       [:> Row {:class-name "align-items-center flex-nowrap"
@@ -495,9 +496,9 @@
          file-name]]
        [:> Col {:xs "auto"
                 :style {:padding-right 0}}
-        [:> SplitButton {:title strings/RUN
+        [:> SplitButton {:title (if @running? strings/PAUSE strings/RUN)
                          :size "sm"
-                         :on-click run}
+                         :on-click run+pause}
          [:> (oget Dropdown :Item) strings/STOP]]]]]
      [:div {:className "d-none d-md-block"}
       [:> Row {:className "align-items-center"
@@ -521,7 +522,7 @@
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"
                 :style {:paddingRight 0}}
-        [:> Button {:on-click run} strings/RUN]
+        [:> Button {:on-click run+pause} (if @running? strings/PAUSE strings/RUN)]
         [:> Button strings/STOP]]]]]))
 
 (defn editor-view [{:keys [menu input options file-changed current-file fs]

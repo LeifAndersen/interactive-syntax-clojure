@@ -161,6 +161,7 @@
                         file-name
                         print-fn
                         runner
+                        running?
                         sandbox
                         state
                         js-deps
@@ -176,6 +177,7 @@
                                 (fn? env) (env runner)
                                 env env
                                 :else (stdlib/sandbox-env runner)))
+        running? (or running? (atom false))
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
@@ -193,6 +195,7 @@
              (reset! *loaded* old-loaded)
              (reset! ns-cache NS_CACHE)
              (set! NS_CACHE old-ns-cache)
+             (reset! running? false)
              (cb res))
         post-load (fn []
                     (binding [*print-fn* print-fn
@@ -209,6 +212,7 @@
     (try
       (reset! *loaded* @loaded)
       (set! NS_CACHE @ns-cache)
+      (reset! running? true)
       (if resume
         (post-load)
         (do
@@ -236,12 +240,14 @@
       (catch :default e
         (reset! *loaded* old-loaded)
         (set! NS_CACHE old-ns-cache)
+        (reset! running? false)
         (throw e)))))
 
 (defn eval-buffer [{:keys [input
                            output
                            file-name
-                           fs]
+                           fs
+                           running?]
                     :as db}
                    & [callback]]
   (deps->env
@@ -256,6 +262,7 @@
                        :loaded (:loaded deps-env)
                        :js-deps (:js-deps deps-env)
                        :fs fs
+                       :running? running?
                        :file-name file-name
                        :print-fn #(swap! output conj %)}
                       db)
