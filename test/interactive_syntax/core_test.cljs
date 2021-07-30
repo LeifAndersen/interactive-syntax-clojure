@@ -37,10 +37,10 @@
               (aget 0))))
 
 (defn get-modal [& [index]]
- (let [lst (-> js/document
-               .-body
-               (.getElementsByClassName "modal"))]
-   (aget lst (or index (dec (alength lst))))))
+  (let [lst (-> js/document
+                .-body
+                (.getElementsByClassName "modal"))]
+    (aget lst (or index (dec (alength lst))))))
 
 (defn click-run [view]
   (.click rtl/fireEvent (first (.getAllByText view strings/RUN))))
@@ -266,7 +266,7 @@
        :set [:menu] [:home [:save]]
        :set [:file-changed] true :check
        :do #(.click rtl/fireEvent (-> (get-modal)
-                                      (.getElementsByClassName "close")
+                                      (.getElementsByClassName "btn-close")
                                       (aget 0)))
        :set [:menu] [:home] :check
        :do #(.click rtl/fireEvent (first (.getAllByText view strings/SAVE)))
@@ -308,7 +308,7 @@
        :do #(-> @editor .getDoc (.setValue "(+ 1 2)"))
        :do #(.click rtl/fireEvent (.getByText view strings/NEW))
        :do #(.click rtl/fireEvent (-> (get-modal)
-                                      (.getElementsByClassName "close")
+                                      (.getElementsByClassName "btn-close")
                                       (aget 0)))
        :set [:file-changed] true
        :set [:input] "(+ 1 2)" :check
@@ -319,7 +319,7 @@
                                       (aget 0)))
        :set [:menu] [:home [:save :new]]
        :do #(.click rtl/fireEvent (-> (get-modal)
-                                      (.getElementsByClassName "close")
+                                      (.getElementsByClassName "btn-close")
                                       (aget 0)))
        :set [:menu] [:home] :check
        :do #(.click rtl/fireEvent (.getByText view strings/NEW))
@@ -569,3 +569,4 @@
 
 (defn -main [& args]
   (run-tests-async 10000))
+
