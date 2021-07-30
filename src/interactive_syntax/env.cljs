@@ -19,7 +19,6 @@
    ["@stopify/higher-order-functions" :as hof]
    ["@babel/parser" :as babylon]
    ["@babel/template" :as babel-template]
-   [jquery]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]

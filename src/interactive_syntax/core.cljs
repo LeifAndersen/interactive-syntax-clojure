@@ -10,7 +10,6 @@
      [interactive-syntax.db :as db]
      [interactive-syntax.strings :as strings]
      [interactive-syntax.env :as env]
-     [jquery]
      [popper.js]
      [bootstrap]
      [alandipert.storage-atom :as storage]
