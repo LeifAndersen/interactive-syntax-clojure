@@ -391,34 +391,33 @@
                                                               :repl repl}]))
            prog1 "(loop [x 0] (when (< x 5) (println x) (recur (inc x))))"
            prog2 "
-(defn oh-no []
-  (println \"Oh no!\")
-  (recur))
+(defn oh-no [i]
+  (when (= (mod i 10000) 0)
+    (println \"Oh no!\"))
+  (recur (inc i)))
 
-(oh-no)"]
+(oh-no 0)"]
        (test-do
         db :check
         :do #(reset! input prog1)
         :set [:input] prog1 :check
-        :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+        :do #(click-run view)
         :set [:output] #queue ["0" "1" "2" "3" "4"] :check
         :do #(reset! input prog2)
         :set [:input] prog2 :check
-        ;; XXX UNCOMMENT (stopify bug)
-   ;;   :do #(click-run view)
-   ;;   :do #(js/console.log @runner)
-   ;;   :do #(set! js/window.runner @runner)
-   ;;   :do #(js/console.log "Running!")
-   ;;   :wait 10
-   ;;   :do #(js/console.log "requesting stop...")
-   ;;   :async #(.pause @runner %)
-   ;;   :do #(js/console.log "Stopped?")
-   ;;   :check
-   ;;   :get [:output]
-   ;;   :do #(do
-   ;;          (is (seq %))
-   ;;          (is (> (count %) 1))
-   ;;          (is (every? (partial (= "Oh no!")) %)))
+        :do #(click-run view)
+        :do #(js/console.log @runner)
+        :do #(set! js/window.runner @runner)
+        :do #(js/console.log "Running!")
+        :wait 10
+        :do #(js/console.log "requesting stop...")
+        :async #(.pause @runner %)
+        :do #(js/console.log "Stopped?")
+        :do #(do
+               (js/console.log @output)
+               (is (seq @output))
+               (is (> (count @output) 0))
+               (is (every? (partial = "Oh no!") @output)))
         :done #(done))))))
 
 (deftest multiple-files-eval

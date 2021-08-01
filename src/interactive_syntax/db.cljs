@@ -214,5 +214,5 @@
       :deps-env (atom nil)
       :env (atom nil)
       :file-changed (->DBAtom backed-db [:current :changed?])
-      :running? (->DBAtom backed-db [:current :running?])})))
+      :running? (atom false)})))
 

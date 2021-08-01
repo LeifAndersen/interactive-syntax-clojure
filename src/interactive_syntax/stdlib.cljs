@@ -50,7 +50,21 @@
           (recur (assoc props :elaborate (rest fst)) (rest rst)))))))
 
 (defn sandbox-env [runner]
-  {:cljs js/cljs
+  {:cljs {:core js/cljs.core
+          :core$macros js/cljs.core$macros
+          :analyzer js/cljs.analyzer
+          :compiler js/cljs.compiler
+          :env js/cljs.env
+          :js js/cljs.js
+          :pprint js/cljs.pprint
+          :reader js/cljs.reader
+          :source_map js/cljs.source_map
+          :spec js/cljs.spec
+          :stacktrace js/cljs.stacktrace
+          :tagged_literals js/cljs.tagged_literals
+          :test js/cljs.test
+          :tools js/cljs.tools
+          :user {}}
    :goog {:provide (partial fakegoog/prov runner)
           :require (partial fakegoog/req runner)}
    :console js/console
@@ -67,6 +81,7 @@
    :Math js/Math
    :atob js/atob
    :btoa js/btoa
+   :stopify js/stopify
    :$stopifyArray js/stopifyArray})
 
 (defn builtin-libs []
