@@ -16,7 +16,7 @@
      [react-bootstrap :refer [Button ButtonGroup SplitButton
                               Dropdown DropdownButton Tabs Tab
                               Row Col Form Container Modal
-                              Table]]
+                              Table Spinner]]
      [react-hotkeys :refer [GlobalHotKeys]]
      [codemirror]
      ["@leifandersen/react-codemirror2" :as cm]
@@ -95,6 +95,15 @@
                                    (swap! menu pop))}
             strings/UPDATE]]]]]])))
 
+(defn hold-dialog [{:keys [menu]
+                    :as db}]
+  [:> Modal {:show (= (peek @menu) :hold)
+             :size "xl"}
+   [:> (oget Modal :Body)
+    [:> Spinner {:animation "modal"
+                 :role "status"}
+     "Processing..."]]])
+
 ;; -------------------------
 ;; File Dialogs
 
@@ -105,47 +114,62 @@
       (.digest "base64")))
 
 
-(defn recursive-rm [fs dir]
-  (doseq [i (ocall fs :readdirSync dir)]
-    (let [fullpath (js/path.join dir i)
-          stats (ocall fs :statSync fullpath)]
-      (if (ocall stats :isDirectory)
-        (recursive-rm fs fullpath)
-        (ocall fs :unlinkSync fullpath))))
-  (ocall fs :rmdirSync dir))
+(defn recursive-rm [fs dir cb]
+  (js/console.log dir)
+  (ocall fs :readdir dir
+         (fn [err files]
+           ((fn rec [files cb]
+              (if (empty? files)
+                (cb)
+                (let [fullpath (js/path.join dir (first files))]
+                  (ocall fs :stat fullpath
+                         (fn [err stats]
+                           (if (ocall stats :isDirectory)
+                             (recursive-rm fs fullpath #(rec (rest files) cb))
+                             (ocall fs :unlink fullpath
+                                    #(rec (rest files) cb))))))))
+            files
+            #(ocall fs :rmdir dir cb)))))
 
 
-(defn file-description [fs filepath]
-  (let [stats (ocall fs :statSync filepath)]
-    (cond-> {:id (filepath->id filepath)
-             :name (js/path.basename filepath)
-             :isDir (ocall stats :isDirectory)
-             :modDate stats.ctime}
-      (= (.charAt filepath 0) ".") (assoc :isHidden true)
-      (ocall stats :isSymbolicLink) (assoc :isSymlink true)
-      (not (ocall stats :isDirectory)) (assoc :size (oget stats :size))
-      :always clj->js)))
+(defn file-description [fs filepath cb]
+  (ocall fs :stat filepath
+         (fn [err stats]
+           (cond-> {:id (filepath->id filepath)
+                    :name (js/path.basename filepath)
+                    :isDir (ocall stats :isDirectory)
+                    :modDate stats.ctime}
+             (= (.charAt filepath 0) ".") (assoc :isHidden true)
+             (ocall stats :isSymbolicLink) (assoc :isSymlink true)
+             (not (ocall stats :isDirectory)) (assoc :size (oget stats :size))
+             :always clj->js
+             :always cb))))
 
-(defn save-buffer [{:keys [fs current-folder current-file input file-changed]
+(defn save-buffer [{:keys [fs menu current-folder current-file input file-changed]
                     :as db}]
-  (ocall fs :writeFileSync (js/path.join @current-folder @current-file) @input)
-  (reset! file-changed false))
+  (swap! menu conj :hold)
+  (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
+         (fn [err res]
+           (reset! file-changed false)
+           (swap! menu pop))))
 
-(defn load-buffer [{:keys [fs current-folder current-file input file-changed]
+(defn load-buffer [{:keys [fs menu current-folder current-file input file-changed]
                     :as db}]
-  (reset! input (as-> (js/path.join @current-folder @current-file) v
-                  (ocall fs :readFileSync v)
-                  (ocall v :toString)))
-  (reset! file-changed false))
+  (swap! menu conj :hold)
+  (ocall fs :readFile (js/path.join @current-folder @current-file)
+         (fn [err txt]
+           (reset! input (ocall txt :toString))
+           (reset! file-changed false)
+           (swap! menu pop))))
 
 (defn make-control-dialog [menu key title confirm action]
   (let [text (atom "")]
     (fn []
       [:> Modal {:show (= (peek @menu) key)
                  :on-hide #(swap! menu pop)}
-       [:> Modal.Header {:close-button true}
+       [:> (oget Modal :Header) {:close-button true}
         [:h3 title]]
-       [:> Modal.Body
+       [:> (oget Modal :Body)
         [:> Form {:onSubmit #(do (.preventDefault %)
                                  (.stopPropagation %)
                                  (confirm))}
@@ -193,7 +217,6 @@
 
 (defn file-browser [{:keys [fs
                             menu
-                            current-folder
                             current-file
                             file-browser-folder
                             options]
@@ -202,6 +225,19 @@
                     choice-callback
                     & [ref]]
   (let [text (atom "")
+        dir-list (atom [nil])
+        populate-dir-list (fn []
+                            (ocall fs :readdir @file-browser-folder
+                                   (fn [err files]
+                                     ((fn rec [acc rst]
+                                        (if (empty? rst)
+                                          (reset! dir-list acc)
+                                          (file-description
+                                           fs
+                                           (js/path.join @file-browser-folder
+                                                         (first rst))
+                                           #(rec (conj acc %) (rest rst)))))
+                                      [] files))))
         confirm-action (fn []
                          (when (not= @text "")
                            (choice-callback @text)
@@ -212,111 +248,139 @@
                                             (conj rest (second item))
                                             rest)))))
         ref (or ref #js {:current nil})]
-    [:div {:style #js {:height "450px"}}
-     [:> chonky/FileBrowser
-      {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
-       ;;:disable-drag-and-drop-provider true
-       :ref ref
-       :files (for [file (ocall fs :readdirSync @file-browser-folder)]
-                (file-description fs (js/path.join @file-browser-folder file)))
-       :folder-chain (let [split (filter (partial not= "")
-                                         (.split @file-browser-folder js/path.sep))]
-                       (for [[i folder] (map list (range) (conj split " "))]
-                         #js {:id (str "folder" i)
-                              :breadCrumb (- (count split) i)
-                              :isDir true
-                              :name folder}))
-       :file-actions [(oget ChonkyActions :CreateFolder)
-                      (oget ChonkyActions :DeleteFiles)
-                      (oget ChonkyActions :UploadFiles)
-                      (oget ChonkyActions :DownloadFiles)
-                      (oget ChonkyActions :CopyFiles)]
-       :on-file-action
-       (fn [data-js]
-         (let [{id "id"
-                action "action"
-                payload "payload"
-                state "state"
-                :as data}
-               (js->clj data-js)]
-           ;;(js/console.log data)
-           (condp = id
-             (oget ChonkyActions :OpenParentFolder.id) nil,
-             (oget ChonkyActions :StartDragNDrop.id) nil,
-             (oget ChonkyActions :EndDragNDrop.id) nil,
-             (oget ChonkyActions :MouseClickFile.id) nil,
-             (oget ChonkyActions :CreateFolder.id)
-             (swap! menu conj :new-folder),
-             ChonkyActions.OpenFiles.id
-             (cond
-               (get-in payload ["targetFile" "breadCrumb"])
-               (swap! file-browser-folder
-                      #(apply js/path.join
-                              (conj
-                               (for [i
-                                     (range
-                                      (get-in payload ["targetFile" "breadCrumb"]))]
-                                 "..")
-                               %))),
-               (get-in payload ["targetFile" "isDir"])
-               (swap! file-browser-folder
-                      #(js/path.join % (get-in payload ["targetFile" "name"]))),
-               :else (do
-                       (reset! text (get-in payload ["targetFile" "name"]))
-                       (confirm-action))),
-             (oget ChonkyActions :ClearSelection.id)
-             (swap! menu pop),
-             (oget ChonkyActions :ChangeSelection.id)
-             nil,
-             (oget ChonkyActions :MoveFiles.id)
-             (ocall fs :renameSync
-                    (js/path.join @file-browser-folder
-                                  (get-in payload ["draggedFile" "name"]))
-              (cond
-                (get-in payload ["destination" "breadCrumb"])
-                (let [split (filter (partial not= "")
-                                    (.split @file-browser-folder js/path.sep))
-                      total (count split)
-                      crumbs (get-in payload ["destination" "breadCrumb"])]
-                  (if (= total crumbs)
-                    (js/path.join "/" (get-in payload ["draggedFile" "name"]))
-                    (js/path.join
-                     "/"
-                     (apply js/path.join (take (- total crumbs) split))
-                     (get-in payload ["draggedFile" "name"])))),
-                (get-in payload ["destination" "isDir"])
-                (js/path.join @file-browser-folder
-                              (get-in payload ["destination" "name"])
-                              (get-in payload ["draggedFile" "name"])),
-                :else (js/path.join @file-browser-folder
-                                    (get-in payload ["destination" "name"])))),
-             (oget ChonkyActions :DeleteFiles.id)
-             (doseq [f (get-in state ["selectedFilesForAction"])]
-               (let [name (js/path.join @file-browser-folder (get-in f ["name"]))]
-                 (if (get-in f ["isDir"])
-                   (recursive-rm fs name)
-                   (ocall fs :unlinkSync name)))),
-             (js/console.log data))
-           (reset! file-browser-folder @file-browser-folder)))}
-      [:> Form {:onSubmit #(do (.preventDefault %)
-                               (.stopPropagation %)
-                               (confirm-action))}
-       [:> (oget Form :Group) {:as Row}
-        [:> Col {:xs "auto"}
-         [:> (oget Form :Label) {:column true}
-          strings/FILE]]
-        [:> Col {:xs 10}
-         [:> (oget Form :Control)
-          {:on-change #(reset! text (oget % "target.value"))}]]
-        [:> Col {:xs "auto"}
-         [:> Button
-          {:on-click
-           #(confirm-action)}
-          choice-text]]]]
-      [:> chonky/FileNavbar]
-      [:> chonky/FileToolbar]
-      [:> chonky/FileList]
-      [:> chonky/FileContextMenu]]]))
+    (add-watch file-browser-folder ::folder-change
+               (fn [k r o n]
+                 (when (not (= o n))
+                   (populate-dir-list))))
+    (populate-dir-list)
+    (fn [{:keys [fs
+                 menu
+                 current-file
+                 file-browser-folder
+                 options]
+          :as db}
+         choice-text
+         choice-callback
+         & [ref]]
+      [:div {:style #js {:height "450px"}}
+       [:> chonky/FileBrowser
+        {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
+         ;;:disable-drag-and-drop-provider true
+         :ref ref
+         :files @dir-list
+         :folder-chain (let [split (filter (partial not= "")
+                                           (.split @file-browser-folder
+                                                   js/path.sep))]
+                         (for [[i folder] (map list (range) (conj split " "))]
+                           #js {:id (str "folder" i)
+                                :breadCrumb (- (count split) i)
+                                :isDir true
+                                :name folder}))
+         :file-actions [(oget ChonkyActions :CreateFolder)
+                        (oget ChonkyActions :DeleteFiles)
+                        (oget ChonkyActions :UploadFiles)
+                        (oget ChonkyActions :DownloadFiles)
+                        (oget ChonkyActions :CopyFiles)]
+         :on-file-action
+         (fn [data-js]
+           (let [{id "id"
+                  action "action"
+                  payload "payload"
+                  state "state"
+                  :as data}
+                 (js->clj data-js)
+                 begin-transaction #(swap! menu conj :hold)
+                 end-transaction #(swap! menu pop)]
+             ;;(js/console.log data)
+             (condp = id
+               (oget ChonkyActions :OpenParentFolder.id) nil,
+               (oget ChonkyActions :StartDragNDrop.id) nil,
+               (oget ChonkyActions :EndDragNDrop.id) nil,
+               (oget ChonkyActions :MouseClickFile.id) nil,
+               (oget ChonkyActions :OpenFileContextMenu.id) nil,
+               (oget ChonkyActions :CreateFolder.id)
+               (swap! menu conj :new-folder),
+               ChonkyActions.OpenFiles.id
+               (cond
+                 (get-in payload ["targetFile" "breadCrumb"])
+                 (swap! file-browser-folder
+                        #(apply
+                          js/path.join
+                          (conj
+                           (for [i
+                                 (range
+                                  (get-in payload ["targetFile" "breadCrumb"]))]
+                             "..")
+                           %))),
+                 (get-in payload ["targetFile" "isDir"])
+                 (swap! file-browser-folder
+                        #(js/path.join % (get-in payload ["targetFile" "name"]))),
+                 :else (do
+                         (reset! text (get-in payload ["targetFile" "name"]))
+                         (confirm-action))),
+               (oget ChonkyActions :ClearSelection.id) (swap! menu pop),
+               (oget ChonkyActions :ChangeSelection.id) nil,
+               (oget ChonkyActions :MoveFiles.id)
+               (do (begin-transaction)
+                   (ocall fs :rename
+                          (js/path.join @file-browser-folder
+                                        (get-in payload ["draggedFile" "name"]))
+                          (cond
+                            (get-in payload ["destination" "breadCrumb"])
+                            (let [split (filter (partial not= "")
+                                                (.split @file-browser-folder
+                                                        js/path.sep))
+                                  total (count split)
+                                  crumbs (get-in payload ["destination" "breadCrumb"])]
+                              (if (= total crumbs)
+                                (js/path.join
+                                 "/"
+                                 (get-in payload ["draggedFile" "name"]))
+                                (js/path.join
+                                 "/"
+                                 (apply js/path.join (take (- total crumbs) split))
+                                 (get-in payload ["draggedFile" "name"])))),
+                            (get-in payload ["destination" "isDir"])
+                            (js/path.join @file-browser-folder
+                                          (get-in payload ["destination" "name"])
+                                          (get-in payload ["draggedFile" "name"])),
+                            :else (js/path.join @file-browser-folder
+                                                (get-in payload
+                                                        ["destination" "name"])))
+                          end-transaction)),
+               (oget ChonkyActions :DeleteFiles.id)
+               (do (begin-transaction)
+                   ((fn rec [files]
+                      (if (empty? files)
+                        (end-transaction)
+                        (let [f (first files)
+                              name (js/path.join @file-browser-folder
+                                                 (get-in f ["name"]))]
+                          (if (get-in f ["isDir"])
+                            (recursive-rm fs name #(rec (rest files)))
+                            (ocall fs :unlink name #(rec (rest files)))))))
+                    (get-in state ["selectedFilesForAction"])))
+               (js/console.log data))
+             (reset! file-browser-folder @file-browser-folder)))}
+        [:> Form {:onSubmit #(do (.preventDefault %)
+                                 (.stopPropagation %)
+                                 (confirm-action))}
+         [:> (oget Form :Group) {:as Row}
+          [:> Col {:xs "auto"}
+           [:> (oget Form :Label) {:column true}
+            strings/FILE]]
+          [:> Col {:xs 10}
+           [:> (oget Form :Control)
+            {:on-change #(reset! text (oget % "target.value"))}]]
+          [:> Col {:xs "auto"}
+           [:> Button
+            {:on-click
+             #(confirm-action)}
+            choice-text]]]]
+        [:> chonky/FileNavbar]
+        [:> chonky/FileToolbar]
+        [:> chonky/FileList]
+        [:> chonky/FileContextMenu]]])))
 
 (defn save-dialog [{:keys [menu
                            file-browser-folder
@@ -644,6 +708,7 @@
    [confirm-save-dialog db]
    [new-folder-dialog db]
    [deps-dialog db]
+   [hold-dialog db]
    [:div {:style {:flex "0 1 auto"}}
     [button-row db]]
    (if (= (count @buffers) 1)

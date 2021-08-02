@@ -406,15 +406,10 @@
         :do #(reset! input prog2)
         :set [:input] prog2 :check
         :do #(click-run view)
-        :do #(js/console.log @runner)
         :do #(set! js/window.runner @runner)
-        :do #(js/console.log "Running!")
         :wait 10
-        :do #(js/console.log "requesting stop...")
         :async #(.pause @runner %)
-        :do #(js/console.log "Stopped?")
         :do #(do
-               (js/console.log @output)
                (is (seq @output))
                (is (> (count @output) 0))
                (is (every? (partial = "Oh no!") @output)))

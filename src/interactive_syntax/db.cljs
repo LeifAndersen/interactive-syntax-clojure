@@ -173,9 +173,10 @@
   ([] (default-db :temp))
   ([mode]
    (let [fs (browserfs/BFSRequire "fs")
-         _ (browserfs/configure #js {:fs (case mode
-                                           :local "LocalStorage"
-                                           :temp "InMemory")}
+         _ (browserfs/configure (case mode
+                                  :local #js {:fs "IndexedDB"
+                                              :options #js {:storeName "bfs"}}
+                                  :temp #js {:fs "InMemory"})
                                 #(when % (throw %)))
          base {:fs fs
                :options default-options
