@@ -178,18 +178,16 @@
                                               :options #js {:storeName "bfs"}}
                                   :temp #js {:fs "InMemory"})
                                 #(when % (throw %)))
-         base {:fs fs
-               :options default-options
+         base {:options default-options
                :current 0
                :folder "/"
                :buffers [default-buffer]
+               :fs {}
                :deps {}
                :menu [:home]}
          db (atom base)
          backed-db (case mode
-                     :local (let [ret (local-storage db "state")]
-                              (swap! ret assoc :fs fs)
-                              ret)
+                     :local (local-storage db "state")
                      :temp db)]
      {:options (into {}
                      (for [i [:orientation

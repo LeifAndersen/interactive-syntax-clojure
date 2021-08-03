@@ -48,14 +48,16 @@
 (defn get-pkg [{:keys [url name version]} cb]
   (let [req (js/XMLHttpRequest.)
         sanatize-map {"@" "" "/" ""}
-        pkg-name (cond url ""
-                       version (str (string/escape name sanatize-map) "/"
-                                    (string/escape version sanatize-map))
+        pkg-name (cond (and url (not= url "")) "",
+                       (and version (not= version ""))
+                       (str (string/escape name sanatize-map) "/"
+                            (string/escape version sanatize-map)),
                        :else (string/escape name sanatize-map))
-        url (or url
-                (str
-                 "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/"
-                 pkg-name ".js"))]
+        url (if (and url (not= url ""))
+              url
+              (str
+               "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/"
+               pkg-name ".js"))]
     (ocall req "addEventListener" "load" #(cb (oget % "target.responseText")))
     (ocall req "open" "GET" url)
     (ocall req "send")))
