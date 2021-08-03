@@ -1,4 +1,6 @@
 (ns interactive-syntax.core-test
+  (:require-macros
+   [interactive-syntax.slurp :refer [slurp]])
   (:require [cljs.test :refer-macros [deftest is testing use-fixtures async]]
             [figwheel.main.testing :refer-macros [run-tests-async]]
             [cljs.pprint :refer [pprint]]
@@ -9,7 +11,10 @@
             ["@testing-library/react" :as rtl]
             [interactive-syntax.db :as db :refer [default-db ->RefAtom]]
             [interactive-syntax.strings :as strings]
-            [interactive-syntax.core :as core]))
+            [interactive-syntax.core :as core]
+            [interactive-syntax.env :as env]))
+
+(def test-dep (slurp "test/res/react-hexgrid.js"))
 
 (defn print-view [view]
   (->> view
@@ -572,6 +577,45 @@
         :set [:input] prog3
         :do #(click-run view)
         :set [:output] #queue ["false"] :check
+        :done #(done))))))
+
+(deftest test-download-dep
+  (testing "Test an installed/additional dep"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))
+           interum "(println (+ 1 2))"
+           prog1 "
+(ns test.core
+  (:require [react-hexgrid :as rh :refer [Hex]]))
+(println (nil? react-hexgrid))
+(println (nil? rh))
+(println (nil? Hex))
+(println (nil? rh/Hex))
+"]
+       (test-do
+        db :check
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/PROJECT)))
+        :do #(.click rtl/fireEvent (first (.getAllByText
+                                           view strings/DEPENDENCIES)))
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/ADD+SYMBOL)))
+        :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/NAME))
+                      #js {:target #js {:value "react-hexgrid"}})
+        :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/URL))
+                      #js {:target #js {:value (env/module->uri test-dep)}})
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/UPDATE)))
+        :wait 0
+        :do #(reset! input prog1)
+        :set [:input] prog1 :check
+        :do #(click-run view)
+        :wait 0
+        :set [:output] #queue ["false" "false" "false" "false"] :check
         :done #(done))))))
 
 (defn -main [& args]

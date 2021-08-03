@@ -24,6 +24,7 @@
 (def VERSION "Version")
 (def URL "URL")
 (def UPDATE "Update")
+(def CANCEL "Cancel")
 
 (def RUN "Run")
 (def PAUSE "Pause")
@@ -42,3 +43,7 @@
 
 (def CLOSE "Close")
 
+(def ADD "ADD")
+(def ADD+SYMBOL "+")
+(def REMOVE "REMOVE")
+(def REMOVE+SYMBOL "-")

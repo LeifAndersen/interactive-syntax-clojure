@@ -71,24 +71,35 @@
                                   (swap! new-deps assoc-in [key prop] value)))]
                [:tr {:key key}
                 [:td [:> (oget Form :Control) {:on-change (on-change :name)
+                                               :aria-label strings/NAME
                                                :value (:name package)}]]
                 [:td [:> (oget Form :Control) {:on-change (on-change :version)
+                                               :aria-label strings/VERSION
                                                :value (:version package)}]]
                 [:td [:> (oget Form :Control) {:on-change (on-change :url)
+                                               :aria-label strings/URL
                                                :value (:url package)}]]
                 [:td [:> Button {:variant "danger"
                                  :on-click #(swap! new-deps dissoc key)}
-                      "-"]]]))]]
+                      "-"]]]))
+           [:tr {:key 0}
+            [:td] [:td] [:td]
+            [:td [:> Button
+                   {:on-click #(swap! new-deps assoc (js/Date.now) {:name ""
+                                                                    :version ""
+                                                                    :url ""})}
+                  "+"]]]]]
          [:> Row {:class-name "align-items-center flex-nowrap"
                   :style {:margin-left 0
                           :margin-right 0}}
           [:> Col {:xs "auto"}
-           [:> Button {:on-click #(swap! new-deps assoc (js/Date.now) {:name ""
-                                                                       :version ""
-                                                                       :url ""})}
-            strings/NEW]]
-          [:> Col {:xs "auto"}
            [:> Button {:on-click (fn []
+                                   (swap! menu pop)
+                                   (reset! new-deps @deps))}
+            strings/CANCEL]]
+          [:> Col {:xs "auto"}
+           [:> Button {:variant "success"
+                       :on-click (fn []
                                    (reset! deps @new-deps)
                                    (reset! deps-env nil)
                                    (env/setup-deps db true)
@@ -115,7 +126,6 @@
 
 
 (defn recursive-rm [fs dir cb]
-  (js/console.log dir)
   (ocall fs :readdir dir
          (fn [err files]
            ((fn rec [files cb]
