@@ -534,13 +534,18 @@
            repl (atom nil),
            view (rtl/render (r/as-element [core/home-page db {:editor editor
                                                               :repl repl}]))
+           interum "(println (+ 1 2))"
            prog1 "
+(ns test.core
+  (:require [react-bootstrap]))
+(println (nil? react-bootstrap))
+"
+           prog2 "
 (ns test.core
   (:require [react-bootstrap]))
 (println (nil? react-bootstrap/Button))
 "
-           interum "(println (+ 1 2))"
-           prog2 "
+           prog3 "
 (ns test.core
   (:require [react-bootstrap :refer [Button]]))
 (println (nil? Button))
@@ -557,6 +562,14 @@
         :set [:output] #queue ["3"] :check
         :do #(reset! input prog2)
         :set [:input] prog2
+        :do #(click-run view)
+        :set [:output] #queue ["false"] :check
+        :do #(reset! input interum)
+        :set [:input] interum
+        :do #(click-run view)
+        :set [:output] #queue ["3"] :check
+        :do #(reset! input prog3)
+        :set [:input] prog3
         :do #(click-run view)
         :set [:output] #queue ["false"] :check
         :done #(done))))))

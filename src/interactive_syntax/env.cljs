@@ -77,18 +77,17 @@
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
        (ocall base64-js :fromByteArray
-              (-> module
-                  (ocall :split "")
-                  (ocall :map #(ocall % :charCodeAt 0))))))
+              (let [m (.split module "")]
+                (.map m #(.charCodeAt % 0))))))
 
 (defn deps->env [{:keys [deps deps-env env] :as db} cb]
-  (let [system (new (oget js/System :constructor))]
+  (let [system (new (.-constructor js/System))]
     ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
          (do
            (reset! deps-env {:env denv :loaded dloaded :js-deps djs})
            (reset! env nil)
-           (cb {:env denv :loaded dloaded}))
+           (cb {:env denv :loaded dloaded :js-deps djs}))
          (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
            (-> system (ocall :import (module->uri source))
                (.then #(rec (assoc denv (munge name) %)
@@ -97,7 +96,7 @@
                                    {:global-exports {(symbol name) (munge name)}})
                             rest-deps))
                (.catch #(js/console.log %))))))
-     {} [] @deps)))
+     {} [] {} @deps)))
 
 (defn deps->env+caching [{:keys [deps-env] :as db} cb]
   (let [denv @deps-env]
