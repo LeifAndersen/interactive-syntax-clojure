@@ -104,7 +104,8 @@
                   {:visr {:private$
                           {:print (partial wrap-printer core/print db)
                            :println (partial wrap-printer core/println db)
-                           :parse_defvisr parse-defvisr}}
+                           :parse_defvisr parse-defvisr
+                           :render_visr (partial render-visr db)}}
                    :reagent {:core reagent.core
                              :dom reagent.dom}})
            :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))

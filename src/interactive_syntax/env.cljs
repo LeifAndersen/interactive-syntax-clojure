@@ -274,7 +274,7 @@
 
 (defn mk-editor [{:keys [editor]
                   :as data}
-                 stx runner loaded state ns-cache fs cb]
+                 stx runner loaded state ns-cache fs file-src cb]
   (let [ns (namespace editor)
         mk-fn (fn [res]
                 (when (and res (:error res))
@@ -304,7 +304,13 @@
                                     :ns-cache ns-cache
                                     :fs fs}
                                    mk-fn))))
-      :else (mk-fn nil))))
+      :else (eval-str file-src
+                      {:runner runner
+                       :loaded @loaded
+                       :state state
+                       :ns-cache ns-cache
+                       :fs fs}
+                      mk-fn))))
 
 (defn reset-editors! [s editor instances operation
                       {:keys [fs options deps env] :as db}]
@@ -360,7 +366,7 @@
                                      (let [element
                                            (.createElement js/document "div")]
                                        (mk-editor info form runner loaded state
-                                                  ns-cache fs
+                                                  ns-cache fs s
                                                   (fn [v]
                                                     (d/render v element)))
                                        (assoc old :widget
