@@ -9,7 +9,7 @@
             [reagent.dom :as d]
             [chonky :refer [ChonkyActions]]
             ["@testing-library/react" :as rtl]
-            [interactive-syntax.db :as db :refer [default-db ->RefAtom]]
+            [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
             [interactive-syntax.env :as env]))
@@ -120,7 +120,7 @@
 (deftest file-system-available
   (testing "File System Access"
     (let [fs (:fs (default-db :temp))]
-      (is (= (js->clj (fs.readdirSync "/"))
+      (is (= (js->clj (fs.readdirSync files-root))
              [])))))
 
 (deftest file-save-laod
@@ -131,7 +131,7 @@
       (reset! (:file-changed db) true)
       (reset! (:current-file db) "sample.cljs")
       (core/save-buffer db)
-      (is (= (js->clj (fs.readdirSync "/")) ["sample.cljs"]))
+      (is (= (js->clj (fs.readdirSync files-root)) ["sample.cljs"]))
       (is (= @(:file-changed db) false))
       (reset! (:input db) ":new-file")
       (reset! (:file-changed db) true)
@@ -242,8 +242,8 @@
        :do #(submit-file-browser-input)
        :set [:menu] [:home]
        :set [:current-file] "foo.cljs"
-       :set [:current-folder] "/" :check
-       :do #(is (= (js->clj (fs.readdirSync "/")) ["foo.cljs"]))
+       :set [:current-folder] files-root :check
+       :do #(is (= (js->clj (fs.readdirSync files-root)) ["foo.cljs"]))
        :do #(.click rtl/fireEvent (first (.getAllByText view strings/NEW)))
        :set [:current-file] nil
        :set [:input] "" :check
@@ -361,9 +361,9 @@
         :set [:menu] [:home :load :new-folder] :check
         :do #(reset! (-> db :menu) [:home :load])
         :async #(fs.mkdir "dir" %)
-        :do #(reset! (-> db :current-folder) "/dir")
+        :do #(reset! (-> db :current-folder) (.join js/path files-root "dir"))
         :set [:menu] [:home :load]
-        :set [:current-folder] "/dir" :check
+        :set [:current-folder] (.join js/path files-root "dir") :check
         :done #(done))))))
 
 (deftest simple-eval
@@ -446,8 +446,8 @@
                                                               :repl repl}]))]
        (test-do
         db :check
-        :async #(fs.mkdir "/test" %)
-        :async #(fs.writeFile "/test/core.cljs" core-prog %)
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile "/files/test/core.cljs" core-prog %)
         :do #(-> @editor .getDoc (.setValue use-prog))
         :set [:input] use-prog :check
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
@@ -471,12 +471,12 @@
            file-browser (->RefAtom file-browser)]
        (test-do
         db :check
-        :async #(fs.mkdir "/A" %)
-        :async #(fs.writeFile "/f.cljs" file-body %)
+        :async #(fs.mkdir (.join js/path files-root "A") %)
+        :async #(fs.writeFile (.join js/path files-root "f.cljs") file-body %)
         :do #(reset! input file-body)
         :set [:input] file-body
-        :do #(reset! current-folder "/")
-        :set [:current-folder] "/"
+        :do #(reset! current-folder files-root)
+        :set [:current-folder] files-root
         :do #(reset! current-file "f.cljs")
         :set [:current-file] "f.cljs" :check
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
@@ -484,7 +484,7 @@
                                  (clj->js {:targetFile {:isDir true :name "A"}}))
         :then
         :set [:menu] [:home :load]
-        :set [:file-browser-folder] "/A" :check
+        :set [:file-browser-folder] (.join js/path files-root "A") :check
         :do #(reset! menu [:home])
         :set [:menu] [:home] :check
         :done #(done))))))
@@ -504,27 +504,27 @@
            file-browser (->RefAtom file-browser)]
        (test-do
         db :check
-        :async #(fs.writeFile "/A.cljs" file-body %)
-        :async #(fs.mkdir "/B" %)
-        :async #(fs.mkdir "/C" %)
-        :async #(fs.writeFile "/C/f.cljs" file-body %)
-        :do #(is (= (count (fs.readdirSync "/")) 3))
+        :async #(fs.writeFile "/files/A.cljs" file-body %)
+        :async #(fs.mkdir "/files/B" %)
+        :async #(fs.mkdir "/files/C" %)
+        :async #(fs.writeFile "/files/C/f.cljs" file-body %)
+        :do #(is (= (count (fs.readdirSync "/files/")) 3))
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
         :do #(let [file (js/Set.)]
-                  (.add file (core/filepath->id "/A.cljs"))
+                  (.add file (core/filepath->id "/files/A.cljs"))
                   (.setFileSelection @file-browser file)
                   (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
-        :then :do #(is (= (count (fs.readdirSync "/")) 2))
+        :then :do #(is (= (count (fs.readdirSync "/files/")) 2))
         :do #(let [file (js/Set.)]
-               (.add file (core/filepath->id "/B"))
+               (.add file (core/filepath->id "/files/B"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
-        :then :do #(is (= (count (fs.readdirSync "/")) 1))
+        :then :do #(is (= (count (fs.readdirSync "/files/")) 1))
         :do #(let [file (js/Set.)]
-               (.add file (core/filepath->id "/C"))
+               (.add file (core/filepath->id "/files/C"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
-        :then :do #(is (= (count (fs.readdirSync "/")) 0))
+        :then :do #(is (= (count (fs.readdirSync "/files/")) 0))
         :do #(swap! menu pop) :check
         :done #(done))))))
 

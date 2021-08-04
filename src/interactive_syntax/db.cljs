@@ -5,6 +5,8 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
+(def files-root "/files/")
+
 (deftype RefAtom [ref]
   IAtom
   IDeref
@@ -161,7 +163,7 @@
    :show-editors true})
 
 (def default-buffer
-  {:folder "/"
+  {:folder files-root
    :file nil
    :changed? false
    :input ""
@@ -173,14 +175,17 @@
   ([] (default-db :temp))
   ([mode]
    (let [fs (browserfs/BFSRequire "fs")
-         _ (browserfs/configure (case mode
-                                  :local #js {:fs "IndexedDB"
-                                              :options #js {:storeName "bfs"}}
-                                  :temp #js {:fs "InMemory"})
+         _ (browserfs/configure (clj->js {:fs "MountableFileSystem"
+                                          :options
+                                          {"/files"
+                                           (case mode
+                                             :local {:fs "IndexedDB"
+                                                     :options {:storeName "bfs"}}
+                                             :temp {:fs "InMemory"})}})
                                 #(when % (throw %)))
          base {:options default-options
                :current 0
-               :folder "/"
+               :folder files-root
                :buffers [default-buffer]
                :fs {}
                :deps {}

@@ -7,7 +7,7 @@
      [cljs.core.match :refer [match]]
      [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                         oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
-     [interactive-syntax.db :as db]
+     [interactive-syntax.db :as db :refer [files-root]]
      [interactive-syntax.strings :as strings]
      [interactive-syntax.env :as env]
      [popper.js]
@@ -202,9 +202,11 @@
                          (fn []
                            (when (not= @text "")
                              (let [new-path (js/path.join @current-folder @text)]
-                               (ocall fs :mkdir new-path)
-                               (reset! current-folder new-path))
-                             (swap! menu pop))))))
+                               (swap! menu conj :hold)
+                               (ocall fs :mkdir new-path
+                                      (fn [err]
+                                        (swap! menu (comp pop pop))
+                                        (reset! current-folder new-path)))))))))
 
 (defn confirm-save-dialog [{:keys [menu current-file]
                             :as db}]
@@ -279,8 +281,9 @@
          :ref ref
          :files @dir-list
          :folder-chain (let [split (filter (partial not= "")
-                                           (.split @file-browser-folder
-                                                   js/path.sep))]
+                                           (-> @file-browser-folder
+                                               (.replace files-root "/")
+                                               (.split js/path.sep)))]
                          (for [[i folder] (map list (range) (conj split " "))]
                            #js {:id (str "folder" i)
                                 :breadCrumb (- (count split) i)
@@ -341,13 +344,14 @@
                                                 (.split @file-browser-folder
                                                         js/path.sep))
                                   total (count split)
-                                  crumbs (get-in payload ["destination" "breadCrumb"])]
+                                  crumbs (get-in payload ["destination"
+                                                          "breadCrumb"])]
                               (if (= total crumbs)
                                 (js/path.join
-                                 "/"
+                                 files-root
                                  (get-in payload ["draggedFile" "name"]))
                                 (js/path.join
-                                 "/"
+                                 files-root
                                  (apply js/path.join (take (- total crumbs) split))
                                  (get-in payload ["draggedFile" "name"])))),
                             (get-in payload ["destination" "isDir"])
@@ -533,7 +537,8 @@
         options #(swap! menu conj :options)
         deps #(swap! menu conj :deps)
         file-name (str (if @current-file
-                         (js/path.join @current-folder @current-file)
+                         (js/path.join (.replace @current-folder files-root "/")
+                                       @current-file)
                          strings/UNTITLED)
                        (if @file-changed
                          "*"

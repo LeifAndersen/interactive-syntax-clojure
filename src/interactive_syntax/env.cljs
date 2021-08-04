@@ -14,6 +14,7 @@
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
+   [interactive-syntax.db :refer [files-root]]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
    ["@stopify/higher-order-functions" :as hof]
@@ -111,7 +112,7 @@
   ((fn rec [extensions]
      (if (empty? extensions)
        (cb nil)
-       (let [file-path (str "/" path "." (first extensions))]
+       (let [file-path (str files-root path "." (first extensions))]
          (ocall
           fs :readFile
           file-path
