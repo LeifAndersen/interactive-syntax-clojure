@@ -598,7 +598,7 @@
         [:> Button {:on-click run+pause} (if @running? strings/PAUSE strings/RUN)]
         [:> Button strings/STOP]]]]]))
 
-(defn editor-view [{:keys [menu input options file-changed current-file fs]
+(defn editor-view [{:keys [menu input output options file-changed current-file fs]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
@@ -631,11 +631,19 @@
                     (reset! file-changed true)
                     (reset! input value)
                     (env/reset-editors! value edit editors operation db))
+        :onKeyDown (fn [this e]
+                     (when (and (= (oget e :key) "r") (oget e :ctrlKey))
+                       (.preventDefault e)
+                       (reset! output #queue [])
+                       (env/eval-buffer db)))
         :editorDidMount (fn [e]
                           (let [fc @file-changed]
                             (-> e (ocall "getDoc") (ocall "setValue" @input))
                             (reset! file-changed fc))
                           (reset! edit e)
+                          (ocall e :addKeyMap
+                                 #js {"<C-i>" (fn [cm]
+                                                    (js/console.log cm))})
                           (when editor-ref
                             (reset! editor-ref e))
                           (env/reset-editors! @input edit editors nil db))}])))
@@ -682,6 +690,11 @@
                   :lineWrapping @(:line-wrapping options)
                   :lineNumbers false
                   :readOnly true}
+        :onKeyDown (fn [this e]
+                     (when (and (= (oget e :key) "r") (oget e :ctrlKey))
+                       (.preventDefault e)
+                       (reset! output #queue [])
+                       (env/eval-buffer db)))
         :editorDidMount #(do
                            (when repl-ref
                              (reset! repl-ref %))
@@ -692,7 +705,7 @@
 ;; Views
 
 (defn home-page [{{:keys [orientation]} :options
-                  :keys [fs buffers]
+                  :keys [fs buffers output]
                   :as db}
                  & [{editor-ref :editor
                      repl-ref :repl
@@ -708,9 +721,15 @@
                   :display "flex"
                   :flex-flow "column"}}
    [:> GlobalHotKeys
-    {:keyMap {:save-file "ctrl+s"}
-     :handlers {:save-file #(do (.preventDefault %)
-                                (save-file db))}}]
+    {:keyMap {:save-file "ctrl+s"
+              :run-program "ctrl+r"}
+     :handlers {:save-file (fn [v]
+                             (.preventDefault v)
+                             (save-file db))
+                :run-program (fn [v]
+                               (.preventDefault v)
+                               (reset! output #queue [])
+                               (env/eval-buffer db))}}]
    [new-file-action db]
    [save-dialog db save-fb-ref]
    [load-dialog db load-fb-ref]
