@@ -185,7 +185,6 @@
                  first
                  (.-innerHTML)))))))
 
-
 (deftest bad-input-buff
   (testing "Malformed string in input buffer"
     (let [{:keys [input file-changed] :as db} (default-db :temp)
@@ -196,7 +195,6 @@
        :do #(-> @editor .getDoc (.setValue "(+ 1 2"))
        :set [:input] "(+ 1 2"
        :set [:file-changed] true :check))))
-
 
 (deftest bad-ns-buff
   (testing "Requiring a namespace that does not exist"
@@ -411,12 +409,11 @@
         :do #(reset! input prog2)
         :set [:input] prog2 :check
         :do #(click-run view)
-        :do #(set! js/window.runner @runner)
         :wait 10
-        :async #(.pause @runner %)
+        :async #((:pause-eval @runner) %)
         :do #(do
                (is (seq @output))
-               (is (> (count @output) 0))
+               (is (>= (count @output) 1))
                (is (every? (partial = "Oh no!") @output)))
         :done #(done))))))
 

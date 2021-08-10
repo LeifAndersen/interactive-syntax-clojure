@@ -181,6 +181,11 @@
                                            (case mode
                                              :local {:fs "IndexedDB"
                                                      :options {:storeName "bfs"}}
+                                             :temp {:fs "InMemory"})
+                                           "/deps"
+                                           (case mode
+                                             :local {:fs "IndexedDB"
+                                                     :options {:storeName "depsfs"}}
                                              :temp {:fs "InMemory"})}})
                                 #(when % (throw %)))
          base {:options default-options

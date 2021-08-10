@@ -130,24 +130,17 @@
      ["clj" "cljc" "cljs"]
      ["cljs" "cljc" "js"])))
 
-(defn eval-opts [fs runner print-fn sandbox? bootstrapping? ns]
+(defn eval-opts [fs runner print-fn sandbox? ns]
   {:eval (if sandbox?
            (fn [{:keys [source name cache]} cb]
-             (let [run (fn []
-                         (binding [*print-fn* print-fn
-                                   *sandbox-global* runner.g]
-                           (let [ast (babylon/parse source)
-                                 polyfilled (hof/polyfillHofFromAst ast)]
-                             (ocall runner :evalAsyncFromAst polyfilled
-                                    (fn [res]
-                                      (when-not (or (= (:type res) "normal")
-                                                    (= (:value res) nil))
-                                        (println res))
-                                      (cb res))))))]
-               (if bootstrapping?
-                 (run)
-                 (binding [*additional-core* 'visr.core]
-                   (run)))))
+             (let [ast (babylon/parse source)
+                   polyfilled (hof/polyfillHofFromAst ast)]
+               (ocall runner :evalAsyncFromAst polyfilled
+                      (fn [res]
+                        (when-not (or (= (:type res) "normal")
+                                      (= (:value res) nil))
+                          (println res))
+                        (cb res)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    ;;:verbose true
@@ -172,83 +165,129 @@
                 cb]
   (let [resume (and runner true)
         sandbox (if (nil? sandbox) true sandbox)
-        old-loaded @*loaded*
         runner (or runner (js/stopify.stopifyLocally ""))
         runner-globs (clj->js (cond
                                 (fn? env) (env runner)
                                 env env
                                 :else (stdlib/sandbox-env runner)))
         running? (or running? (atom false))
+        internal-running? (atom false)
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
                  :else loaded)
         file-name (or file-name strings/UNTITLED)
         print-fn (or print-fn #())
-        opts (eval-opts fs runner print-fn sandbox false ns)
-        bootstrap-opts (eval-opts fs runner print-fn sandbox true nil)
+        opts (eval-opts fs runner print-fn sandbox ns)
+        bootstrap-opts (eval-opts fs runner print-fn sandbox nil)
         lang (or lang :clj)
         state (or state (empty-state))
-        old-ns-cache NS_CACHE
         ns-cache (or ns-cache (atom nil))
+        bootstrapping? (atom false)
+        coop-loaded (atom nil)
+        coop-additional-core (atom nil)
+        coop-state (atom nil)
+        coop-print-fn (atom nil)
+        coop-sandbox-global (atom nil)
+        coop-ns-cache (atom nil)
+        onRun (fn []
+                (reset! internal-running? true)
+                (reset! coop-loaded @*loaded*)
+                (reset! coop-print-fn *print-fn*)
+                (reset! coop-sandbox-global *sandbox-global*)
+                (reset! coop-ns-cache NS_CACHE)
+                (reset! *loaded* @loaded)
+                (set! NS_CACHE @ns-cache)
+                (set! *print-fn* print-fn)
+                (set! *sandbox-global* runner.g)
+                (when-not @bootstrapping?
+                  (reset! coop-additional-core *additional-core*)
+                  (reset! coop-state *compiler*)
+                  (set! *additional-core* 'visr.core)
+                  (set! *compiler* state)))
+        onYield (fn []
+                  (reset! internal-running? false)
+                  (swap! loaded into @*loaded*)
+                  (reset! *loaded* @coop-loaded)
+                  (set! NS_CACHE @coop-ns-cache)
+                  (set! *print-fn* @coop-print-fn)
+                  (set! *sandbox-global* @coop-sandbox-global)
+                  (when-not @bootstrapping?
+                    (set! *additional-core* @coop-additional-core)
+                    (set! *compiler* @coop-state))
+                  true)
+        pause-eval (fn [cb]
+                     (.pause runner
+                             (fn [ln]
+                               (onYield)
+                               (cb ln))))
+        resume-eval (fn []
+                      (onRun)
+                      (.resume runner))
         cb (fn [res]
-             (swap! loaded into @*loaded*)
-             (reset! *loaded* old-loaded)
-             (reset! ns-cache NS_CACHE)
-             (set! NS_CACHE old-ns-cache)
+             (onYield)
+             (reset! internal-running? false)
              (reset! running? false)
              (cb res))
         post-load (fn []
-                    (binding [*print-fn* print-fn
-                              *sandbox-global* runner.g
-                              *additional-core* 'visr.core
-                              *compiler* state]
-                      (condp = lang
-                        :clj (cljs/eval-str state src file-name opts cb)
-                        :js ((:eval opts) {:source src :name file-name} cb))
-                      {:runner runner
-                       :loaded loaded
-                       :state state
-                       :ns-cache ns-cache}))]
+                    (try (onRun)
+                         (condp = lang
+                           :clj (cljs/eval-str state src file-name opts cb)
+                           :js ((:eval opts) {:source src :name file-name} cb))
+                         {:runner runner
+                          :loaded loaded
+                          :state state
+                          :ns-cache ns-cache
+                          :pause-eval pause-eval
+                          :resume-eval resume-eval}
+                         (catch :default e
+                           (when @internal-running?
+                             (onYield))
+                           (throw e))))]
     (try
-      (reset! *loaded* @loaded)
-      (set! NS_CACHE @ns-cache)
+      (reset! internal-running? true)
       (reset! running? true)
       (if resume
         (post-load)
         (do
+          (reset! bootstrapping? true)
           (set! runner.g runner-globs)
           (when fakegoog-global
             (set! runner.g.goog.global runner.g))
-          (binding [*print-fn* print-fn
-                    *sandbox-global* runner.g]
-            (ocall runner :run
-                   #(cljs/eval-str
-                     state stdlib/injectable
-                     "core.cljs" bootstrap-opts
-                     (fn [res]
-                       (swap! state assoc :js-dependency-index js-deps)
-                       (binding [*additional-core* 'visr.core
-                                 *compiler* state]
-                         (set! runner.g.visr.core$macros
-                               runner.g.visr.core)
-                         (ana/intern-macros 'visr.core)
-                         (post-load))))))
+          (onRun)
+          (ocall runner :run
+                 (fn []
+                   (cljs/eval-str
+                    state stdlib/injectable
+                    "core.cljs" bootstrap-opts
+                    (fn [res]
+                      (onYield)
+                      (reset! bootstrapping? false)
+                      (swap! state assoc :js-dependency-index js-deps)
+                      (onRun)
+                      (set! runner.g.visr.core$macros
+                            runner.g.visr.core)
+                      (ana/intern-macros 'visr.core)
+                      (onYield)
+                      (post-load))))
+                 onYield #() onRun)
           {:runner runner
            :loaded loaded
            :state state
-           :ns-cache ns-cache}))
+           :ns-cache ns-cache
+           :pause-eval pause-eval
+           :resume-eval resume-eval}))
       (catch :default e
-        (reset! *loaded* old-loaded)
-        (set! NS_CACHE old-ns-cache)
-        (reset! running? false)
+        (when @internal-running?
+          (onYield))
         (throw e)))))
 
 (defn eval-buffer [{:keys [input
                            output
                            file-name
                            fs
-                           running?]
+                           running?
+                           runner]
                     :as db}
                    & [callback]]
   (deps->env
@@ -256,7 +295,7 @@
    (fn [deps-env]
      (let [cb (or callback
                   #(print-res db %))
-           {:keys [runner loaded state ns-cache]}
+           res
            (eval-str @input
                      (stdlib/reagent-opts
                       {:env (:env deps-env)
@@ -268,7 +307,7 @@
                        :print-fn #(swap! output conj %)}
                       db)
                      cb)]
-       (reset! (:runner db) runner)))))
+       (reset! runner res)))))
 
 (defn write-editor []
   nil)
@@ -280,7 +319,9 @@
         mk-fn (fn [res]
                 (when (and res (:error res))
                   (throw res))
-                (eval-str (str "(" (stdlib/visr->render editor) ")")
+                (eval-str (str "(" (stdlib/visr->render editor)
+                               " '" stx
+                               " (fn [x] x))")
                           {:runner runner
                            :loaded @loaded
                            :state state
