@@ -20,6 +20,7 @@
    ["@stopify/higher-order-functions" :as hof]
    ["@babel/parser" :as babylon]
    ["@babel/template" :as babel-template]
+   ["@leifandersen/react-codemirror2" :as cm]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
@@ -28,9 +29,11 @@
                             Row Col Form Container Modal
                             Table]]
    [base64-js]
+   [react-frame-component]
    [react-switch]))
 
 (def ^:private template (.-default babel-template))
+(def ^:private Frame (.-default react-frame-component))
 
 (defn print-res [{:keys [output]
                   :as db}
@@ -312,9 +315,10 @@
 (defn write-editor []
   nil)
 
-(defn mk-editor [{:keys [editor]
-                  :as data}
-                 stx runner loaded state ns-cache fs file-src cb]
+(defn mk-editor [{:keys [editor] :as data}
+                 stx
+                 {:keys [runner loaded state ns-cache] :as run-state}
+                 fs file-src cb]
   (let [ns (namespace editor)
         mk-fn (fn [res]
                 (when (and res (:error res))
@@ -354,11 +358,63 @@
                        :fs fs}
                       mk-fn))))
 
+(defn dom->reagent [element]
+  [(keyword (-> element .-nodeName .toLowerCase))
+   (into {}
+         (for [i (range (-> element .-attributes .-length))]
+           (let [attr (-> element .-attributes (.item i))]
+             [(.-key attr) (.-value attr)])))
+   (-> element .-innerHTML)])
+
+(defn styled-frame [& body]
+  (into [:> Frame {:head (r/as-element
+                         (into [:<>]
+                               (for [i (-> js/document .-head
+                                           (.getElementsByTagName "style"))]
+                                 (dom->reagent i))))}]
+        body))
+
+(defn visr-hider [{:keys [options fs] :as db} run-state info stx file-src]
+  (let [show-visr (atom false)
+        show-code (atom false)
+        visr (atom nil)]
+    (fn [{:keys [fs] :as db} run-state info stx file-src]
+      (when (and @show-visr (= @visr nil))
+        (mk-editor info stx run-state fs file-src #(reset! visr %)))
+      [:> ButtonGroup
+       [:> Button
+        {:size "sm"
+         :style {:padding 0
+                 :font-size "1.2em"}
+         :on-click #(swap! show-visr not)}
+        "\uD83D\uDC41"]
+       (when @show-visr
+         [styled-frame @visr])
+       [:> Button
+        {:size "sm"
+         :style {:padding 0
+                 :font-size "0.8em"}
+         :variant "secondary"
+         :on-click #(swap! show-code not)}
+        [:code "(\u03BB)"]]
+       (when @show-code
+         [styled-frame
+          [:div (:editor info)]
+          [:div [:> cm/UnControlled
+                 {:options {:mode "clojure"
+                            :keyMap @(:keymap options)
+                            :theme @(:theme options)
+                            :matchBrackets true
+                            :showCursorWhenSelecting true
+                            :lineWrapping @(:line-wrapping options)
+                            :lineNumbers @(:line-numbers options)}
+                  :value (str stx)}]]]
+         )])))
+
 (defn reset-editors! [s editor instances operation
                       {:keys [fs options deps env] :as db}]
   (doseq [[tag i] @instances]
-    (do (when (:widget i) (ocall (:widget i) :clear))
-        (ocall (:range i) :clear)))
+    (do (ocall (:range i) :clear)))
   (reset! instances {})
   (deps->env+caching
    db
@@ -366,7 +422,7 @@
      (when (and @(:show-editors options) @editor)
        (let [prog (indexing-push-back-reader s)
              eof (atom nil)
-             {:keys [runner loaded state ns-cache]}
+             {:keys [runner loaded state ns-cache] :as run-state}
              (if @env
                @env
                (let [cache (eval-str
@@ -396,31 +452,7 @@
                         (when (:editor info)
                           (let [hider (.createElement js/document "span")]
                             (d/render
-                             [:> Button
-                              {:size "sm"
-                               :style {:padding 0
-                                       :font-size "0.8em"}
-                               :on-click
-                               #(swap!
-                                 instances update tag
-                                 (fn [old] ; Note, probably not safe?
-                                   (if (= (:widget old) nil)
-                                     (let [element
-                                           (.createElement js/document "div")]
-                                       (mk-editor info form runner loaded state
-                                                  ns-cache fs s
-                                                  (fn [v]
-                                                    (d/render v element)))
-                                       (assoc old :widget
-                                              (-> @editor
-                                                  (ocall :getDoc)
-                                                  (ocall :addLineWidget
-                                                         (dec (:line info))
-                                                         element
-                                                         false))))
-                                     (do (ocall (:widget old) :clear)
-                                         (assoc old :widget nil)))))}
-                              "..."]
+                             [visr-hider db run-state info form s]
                              hider)
                             (swap! instances conj
                                    {tag
@@ -434,7 +466,8 @@
                                                      :ch (dec (:end-column info))}
                                                 #js {:collapsed true
                                                      :replacedWith hider}))
-                                     :widget nil}})))
+                                     :show-visr false
+                                     :show-code false}})))
                         (doseq [e form]
                           (when (coll? e)
                             (rec e (inc tag))))))
