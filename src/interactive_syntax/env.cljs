@@ -312,8 +312,17 @@
                      cb)]
        (reset! runner res)))))
 
-(defn write-editor []
-  nil)
+;; Converts a (1-index) line and col pair to a (0-indexed) string index.
+(defn buffer-position->index [str line column]
+  (loop [i 0
+         line line]
+    (if (<= line 1)
+      (+ i column)
+      (recur (.indexOf str "\n" (inc i))
+             (dec line)))))
+
+(defn write-visr [visr state]
+  (str "^{:editor " visr "}(" (stdlib/visr->elaborate visr) " " state ")"))
 
 (defn mk-editor [{:keys [editor] :as data}
                  stx
@@ -374,13 +383,24 @@
                                  (dom->reagent i))))}]
         body))
 
-(defn visr-hider [{:keys [options fs] :as db} run-state info stx file-src]
+(defn codemirror-options [{:keys [options] :as db}]
+  {:mode "clojure"
+   :keyMap @(:keymap options)
+   :theme @(:theme options)
+   :matchBrackets true
+   :showCursorWhenSelecting true
+   :lineWrapping @(:line-wrapping options)
+   :lineNumbers @(:line-numbers options)})
+
+(defn visr-hider [{:keys [options fs] :as db}
+                  editor run-state info stx file-src]
   (let [show-visr (atom false)
         show-code (atom false)
         visr (atom nil)]
-    (fn [{:keys [fs] :as db} run-state info stx file-src]
+    (fn [{:keys [options fs] :as db}
+         editor run-state info stx file-src]
       (when (and @show-visr (= @visr nil))
-        (mk-editor info stx run-state fs file-src #(reset! visr %)))
+        (mk-editor @info @stx run-state fs file-src #(reset! visr %)))
       [:> ButtonGroup
        [:> Button
         {:size "sm"
@@ -398,20 +418,31 @@
          :on-click #(swap! show-code not)}
         [:code "(\u03BB)"]]
        (when @show-code
-         [styled-frame
-          [:div (:editor info)]
-          [:div [:> cm/UnControlled
-                 {:options {:mode "clojure"
-                            :keyMap @(:keymap options)
-                            :theme @(:theme options)
-                            :matchBrackets true
-                            :showCursorWhenSelecting true
-                            :lineWrapping @(:line-wrapping options)
-                            :lineNumbers @(:line-numbers options)}
-                  :value (str stx)}]]]
-         )])))
+         [:> Form {:onSubmit #(do (.preventDefault %)
+                                  (.stopPropagation %))}
+          [:> (oget Form :Group) {:as Row
+                                  :style {:margin "0"}}
+           [:> Col {:xs "auto"
+                    :style {:padding "0"}}
+            [:> (oget Form :Label) {:column true
+                                    :style {:padding "0"}}
+             (str strings/VISR ":")]]
+           [:> Col {:xs "8"
+                    :style {:padding "0"}}
+            [:> (oget Form :Control)
+             {:size "sm"
+              :style {:padding "0"
+                      :min-height "0"}
+              :default-value (str (:editor @info))
+              :on-change #(let [value (oget % "target.value")]
+                            (swap! info assoc :editor value))}]]]
+          [:> (oget Form :Group) {:as Row}
+           [:> Col {:xs "auto"}
+            [:> cm/UnControlled
+             {:options (codemirror-options db)
+              :value (str @stx)}]]]])])))
 
-(defn reset-editors! [s editor instances operation
+(defn reset-editors! [source set-text editor instances operation
                       {:keys [fs options deps env] :as db}]
   (doseq [[tag i] @instances]
     (do (ocall (:range i) :clear)))
@@ -420,7 +451,7 @@
    db
    (fn [deps-env]
      (when (and @(:show-editors options) @editor)
-       (let [prog (indexing-push-back-reader s)
+       (let [prog (indexing-push-back-reader @source)
              eof (atom nil)
              {:keys [runner loaded state ns-cache] :as run-state}
              (if @env
@@ -450,9 +481,35 @@
                    ((fn rec [form tag]
                       (let [info (meta form)]
                         (when (:editor info)
-                          (let [hider (.createElement js/document "span")]
+                          (let [hider (.createElement js/document "span")
+                                info (atom info)
+                                form (atom (second form))
+                                start (buffer-position->index
+                                       @source
+                                       (:line @info)
+                                       (:column @info)),
+                                end (buffer-position->index
+                                     @source
+                                     (:end-line @info)
+                                     (:end-column @info))
+                                new-str (fn [info form]
+                                          (str (subs @source 0 start)
+                                               (write-visr (:editor info) form)
+                                               (subs @source end)))]
+                            (add-watch info ::visr-update
+                                       (fn [k r o n]
+                                         (when-not (= o n)
+                                           (set! js/window.source source)
+                                           (set-text (new-str n @form))
+                                           ;;(reset! source (new-str n @form))
+                                           )))
+                            (add-watch form ::visr-update
+                                       (fn [k r o n]
+                                         (when-not (= o n)
+                                           (reset! source (new-str @info n)))))
                             (d/render
-                             [visr-hider db run-state info form s]
+                             [visr-hider
+                              db editor run-state info form @source]
                              hider)
                             (swap! instances conj
                                    {tag
@@ -460,14 +517,15 @@
                                      (-> @editor
                                          (ocall :getDoc)
                                          (ocall :markText
-                                                #js {:line (dec (:line info)),
-                                                     :ch (dec (:column info))}
-                                                #js {:line (dec (:end-line info)),
-                                                     :ch (dec (:end-column info))}
+                                                #js {:line (dec (:line @info)),
+                                                     :ch (dec (:column @info))}
+                                                #js {:line (dec (:end-line @info)),
+                                                     :ch (dec (:end-column @info))}
                                                 #js {:collapsed true
                                                      :replacedWith hider}))
-                                     :show-visr false
-                                     :show-code false}})))
+                                     :visr hider
+                                     :info info
+                                     :stx form}})))
                         (doseq [e form]
                           (when (coll? e)
                             (rec e (inc tag))))))

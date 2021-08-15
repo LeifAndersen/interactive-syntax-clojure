@@ -608,10 +608,15 @@
                    & [editor-ref]]
   (let [edit (atom nil)
         editors (atom {})
+        reset-lock (atom false)
+        set-text (fn [txt]
+                   (reset! reset-lock true)
+                   (-> @edit (ocall :getDoc) (ocall :setValue txt))
+                   (reset! reset-lock false))
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
-                            (-> @edit (ocall "getDoc") (ocall "setValue" @input))
+                            (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! file-changed fc))))]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
@@ -625,17 +630,13 @@
                (str @(:font-size options) "px"))
         (ocall @edit "refresh"))
       [:> cm/UnControlled
-       {:options {:mode "clojure"
-                  :keyMap @(:keymap options)
-                  :theme @(:theme options)
-                  :matchBrackets true
-                  :showCursorWhenSelecting true
-                  :lineWrapping @(:line-wrapping options)
-                  :lineNumbers @(:line-numbers options)}
+       {:options (env/codemirror-options db)
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (env/reset-editors! value edit editors operation db))
+                    (when-not @reset-lock
+                      (env/reset-editors!
+                       input set-text edit editors operation db)))
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)
@@ -651,7 +652,8 @@
                                                     (js/console.log cm))})
                           (when editor-ref
                             (reset! editor-ref e))
-                          (env/reset-editors! @input edit editors nil db))}])))
+                          (env/reset-editors!
+                           input set-text edit editors nil db))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
@@ -688,13 +690,9 @@
         (ocall @edit "refresh"))
       [:> cm/UnControlled
        {:value (string/join "\n" (filter string? @output))
-        :options {:mode "clojure"
-                  :theme @(:theme options)
-                  :matchBrackets true
-                  :showCursorWhenSelecting true
-                  :lineWrapping @(:line-wrapping options)
-                  :lineNumbers false
-                  :readOnly true}
+        :options (conj (env/codemirror-options db)
+                       {:lineNumbers false
+                        :readOnly true})
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)

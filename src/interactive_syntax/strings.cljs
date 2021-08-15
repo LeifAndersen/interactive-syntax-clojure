@@ -47,3 +47,5 @@
 (def ADD+SYMBOL "+")
 (def REMOVE "REMOVE")
 (def REMOVE+SYMBOL "-")
+
+(def VISR "VISr")
