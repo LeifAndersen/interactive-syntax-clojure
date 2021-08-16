@@ -393,12 +393,12 @@
    :lineNumbers @(:line-numbers options)})
 
 (defn visr-hider [{:keys [options fs] :as db}
-                  editor run-state info stx file-src]
+                  editor run-state info stx file-src commit!]
   (let [show-visr (atom false)
         show-code (atom false)
         visr (atom nil)]
     (fn [{:keys [options fs] :as db}
-         editor run-state info stx file-src]
+         editor run-state info stx file-src commit!]
       (when (and @show-visr (= @visr nil))
         (mk-editor @info @stx run-state fs file-src #(reset! visr %)))
       [:> ButtonGroup
@@ -434,104 +434,116 @@
               :style {:padding "0"
                       :min-height "0"}
               :default-value (str (:editor @info))
+              :on-blur commit!
               :on-change #(let [value (oget % "target.value")]
                             (swap! info assoc :editor value))}]]]
           [:> (oget Form :Group) {:as Row}
            [:> Col {:xs "auto"}
             [:> cm/UnControlled
              {:options (codemirror-options db)
+              :onBlur commit!
+              :onChange (fn [this operation value]
+                          (reset! stx value))
               :value (str @stx)}]]]])])))
 
 (defn reset-editors! [source set-text editor instances operation
                       {:keys [fs options deps env] :as db}]
-  (doseq [[tag i] @instances]
-    (do (ocall (:range i) :clear)))
-  (reset! instances {})
-  (deps->env+caching
-   db
-   (fn [deps-env]
-     (when (and @(:show-editors options) @editor)
-       (let [prog (indexing-push-back-reader @source)
-             eof (atom nil)
-             {:keys [runner loaded state ns-cache] :as run-state}
-             (if @env
-               @env
-               (let [cache (eval-str
-                            ""
-                            (stdlib/reagent-opts {:env (:env deps-env)
-                                                  :loaded (:loaded deps-env)
-                                                  :js-deps (:js-deps deps-env)
-                                                  :fs fs}
-                                                 db)
+  (let [old @instances]
+    (reset! instances {})
+    (deps->env+caching
+     db
+     (fn [deps-env]
+       (when (and @(:show-editors options) @editor)
+         (let [prog (indexing-push-back-reader @source)
+               eof (atom nil)
+               {:keys [runner loaded state ns-cache] :as run-state}
+               (if @env
+                 @env
+                 (let [cache (eval-str
+                              ""
+                              (stdlib/reagent-opts {:env (:env deps-env)
+                                                    :loaded (:loaded deps-env)
+                                                    :js-deps (:js-deps deps-env)
+                                                    :fs fs}
+                                                   db)
                             #())]
-                 (reset! env cache)
-                 cache))]
-         (try
-           (loop [tag 0]
-             (let [form (try (read {:eof eof} prog)
-                             (catch js/Error e
-                               (ex-info (.-message e)
-                                        {:line (oget e "lineNumber")
-                                         :char (oget e "columnNumber")
-                                         :name (oget e "name")
-                                         :file (oget e "fileName")}
-                                        :read-error)))]
-               (when-not (identical? form eof)
-                 (when (coll? form)
-                   ((fn rec [form tag]
-                      (let [info (meta form)]
-                        (when (:editor info)
-                          (let [hider (.createElement js/document "span")
-                                info (atom info)
-                                form (atom (second form))
-                                start (buffer-position->index
-                                       @source
-                                       (:line @info)
-                                       (:column @info)),
-                                end (buffer-position->index
-                                     @source
-                                     (:end-line @info)
-                                     (:end-column @info))
-                                new-str (fn [info form]
-                                          (str (subs @source 0 start)
-                                               (write-visr (:editor info) form)
-                                               (subs @source end)))]
-                            (add-watch info ::visr-update
-                                       (fn [k r o n]
-                                         (when-not (= o n)
-                                           (set! js/window.source source)
-                                           (set-text (new-str n @form))
-                                           ;;(reset! source (new-str n @form))
-                                           )))
-                            (add-watch form ::visr-update
-                                       (fn [k r o n]
-                                         (when-not (= o n)
-                                           (reset! source (new-str @info n)))))
-                            (d/render
-                             [visr-hider
-                              db editor run-state info form @source]
-                             hider)
-                            (swap! instances conj
-                                   {tag
-                                    {:range
-                                     (-> @editor
-                                         (ocall :getDoc)
-                                         (ocall :markText
-                                                #js {:line (dec (:line @info)),
-                                                     :ch (dec (:column @info))}
-                                                #js {:line (dec (:end-line @info)),
-                                                     :ch (dec (:end-column @info))}
-                                                #js {:collapsed true
-                                                     :replacedWith hider}))
-                                     :visr hider
-                                     :info info
-                                     :stx form}})))
-                        (doseq [e form]
-                          (when (coll? e)
-                            (rec e (inc tag))))))
-                    form tag))
-                 (recur (inc tag)))))
-           (catch ExceptionInfo e
-             (js/console.log e))
-           (catch js/Error e
-             (throw e))))))))
+                   (reset! env cache)
+                   cache))]
+           (try
+             (loop []
+               (let [form (try (read {:eof eof} prog)
+                               (catch js/Error e
+                                 (ex-info (.-message e)
+                                          {:line (oget e "lineNumber")
+                                           :char (oget e "columnNumber")
+                                           :name (oget e "name")
+                                           :file (oget e "fileName")}
+                                          :read-error)))]
+                 (when-not (identical? form eof)
+                   (when (coll? form)
+                     ((fn rec [form]
+                        (let [info (meta form)]
+                          (when (:editor info)
+                              (let [prev (get-in old [{:line (:line info)
+                                                       :column (:column info)}])
+                                    prev false ;; <-- TODO, recycle if possible
+                                    hider (if prev
+                                            (:visr prev)
+                                            (.createElement js/document "span"))
+                                    info (atom info)
+                                    form (atom (second form))
+                                    start (buffer-position->index
+                                           @source
+                                           (:line @info)
+                                           (:column @info)),
+                                    end (buffer-position->index
+                                         @source
+                                         (:end-line @info)
+                                         (:end-column @info))
+                                    new-str (fn [info form]
+                                              (str (subs @source 0 start)
+                                                   (write-visr (:editor info) form)
+                                                   (subs @source end)))
+                                    commit-changes (atom false)
+                                    commit! #(when true ;@commit-changes
+                                               (set-text (new-str @info @form))
+                                               (reset! commit-changes false))]
+                                (add-watch info ::visr-update
+                                           (fn [k r o n]
+                                             (when-not (= o n)
+                                               (reset! commit-changes true))))
+                                (add-watch form ::visr-update
+                                           (fn [k r o n]
+                                             (when-not (= o n)
+                                               (reset! commit-changes true))))
+                                (when-not prev
+                                  (d/render
+                                   [visr-hider db editor
+                                    run-state info form @source commit!]
+                                   hider))
+                                (swap! instances assoc
+                                       {:line (:line @info)
+                                        :column (:column @info)}
+                                       {:range
+                                        (-> @editor
+                                            (ocall :getDoc)
+                                            (ocall
+                                             :markText
+                                             #js {:line (dec (:line @info)),
+                                                  :ch (dec (:column @info))}
+                                             #js {:line (dec (:end-line @info)),
+                                                  :ch (dec (:end-column @info))}
+                                             #js {:collapsed true
+                                                  :replacedWith hider}))
+                                        :visr hider
+                                        :info info
+                                        :stx form})))
+                          (doseq [e form]
+                            (when (coll? e)
+                              (rec e)))))
+                      form))
+                   (recur))))
+             (catch ExceptionInfo e
+               (js/console.log e))
+             (catch js/Error e
+               (throw e)))))))))

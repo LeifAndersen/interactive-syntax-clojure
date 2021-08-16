@@ -634,7 +634,7 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (when-not @reset-lock
+                    (when-not false;@reset-lock
                       (env/reset-editors!
                        input set-text edit editors operation db)))
         :onKeyDown (fn [this e]
