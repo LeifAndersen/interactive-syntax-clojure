@@ -342,11 +342,7 @@
                            :ns-cache ns-cache
                            :ns ns
                            :fs fs}
-                          (fn [ret]
-                            (cb
-                             (cond
-                               (:value ret) (oget (:value ret) "value")
-                               :else ret)))))]
+                          cb))]
     (cond
       ns (ns->string fs {:name ns
                          :macros false
@@ -407,7 +403,18 @@
                (with-out-str
                  (pprint @stx))))]
         (when (and @show-visr (= @visr nil))
-          (mk-editor @info @stx run-state fs file-src #(reset! visr %)))
+          (mk-editor @info @stx run-state fs file-src
+                     (fn [ret]
+                       (reset! visr
+                               (cond
+                                 (:value ret)
+                                 (let [v (:value ret)]
+                                   (cond (= (oget v :type) "exception")
+                                         [:div {:style {:white-space "pre"}}
+                                          (oget v :value.message)
+                                          (oget v :value.stack)],
+                                         :else (oget v :value))),
+                                 :else [:div (str ret)])))))
         [:span {:style {:display "inline-block"}}
          [:> ButtonGroup
           [:> Button
