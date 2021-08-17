@@ -651,9 +651,7 @@
                                  #js {"<C-i>" (fn [cm]
                                                     (js/console.log cm))})
                           (when editor-ref
-                            (reset! editor-ref e))
-                          (env/reset-editors!
-                           input set-text edit editors nil db))}])))
+                            (reset! editor-ref e)))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
