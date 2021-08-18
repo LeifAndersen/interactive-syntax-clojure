@@ -393,83 +393,94 @@
    :lineNumbers @(:line-numbers options)})
 
 (defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
-                  run-state info stx file-src commit!]
-  (let [visr (atom nil)]
+                  run-state info stx-box changed? file-src commit!]
+  (let [visr (atom nil)
+        stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
+                        (with-out-str
+                          (pprint %)))
+        stx (atom @stx-box)
+        stx-str (atom (stx->stx-str @stx-box))]
+    (reset! stx-box @stx-str)
+    (add-watch stx ::update-stx-box
+               (fn [k r o n]
+                 (when-not (= o n)
+                   (reset! stx-box (stx->stx-str n))
+                   (reset! changed? true))))
+    (add-watch stx-str ::update-stx-box
+               (fn [k r o n]
+                 (when-not (= o n)
+                   (reset! stx-box n)
+                   (reset! changed? true))))
     (fn [{:keys [options fs] :as db} editor show-visr show-code
-         run-state info stx file-src commit!]
-      (let [stx-str
-            (atom
-             (binding [cljs.pprint/*print-right-margin* 40]
-               (with-out-str
-                 (pprint @stx))))]
-        (when (and @show-visr (= @visr nil))
-          (mk-editor @info @stx run-state fs file-src
-                     (fn [ret]
-                       (reset! visr
-                               (cond
-                                 (:value ret)
-                                 (let [v (:value ret)]
-                                   (cond (= (oget v :type) "exception")
-                                         [:div {:style {:white-space "pre"}}
-                                          (oget v :value.message)
-                                          (oget v :value.stack)],
-                                         :else (oget v :value))),
-                                 :else [:div (str ret)])))))
-        [:span {:style {:display "inline-block"}}
-         [:> ButtonGroup
-          [:> Button
-           {:size "sm"
-            :style {:padding 0
-                    :font-size "1.2em"}
-            :on-click #(swap! show-visr not)}
-           "\uD83D\uDC41"]
-          (when @show-visr
-            [styled-frame @visr])
-          [:> Button
-           {:size "sm"
-            :style {:padding 0
-                    :font-size "0.8em"}
-            :variant "secondary"
-            :on-click #(swap! show-code not)}
-           [:code "(\u03BB)"]]
-          (when @show-code
-            [styled-frame
-             {:onBlur #(commit! @stx-str)
-              :head [:style ".frame-root, .frame-content {height: 100%;}"]}
-             [:> Form {:onSubmit #(do (.preventDefault %)
-                                      (.stopPropagation %))
-                       :style {:height "100%"
-                               :display "flex"
-                               :flex-flow "column"}}
-              [:> (oget Form :Group) {:as Row
-                                      :style {:margin "0"
-                                              :flex "0 1 auto"}}
-               [:> Col {:xs "1"
-                        :style {:padding "0"}}
-                [:> (oget Form :Label) {:column true
-                                        :style {:padding "0"}}
-                 (str strings/VISR ":")]]
-               [:> Col {:xs "11"
-                        :style {:padding-right "0"}}
-                [:> (oget Form :Control)
-                 {:size "sm"
-                  :style {:padding "0"
-                          :min-height "0"}
-                  :default-value (str (:editor @info))
-                  :on-change #(let [value (oget % "target.value")]
-                                (swap! info assoc :editor value))}]]]
-              [:> (oget Form :Group) {:as Row
-                                      :style {:margin "0"
-                                              :flex "1 1 auto"}}
-               [:> Col {:xs "12"
-                        :style {:padding "0"}}
-                [:> cm/UnControlled
-                 {:options (codemirror-options db)
-                  :onChange (fn [this operation value]
-                              (reset! stx-str value))
-                  :editorDidMount (fn [e]
-                                    (-> e (ocall "getDoc")
-                                        (ocall "setValue" @stx-str)))}]]]]])]]))))
+         run-state info stx-box changed? file-src commit!]
+      (when (and @show-visr (= @visr nil))
+        (mk-editor @info @stx run-state fs file-src
+                   (fn [ret]
+                     (reset! visr
+                             (cond
+                               (:value ret)
+                               (let [v (:value ret)]
+                                 (cond (= (oget v :type) "exception")
+                                       [:div {:style {:white-space "pre"}}
+                                        (oget v :value.message)
+                                        (oget v :value.stack)],
+                                       :else (oget v :value))),
+                               :else [:div (str ret)])))))
+      [:span {:style {:display "inline-block"}}
+       [:> ButtonGroup
+        [:> Button
+         {:size "sm"
+          :style {:padding 0
+                  :font-size "1.2em"}
+          :on-click #(swap! show-visr not)}
+         "\uD83D\uDC41"]
+        (when @show-visr
+          [styled-frame @visr])
+        [:> Button
+         {:size "sm"
+          :style {:padding 0
+                  :font-size "0.8em"}
+          :variant "secondary"
+          :on-click #(swap! show-code not)}
+         [:code "(\u03BB)"]]
+        (when @show-code
+          [styled-frame
+           {:onBlur commit!
+            :head [:style ".frame-root, .frame-content {height: 100%;}"]}
+           [:> Form {:onSubmit #(do (.preventDefault %)
+                                    (.stopPropagation %))
+                     :style {:height "100%"
+                             :display "flex"
+                             :flex-flow "column"}}
+            [:> (oget Form :Group) {:as Row
+                                    :style {:margin "0"
+                                            :flex "0 1 auto"}}
+             [:> Col {:xs "1"
+                      :style {:padding "0"}}
+              [:> (oget Form :Label) {:column true
+                                      :style {:padding "0"}}
+               (str strings/VISR ":")]]
+             [:> Col {:xs "11"
+                      :style {:padding-right "0"}}
+              [:> (oget Form :Control)
+               {:size "sm"
+                :style {:padding "0"
+                        :min-height "0"}
+                :default-value (str (:editor @info))
+                :on-change #(let [value (oget % "target.value")]
+                              (swap! info assoc :editor value))}]]]
+            [:> (oget Form :Group) {:as Row
+                                    :style {:margin "0"
+                                            :flex "1 1 auto"}}
+             [:> Col {:xs "12"
+                      :style {:padding "0"}}
+              [:> cm/UnControlled
+               {:options (codemirror-options db)
+                :onChange (fn [this operation value]
+                            (reset! stx-str value))
+                :editorDidMount (fn [e]
+                                  (-> e (ocall "getDoc")
+                                      (ocall "setValue" @stx-str)))}]]]]])]])))
 
 (defn reset-editors! [source set-text editor instances operation
                       {:keys [fs options deps env] :as db}]
@@ -520,6 +531,7 @@
                                               (atom false))
                                   info (atom info)
                                   form (atom (second form))
+                                  changed? (atom false)
                                   start (buffer-position->index
                                          @source
                                          (:line @info)
@@ -532,12 +544,12 @@
                                             (str (subs @source 0 start)
                                                  (write-visr (:editor info) form)
                                                  (subs @source end)))
-                                  commit! (fn [f]
-                                            (set-text (new-str @info
-                                                               (or f @form))))]
+                                  commit! #(when @changed?
+                                             (set-text (new-str @info @form))
+                                             (reset! changed? false))]
                               (d/render
                                [visr-hider db editor show-visr show-code
-                                run-state info form @source commit!]
+                                run-state info form changed? @source commit!]
                                hider)
                               (swap! instances assoc
                                      {:line (:line @info)
@@ -553,6 +565,7 @@
                                                 :ch (dec (:end-column @info))}
                                            #js {:collapsed true
                                                 :replacedWith hider}))
+                                      :commit! commit!
                                       :visr hider
                                       :show-visr show-visr
                                       :show-code show-code

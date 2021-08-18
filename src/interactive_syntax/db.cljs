@@ -223,5 +223,6 @@
       :deps-env (atom nil)
       :env (atom nil)
       :file-changed (->DBAtom backed-db [:current :changed?])
-      :running? (atom false)})))
+      :running? (atom false)
+      :visr-commit! (atom nil)})))
 

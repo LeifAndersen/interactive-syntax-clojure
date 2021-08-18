@@ -155,9 +155,11 @@
              :always clj->js
              :always cb))))
 
-(defn save-buffer [{:keys [fs menu current-folder current-file input file-changed]
+(defn save-buffer [{:keys [fs menu current-folder current-file input
+                           file-changed visr-commit!]
                     :as db}]
   (swap! menu conj :hold)
+  (@visr-commit!)
   (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
          (fn [err res]
            (reset! file-changed false)
@@ -262,7 +264,7 @@
         ref (or ref #js {:current nil})]
     (add-watch file-browser-folder ::folder-change
                (fn [k r o n]
-                 (when (not (= o n))
+                 (when (not= o n)
                    (populate-dir-list))))
     (populate-dir-list)
     (fn [{:keys [fs
@@ -603,7 +605,8 @@
         [:> Button {:on-click run+pause} (if @running? strings/PAUSE strings/RUN)]
         [:> Button strings/STOP]]]]]))
 
-(defn editor-view [{:keys [menu input output options file-changed current-file fs]
+(defn editor-view [{:keys [menu input output options
+                           file-changed current-file fs visr-commit!]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
@@ -620,6 +623,9 @@
                             (reset! file-changed fc))))]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
+    (reset! visr-commit!
+            #(doseq [[k v] @editors]
+               ((:commit! v))))
     (fn [{:keys [menu input options file-changed current-file]
           :as db}
          & [editor-ref]]
@@ -647,9 +653,6 @@
                             (-> e (ocall "getDoc") (ocall "setValue" @input))
                             (reset! file-changed fc))
                           (reset! edit e)
-                          (ocall e :addKeyMap
-                                 #js {"<C-i>" (fn [cm]
-                                                    (js/console.log cm))})
                           (when editor-ref
                             (reset! editor-ref e)))}])))
 
