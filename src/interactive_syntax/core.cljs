@@ -159,7 +159,8 @@
                            file-changed visr-commit!]
                     :as db}]
   (swap! menu conj :hold)
-  (@visr-commit!)
+  (when @visr-commit!
+    (@visr-commit!))
   (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
          (fn [err res]
            (reset! file-changed false)
