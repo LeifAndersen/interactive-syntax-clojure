@@ -666,24 +666,48 @@
   (:require [react-bootstrap :refer [Button]]))
 (defvisr Counter
   (render [this update]
-    [:> Button {:onClick #(js/console.log \"clicked\")}
+    [:> Button {:aria-label \"Counter\"
+                :onClick #(update (inc this))}
       this])
   (elaborate [this] `'~this))"
 
            use-prog "
 (ns test.use
-  (:require-macros [test.core :refer [Counter+elaborate]]))
-(println (+ ^{:editor Counter} (Counter+elaborate 3) 4))"]
+  (:require-macros [test.core])
+  (:require [test.core]))
+(println (+ ^{:editor test.core/Counter}(test.core/Counter+elaborate 329) 5))"
+           new-use "
+(ns test.use
+  (:require-macros [test.core])
+  (:require [test.core]))
+(println (+ ^{:editor test.core/Counter}(test.core/Counter+elaborate 330
+) 5))"]
        (test-do
         db :check
         :async #(fs.mkdir (.join js/path files-root "test") %)
         :async #(fs.writeFile (.join js/path files-root "test/core.cljs")
                               visr-prog %)
-        :do #(reset! input use-prog)
+        :do #(-> @editor .getDoc (.setValue use-prog))
         :set [:input] use-prog :check
         :do #(click-run view)
         :wait 0
-        :set [:output] #queue ["7"] :check
+        :set [:output] #queue ["334"] :check
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 100
+        :do #(.click rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByTagName "iframe")
+                         (aget 0)
+                         .-contentDocument
+                         (.getElementsByTagName "button")
+                         (aget 0)))
+        :wait 0
+        :do #(click-run view)
+        :wait 0
+        :set [:input] new-use
+        :set [:output] #queue ["335"] :check
         :done #(done))))))
 
 (defn -main [& args]

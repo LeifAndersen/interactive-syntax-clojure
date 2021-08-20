@@ -169,7 +169,11 @@
                 cb]
   (let [resume (and runner true)
         sandbox (if (nil? sandbox) true sandbox)
-        runner (or runner (js/stopify.stopifyLocally ""))
+        runner (let [new (js/stopify.stopifyLocally "")]
+                 ;; Bug in stopify, always uses the latest runner environment
+                 (when runner
+                   (set! (.-g new) (.-g runner)))
+                 new)
         runner-globs (clj->js (cond
                                 (fn? env) (env runner)
                                 env env
@@ -252,7 +256,12 @@
       (reset! internal-running? true)
       (reset! running? true)
       (if resume
-        (post-load)
+        (do
+          (onRun)
+          (ocall runner :run
+                 (fn []
+                   (onYield)
+                   (post-load))))
         (do
           (reset! bootstrapping? true)
           (set! runner.g runner-globs)
@@ -318,24 +327,29 @@
   (loop [i 0
          line line]
     (if (<= line 1)
-      (+ i column)
-      (recur (.indexOf str "\n" (inc i))
+      (dec (+ i column))
+      (recur (inc (.indexOf str "\n" i))
              (dec line)))))
 
 (defn write-visr [visr state]
   (str "^{:editor " visr "}(" (stdlib/visr->elaborate visr) " " (str state) ")"))
+
+(defn info->srcloc [info]
+  {:line (:line info)
+   :column (:column info)})
 
 (defn mk-editor [{:keys [editor] :as data}
                  stx
                  {:keys [runner loaded state ns-cache] :as run-state}
                  fs file-src cb]
   (let [ns (namespace editor)
+        srcloc (info->srcloc data)
         mk-fn (fn [res]
                 (when (and res (:error res))
                   (throw res))
                 (eval-str (str "(" (stdlib/visr->render editor)
                                " '" stx
-                               " (fn [x] x))")
+                               " (fn [x] ((js/srcloc->updater " srcloc ") x)))")
                           {:runner runner
                            :loaded @loaded
                            :state state
@@ -393,7 +407,7 @@
    :lineNumbers @(:line-numbers options)})
 
 (defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
-                  run-state info stx-box changed? file-src commit!]
+                  run-state info stx-box changed? file-src commit! update-box]
   (let [visr (atom nil)
         stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
                         (with-out-str
@@ -411,8 +425,11 @@
                  (when-not (= o n)
                    (reset! stx-box n)
                    (reset! changed? true))))
+    (reset! update-box (fn [x]
+                         (reset! stx x)
+                         (commit!)))
     (fn [{:keys [options fs] :as db} editor show-visr show-code
-         run-state info stx-box changed? file-src commit!]
+         run-state info stx-box changed? file-src commit! update-box]
       (when (and @show-visr (= @visr nil))
         (mk-editor @info @stx run-state fs file-src
                    (fn [ret]
@@ -427,7 +444,7 @@
                                        :else (oget v :value))),
                                :else [:div (str ret)])))))
       [:span {:style {:display "inline-block"}}
-       [:> ButtonGroup
+       [:> ButtonGroup {:aria-label strings/VISR}
         [:> Button {:size "sm"
                     :aria-label strings/VISUAL
                     :style {:padding 0 :font-size "1.2em"}
@@ -495,11 +512,15 @@
                  @env
                  (let [cache (eval-str
                               ""
-                              (stdlib/reagent-opts {:env (:env deps-env)
-                                                    :loaded (:loaded deps-env)
-                                                    :js-deps (:js-deps deps-env)
-                                                    :fs fs}
-                                                   db)
+                              (stdlib/reagent-opts
+                               {:env (assoc (:env deps-env)
+                                            (munge "srcloc->updater")
+                                            (fn [x]
+                                              @(get-in @instances [x :update])))
+                                :loaded (:loaded deps-env)
+                                :js-deps (:js-deps deps-env)
+                                :fs fs}
+                               db)
                             #())]
                    (reset! env cache)
                    cache))]
@@ -531,9 +552,9 @@
                                   form (atom (second form))
                                   changed? (atom false)
                                   start (buffer-position->index
-                                         @source
-                                         (:line @info)
-                                         (:column @info)),
+                                          @source
+                                          (:line @info)
+                                          (:column @info)),
                                   end (buffer-position->index
                                        @source
                                        (:end-line @info)
@@ -542,16 +563,16 @@
                                             (str (subs @source 0 start)
                                                  (write-visr (:editor info) form)
                                                  (subs @source end)))
+                                  update (atom nil)
                                   commit! #(when @changed?
                                              (set-text (new-str @info @form))
                                              (reset! changed? false))]
                               (d/render
                                [visr-hider db editor show-visr show-code
-                                run-state info form changed? @source commit!]
+                                run-state info form changed? @source commit! update]
                                hider)
                               (swap! instances assoc
-                                     {:line (:line @info)
-                                      :column (:column @info)}
+                                     (info->srcloc @info)
                                      {:range
                                       (-> @editor
                                           (ocall :getDoc)
@@ -564,6 +585,7 @@
                                            #js {:collapsed true
                                                 :replacedWith hider}))
                                       :commit! commit!
+                                      :update update
                                       :visr hider
                                       :show-visr show-visr
                                       :show-code show-code

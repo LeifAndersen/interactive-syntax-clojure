@@ -112,3 +112,4 @@
                          'visr.private 'reagent.core 'reagent.dom)
            :js-deps (conj (into {} (:js-deps opts))
                           (:js-deps builtins))})))
+
