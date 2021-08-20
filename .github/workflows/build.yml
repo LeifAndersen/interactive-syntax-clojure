@@ -7,7 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2.3.4
-    - uses: GabrielBB/xvfb-action@v1
     - uses: cachix/install-nix-action@v13
       with:
         nix_path: nixpkgs=channel:nixos-unstable
@@ -15,7 +14,9 @@ jobs:
 #   - name: Setup upterm session
 #     uses: lhotari/action-upterm@v1
     - name: Run Tests
-      run: nix-shell --run "clojure -M:test"
+      uses: GabrielBB/xvfb-action@v1
+      with:
+        run: nix-shell --run "clojure -M:test"
     - name: Deploy Preview
       run: |
         git clean -fxd
