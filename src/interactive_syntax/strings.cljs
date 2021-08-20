@@ -11,6 +11,7 @@
 (def CREATE "Create")
 (def OPTIONS "Options")
 (def FILE "File")
+(def FOLDER "Folder")
 (def UNSAVED-CHANGES "Unsaved Changes...")
 (def CONTINUE-WITHOUT-SAVING "Continue Without Saving")
 
@@ -49,3 +50,6 @@
 (def REMOVE+SYMBOL "-")
 
 (def VISR "VISr")
+
+(def VISUAL "visual")
+(def CODE "code")

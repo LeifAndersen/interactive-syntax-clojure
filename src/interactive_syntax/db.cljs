@@ -5,7 +5,7 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def files-root "/files/")
+(def files-root "/files")
 
 (deftype RefAtom [ref]
   IAtom

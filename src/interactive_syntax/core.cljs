@@ -175,7 +175,7 @@
            (reset! file-changed false)
            (swap! menu pop))))
 
-(defn make-control-dialog [menu key title confirm action]
+(defn make-control-dialog [menu key title confirm placeholder action]
   (let [text (atom "")]
     (fn []
       [:> Modal {:show (= (peek @menu) key)
@@ -188,28 +188,29 @@
                                  (confirm))}
          [:> (oget Form :Group) {:as Row}
           [:> Col {:xs "auto"}
-           [:> (oget Form :Label) {:sr-only true}
+           [:> (oget Form :Label) {:visuallyHidden true}
             title]]
           [:> Col {:xs 8}
            [:> (oget Form :Control)
-            {:on-change #(reset! text (oget % "target.value"))}]]
+            {:placeholder placeholder
+             :on-change #(reset! text (oget % "target.value"))}]]
           [:> Col {:xs "auto"}
-           [:> Button
-            {:on-click (action text)}
+           [:> Button {:on-click (action text)}
             confirm]]]]]])))
 
-(defn new-folder-dialog [{:keys [fs menu current-folder]
+(defn new-folder-dialog [{:keys [fs menu file-browser-folder]
                           :as db}]
-  (make-control-dialog menu :new-folder strings/NEW strings/CREATE
-                       (fn [text]
-                         (fn []
-                           (when (not= @text "")
-                             (let [new-path (js/path.join @current-folder @text)]
-                               (swap! menu conj :hold)
-                               (ocall fs :mkdir new-path
-                                      (fn [err]
-                                        (swap! menu (comp pop pop))
-                                        (reset! current-folder new-path)))))))))
+  (make-control-dialog
+   menu :new-folder strings/NEW strings/CREATE strings/FOLDER
+   (fn [text]
+     (fn []
+       (when (not= @text "")
+         (let [new-path (js/path.join @file-browser-folder (.replace @text "/" ""))]
+           (swap! menu conj :hold)
+           (ocall fs :mkdir new-path
+                  (fn [err]
+                    (swap! menu (comp pop pop))
+                    (reset! file-browser-folder new-path)))))))))
 
 (defn confirm-save-dialog [{:keys [menu current-file]
                             :as db}]
@@ -285,7 +286,7 @@
          :files @dir-list
          :folder-chain (let [split (filter (partial not= "")
                                            (-> @file-browser-folder
-                                               (.replace files-root "/")
+                                               (.replace files-root "")
                                                (.split js/path.sep)))]
                          (for [[i folder] (map list (range) (conj split " "))]
                            #js {:id (str "folder" i)

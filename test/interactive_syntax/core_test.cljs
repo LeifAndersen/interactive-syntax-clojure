@@ -336,9 +336,6 @@
        :set [:input] ""
        :set [:menu] [:home] :check))))
 
-;; Note, you can find stuff in modals with something like:
-;; (-> (get-modal) (.querySelector "[title='Create a folder']")
-
 (deftest new-folder-breadcrumbs
   (testing "New Folder and breadcrumbs"
     (async
@@ -359,9 +356,47 @@
         :set [:menu] [:home :load :new-folder] :check
         :do #(reset! (-> db :menu) [:home :load])
         :async #(fs.mkdir "dir" %)
-        :do #(reset! (-> db :current-folder) (.join js/path files-root "dir"))
+        :do #(reset! (-> db :file-browser-folder) (.join js/path files-root "dir"))
         :set [:menu] [:home :load]
-        :set [:current-folder] (.join js/path files-root "dir") :check
+        :set [:file-browser-folder] (.join js/path files-root "dir") :check
+        :done #(done))))))
+
+(deftest add-peer-folder
+  (testing "Adding a peer folder in the root files directory"
+    (async
+     done
+     (let [{:keys [input file-changed file-browser-folder] :as db}
+           (default-db :temp)
+           file-browser #js {:current nil}
+           view (rtl/render
+                 (r/as-element
+                  [core/home-page db {:load-file-browser file-browser}]))
+           file-browser (->RefAtom file-browser)]
+       (test-do
+        db :check
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+        :set [:menu] [:home :load]
+        :do #(.requestFileAction @file-browser ChonkyActions.CreateFolder)
+        :then :do #(.change rtl/fireEvent
+                            (-> (get-modal)
+                                (.querySelector "[placeholder='Folder']"))
+                            #js {:target #js {:value "A"}})
+        :do #(.click rtl/fireEvent (-> (get-modal)
+                                      (.getElementsByTagName "button")
+                                      (aget 1)))
+        :do #(swap! file-browser-folder (fn [x] (.join js/path x "..")))
+        :check
+        :do #(.requestFileAction @file-browser ChonkyActions.CreateFolder)
+        :then :do #(.change rtl/fireEvent
+                            (-> (get-modal)
+                                (.querySelector "[placeholder='Folder']"))
+                            #js {:target #js {:value "B"}})
+        :do #(.click rtl/fireEvent (-> (get-modal)
+                                       (.getElementsByTagName "button")
+                                       (aget 1)))
+        :do #(swap! file-browser-folder (fn [x] (.join js/path x "..")))
+        :check
+        :do #(= (count (fs.readdirSync @file-browser-folder)) 2)
         :done #(done))))))
 
 (deftest simple-eval
@@ -613,6 +648,42 @@
         :do #(click-run view)
         :wait 0
         :set [:output] #queue ["false" "false" "false" "false"] :check
+        :done #(done))))))
+
+(deftest test-basic-visr
+  (testing "Ensure a basic visr runs"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))
+           visr-prog "
+(ns test.core
+  (:require [react-bootstrap :refer [Button]]))
+(defvisr Counter
+  (render [this update]
+    [:> Button {:onClick #(js/console.log \"clicked\")}
+      this])
+  (elaborate [this] `'~this))"
+
+           use-prog "
+(ns test.use
+  (:require-macros [test.core :refer [Counter+elaborate]]))
+(println (+ ^{:editor Counter} (Counter+elaborate 3) 4))"]
+       (test-do
+        db :check
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile (.join js/path files-root "test/core.cljs")
+                              visr-prog %)
+        :do #(reset! input use-prog)
+        :set [:input] use-prog :check
+        :do #(click-run view)
+        :wait 0
+        :set [:output] #queue ["7"] :check
         :done #(done))))))
 
 (defn -main [& args]

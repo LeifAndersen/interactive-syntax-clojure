@@ -116,7 +116,7 @@
   ((fn rec [extensions]
      (if (empty? extensions)
        (cb nil)
-       (let [file-path (str files-root path "." (first extensions))]
+       (let [file-path (str files-root "/" path "." (first extensions))]
          (ocall
           fs :readFile
           file-path
@@ -428,20 +428,18 @@
                                :else [:div (str ret)])))))
       [:span {:style {:display "inline-block"}}
        [:> ButtonGroup
-        [:> Button
-         {:size "sm"
-          :style {:padding 0
-                  :font-size "1.2em"}
-          :on-click #(swap! show-visr not)}
+        [:> Button {:size "sm"
+                    :aria-label strings/VISUAL
+                    :style {:padding 0 :font-size "1.2em"}
+                    :on-click #(swap! show-visr not)}
          "\uD83D\uDC41"]
         (when @show-visr
           [styled-frame @visr])
-        [:> Button
-         {:size "sm"
-          :style {:padding 0
-                  :font-size "0.8em"}
-          :variant "secondary"
-          :on-click #(swap! show-code not)}
+        [:> Button {:size "sm"
+                    :aria-label strings/CODE
+                    :style {:padding 0 :font-size "0.8em"}
+                    :variant "secondary"
+                    :on-click #(swap! show-code not)}
          [:code "(\u03BB)"]]
         (when @show-code
           [styled-frame
