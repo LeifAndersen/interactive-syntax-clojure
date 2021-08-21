@@ -332,9 +332,6 @@
       (recur (inc (.indexOf str "\n" i))
              (dec line)))))
 
-(defn write-visr [visr state]
-  (str "^{:editor " visr "}(" (stdlib/visr->elaborate visr) " " (str state) ")"))
-
 (defn info->srcloc [info]
   {:line (:line info)
    :column (:column info)})
@@ -409,14 +406,8 @@
 
 ;; Based on: https://lilac.town/writing/modern-react-in-cljs-error-boundaries/
 (defn err-boundary
-  [& mchildren]
-  (let [attrs (if (and (seq mchildren) (map? (first mchildren)))
-                (first mchildren)
-                {})
-        children (if (and (seq mchildren) (map? (first mchildren)))
-                   (rest mchildren)
-                   mchildren)
-        err-state (r/atom nil)]
+  [& children]
+  (let [err-state (r/atom nil)]
     (r/create-class
      {:display-name "ErrBoundary"
       :component-did-catch (fn [err info]
@@ -425,9 +416,8 @@
                         (if (nil? @err-state)
                           (into [:<>] children)
                           (let [[_ info] @err-state]
-                            (if (:fallback attrs)
-                              ((:fallback attrs) info)
-                              [:pre [:code (pr-str info)]]))))})))
+                            [styled-frame [:div {:style {:white-space "pre"}}
+                                           (pr-str info)]])))})))
 
 (defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
                   run-state info stx-box changed? file-src commit! update-box]
@@ -475,9 +465,6 @@
          "\uD83D\uDC41"]
         (when @show-visr
           [err-boundary
-           {:fallback (fn [info]
-                        [styled-frame [:div {:style {:white-space "pre"}}
-                                       (pr-str info)]])}
            [styled-frame @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
@@ -588,7 +575,8 @@
                                        (:end-column @info))
                                   new-str (fn [info form]
                                             (str (subs @source 0 start)
-                                                 (write-visr (:editor info) form)
+                                                 (stdlib/write-visr
+                                                  (:editor info) form)
                                                  (subs @source end)))
                                   update (atom nil)
                                   commit! #(when @changed?

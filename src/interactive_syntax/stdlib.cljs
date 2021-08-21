@@ -113,3 +113,7 @@
            :js-deps (conj (into {} (:js-deps opts))
                           (:js-deps builtins))})))
 
+(defn write-visr [visr state]
+  (str "^{:editor " visr "}(" (visr->elaborate visr) " " (str state) ")"))
+
+(def empty-visr (write-visr "visr.core/empty-visr" "'()"))

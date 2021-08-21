@@ -10,10 +10,11 @@
      [interactive-syntax.db :as db :refer [files-root]]
      [interactive-syntax.strings :as strings]
      [interactive-syntax.env :as env]
+     [interactive-syntax.stdlib :as stdlib]
      [popper.js]
      [bootstrap]
      [alandipert.storage-atom :as storage]
-     [react-bootstrap :refer [Button ButtonGroup SplitButton
+     [react-bootstrap :refer [Button ButtonGroup ButtonToolbar SplitButton
                               Dropdown DropdownButton Tabs Tab
                               Row Col Form Container Modal
                               Table Spinner]]
@@ -527,7 +528,8 @@
                           file-changed
                           menu
                           runner
-                          running?]
+                          running?
+                          insert-visr!]
                    :as db}]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
@@ -547,6 +549,7 @@
                        (if @file-changed
                          "*"
                          ""))
+        do-insert-visr #(reset! insert-visr! true)
         run+pause #(let []
                      (reset! output #queue [])
                      (env/eval-buffer db))]
@@ -578,37 +581,50 @@
          file-name]]
        [:> Col {:xs "auto"
                 :style {:padding-right 0}}
-        [:> SplitButton {:title (if @running? strings/PAUSE strings/RUN)
-                         :size "sm"
-                         :on-click run+pause}
-         [:> (oget Dropdown :Item) strings/STOP]]]]]
+        [:> Dropdown {:as ButtonGroup
+                      :size "sm"}
+         [:> Button {:variant (if @running? "warning" "success")
+                     :on-click run+pause}
+          (if @running? strings/PAUSE strings/RUN)]
+         [:> (oget Dropdown :Toggle) {:split true}]
+         [:> (oget Dropdown :Menu)
+          [:> (oget Dropdown :Item) strings/STOP]
+          [:> (oget Dropdown :Item) {:on-click do-insert-visr}
+           strings/INSERT-VISR]]]]]]
      [:div {:className "d-none d-md-block"}
       [:> Row {:className "align-items-center"
                :style {:margin-left 0
                        :margin-right 0}}
        [:> Col {:xs "auto"
                 :style {:padding-left 0}}
-        [:> Button {:on-click new-file} strings/NEW]
-        [:> SplitButton
-         {:title strings/SAVE
-          :on-click save-file}
-         [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]]
-        [:> Button {:on-click load-file} strings/LOAD]
-        [:> DropdownButton {:as ButtonGroup
-                            :title strings/PROJECT}
-         [:> (oget Dropdown :Item) strings/NEW-PROJECT]
-         [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
-         [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
-         [:> (oget Dropdown :Item) strings/EXPORT-PROJECT]]
-        [:> Button {:on-click options} strings/OPTIONS]]
+        [:> ButtonGroup
+         [:> Button {:on-click new-file} strings/NEW]
+         [:> SplitButton
+          {:title strings/SAVE
+           :on-click save-file}
+          [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]]
+         [:> Button {:on-click load-file} strings/LOAD]
+         [:> DropdownButton {:as ButtonGroup
+                             :title strings/PROJECT}
+          [:> (oget Dropdown :Item) strings/NEW-PROJECT]
+          [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
+          [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
+          [:> (oget Dropdown :Item) strings/EXPORT-PROJECT]]
+         [:> Button {:on-click options} strings/OPTIONS]]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"
                 :style {:paddingRight 0}}
-        [:> Button {:on-click run+pause} (if @running? strings/PAUSE strings/RUN)]
-        [:> Button strings/STOP]]]]]))
+        [:> ButtonGroup
+         [:> Button {:on-click do-insert-visr
+                     :variant "info"}
+          strings/INSERT-VISR]
+         [:> Button {:on-click run+pause
+                     :variant (if @running? "warning" "success")}
+          (if @running? strings/PAUSE strings/RUN)]
+         [:> Button {:variant "danger"} strings/STOP]]]]]]))
 
-(defn editor-view [{:keys [menu input output options
-                           file-changed current-file fs visr-commit!]
+(defn editor-view [{:keys [menu input output options file-changed
+                           current-file fs visr-commit! insert-visr!]
                     :as db}
                    & [editor-ref]]
   (let [edit (atom nil)
@@ -628,15 +644,20 @@
     (reset! visr-commit!
             #(doseq [[k v] @editors]
                ((:commit! v))))
-    (fn [{:keys [menu input options file-changed current-file]
+    (fn [{:keys [menu input options file-changed current-file insert-visr!]
           :as db}
          & [editor-ref]]
       @current-file
       @menu
       (when (not= @edit nil)
-        (oset! (ocall @edit "getWrapperElement") "style.fontSize"
+        (oset! (ocall @edit :getWrapperElement) :style.fontSize
                (str @(:font-size options) "px"))
-        (ocall @edit "refresh"))
+        (when @insert-visr!
+          (let [doc (ocall @edit :getDoc)
+                pos (ocall doc :getCursor)]
+            (ocall doc :replaceRange stdlib/empty-visr pos))
+          (reset! insert-visr! false))
+        (ocall @edit :refresh))
       [:> cm/UnControlled
        {:options (env/codemirror-options db)
         :onChange (fn [this operation value]

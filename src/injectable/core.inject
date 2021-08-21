@@ -13,3 +13,5 @@
            ~render)
          (defmacro ~name+elaborate
            ~elaborate))))
+(defn empty-visr+render [this update] [:div "Endless Possibility"])
+(defmacro empty-visr+elaborate [this] "It's About Time")

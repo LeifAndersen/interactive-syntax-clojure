@@ -53,3 +53,5 @@
 
 (def VISUAL "visual")
 (def CODE "code")
+
+(def INSERT-VISR "Insert VISr")
