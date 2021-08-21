@@ -2,6 +2,7 @@
   (:require
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
+   ;;[reagent-catch.core :as rc]
    [clojure.string :as string]
    [clojure.walk :as walk]
    [cljs.pprint :refer [pprint]]
@@ -406,6 +407,28 @@
    :lineWrapping @(:line-wrapping options)
    :lineNumbers @(:line-numbers options)})
 
+;; Based on: https://lilac.town/writing/modern-react-in-cljs-error-boundaries/
+(defn err-boundary
+  [& mchildren]
+  (let [attrs (if (and (seq mchildren) (map? (first mchildren)))
+                (first mchildren)
+                {})
+        children (if (and (seq mchildren) (map? (first mchildren)))
+                   (rest mchildren)
+                   mchildren)
+        err-state (r/atom nil)]
+    (r/create-class
+     {:display-name "ErrBoundary"
+      :component-did-catch (fn [err info]
+                             (reset! err-state [err info]))
+      :reagent-render (fn [& children]
+                        (if (nil? @err-state)
+                          (into [:<>] children)
+                          (let [[_ info] @err-state]
+                            (if (:fallback attrs)
+                              ((:fallback attrs) info)
+                              [:pre [:code (pr-str info)]]))))})))
+
 (defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
                   run-state info stx-box changed? file-src commit! update-box]
   (let [visr (atom nil)
@@ -451,7 +474,11 @@
                     :on-click #(swap! show-visr not)}
          "\uD83D\uDC41"]
         (when @show-visr
-          [styled-frame @visr])
+          [err-boundary
+           {:fallback (fn [info]
+                        [styled-frame [:div {:style {:white-space "pre"}}
+                                       (pr-str info)]])}
+           [styled-frame @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
                     :style {:padding 0 :font-size "0.8em"}

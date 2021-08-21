@@ -710,6 +710,52 @@
         :set [:output] #queue ["335"] :check
         :done #(done))))))
 
+(deftest test-bad-visr
+  (testing "Test a visr that can't compile"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))
+           old-error js/console.error
+           prog "
+(ns test.core
+  (:require [react-bootstrap :refer [Button]]))
+
+(defvisr Counter
+  (render [this update]
+    [:> ButtonGroup
+     [:> Button {:onClick #(update (dec this))} \"-\"]
+     this
+     [:> Button {:onClick #(update (inc this))} \"+\"]])
+   (elaborate [this] this))"
+           use-prog "
+(ns test.use
+  (:require-macros [test.core])
+  (:require [test.core]))
+
+^{:editor test.core/Counter}(test.core/Counter+elaborate 443)"]
+       (test-do
+        db :check
+        :do #(set! js/console.error (fn [] nil))
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile (.join js/path files-root "test/core.cljs")
+                              prog %)
+        :do #(-> @editor .getDoc (.setValue use-prog))
+        :set [:input] use-prog :check
+        :wait 0
+        :do #(console.warn "Ignore next error message.")
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 100
+        :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
+        :do #(set! js/console.error old-error)
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 30000))
 
