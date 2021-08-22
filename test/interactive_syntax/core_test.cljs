@@ -756,6 +756,29 @@
         :do #(set! js/console.error old-error)
         :done #(done))))))
 
+(deftest test-visr-insert
+  (testing "Test the insert visr button"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue "ABCD"))
+        :set [:input] "ABCD" :check
+        :do #(do (.focus @editor)
+                 (.setCursor @editor #js {:line 0 :ch 2}))
+        :do #(.click rtl/fireEvent
+                     (first (.getAllByText view strings/INSERT-VISR)))
+        :set [:input] (str "AB^{:editor visr.core/empty-visr}"
+                           "(visr.core/empty-visr+elaborate '())CD") :check
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 30000))
 

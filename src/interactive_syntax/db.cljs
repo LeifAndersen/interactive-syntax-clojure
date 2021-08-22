@@ -225,5 +225,5 @@
       :file-changed (->DBAtom backed-db [:current :changed?])
       :running? (atom false)
       :visr-commit! (atom nil)
-      :insert-visr! (atom false)})))
+      :insert-visr! (atom nil)})))
 

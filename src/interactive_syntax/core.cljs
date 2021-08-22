@@ -549,7 +549,8 @@
                        (if @file-changed
                          "*"
                          ""))
-        do-insert-visr #(reset! insert-visr! true)
+        do-insert-visr #(when @insert-visr!
+                          (@insert-visr!))
         run+pause #(let []
                      (reset! output #queue [])
                      (env/eval-buffer db))]
@@ -644,7 +645,11 @@
     (reset! visr-commit!
             #(doseq [[k v] @editors]
                ((:commit! v))))
-    (fn [{:keys [menu input options file-changed current-file insert-visr!]
+    (reset! insert-visr!
+            #(let [doc (ocall @edit :getDoc)
+                   pos (ocall doc :getCursor)]
+               (ocall doc :replaceRange stdlib/empty-visr pos)))
+    (fn [{:keys [menu input options file-changed current-file]
           :as db}
          & [editor-ref]]
       @current-file
@@ -652,11 +657,6 @@
       (when (not= @edit nil)
         (oset! (ocall @edit :getWrapperElement) :style.fontSize
                (str @(:font-size options) "px"))
-        (when @insert-visr!
-          (let [doc (ocall @edit :getDoc)
-                pos (ocall doc :getCursor)]
-            (ocall doc :replaceRange stdlib/empty-visr pos))
-          (reset! insert-visr! false))
         (ocall @edit :refresh))
       [:> cm/UnControlled
        {:options (env/codemirror-options db)
