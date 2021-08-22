@@ -12,7 +12,8 @@
             [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
-            [interactive-syntax.env :as env]))
+            [interactive-syntax.env :as env]
+            [interactive-syntax.stdlib :as stdlib]))
 
 (def test-dep (slurp "test/res/react-hexgrid.js"))
 
@@ -777,6 +778,28 @@
                      (first (.getAllByText view strings/INSERT-VISR)))
         :set [:input] (str "AB^{:editor visr.core/empty-visr}"
                            "(visr.core/empty-visr+elaborate '())CD") :check
+        :done #(done))))))
+
+(deftest shown-on-load
+  (testing "Test that VISrs are rendered when the document is first loaded"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           new-input (str "A" stdlib/empty-visr "B"),
+           _ (reset! input new-input),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :set [:input] new-input :check
+        :wait 0
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 100
+        :check
         :done #(done))))))
 
 (defn -main [& args]

@@ -630,11 +630,8 @@
                    & [editor-ref]]
   (let [edit (atom nil)
         editors (atom {})
-        reset-lock (atom false)
         set-text (fn [txt]
-                   (reset! reset-lock true)
-                   (-> @edit (ocall :getDoc) (ocall :setValue txt))
-                   (reset! reset-lock false))
+                   (-> @edit (ocall :getDoc) (ocall :setValue txt)))
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
@@ -663,9 +660,8 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (when-not false;@reset-lock
-                      (env/reset-editors!
-                       input set-text edit editors operation db)))
+                    (env/reset-editors!
+                     input set-text edit editors operation db))
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)
@@ -677,7 +673,9 @@
                             (reset! file-changed fc))
                           (reset! edit e)
                           (when editor-ref
-                            (reset! editor-ref e)))}])))
+                            (reset! editor-ref e))
+                          (env/reset-editors!
+                           input set-text edit editors nil db))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
