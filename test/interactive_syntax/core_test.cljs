@@ -803,5 +803,5 @@
         :done #(done))))))
 
 (defn -main [& args]
-  (run-tests-async 30000))
+  (run-tests-async 120000))
 
