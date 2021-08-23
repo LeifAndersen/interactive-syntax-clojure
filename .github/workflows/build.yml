@@ -10,13 +10,13 @@ jobs:
     - uses: cachix/install-nix-action@v13
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-# Uncomment for ssh
-#   - name: Setup upterm session
-#     uses: lhotari/action-upterm@v1
     - name: Run Tests
       uses: GabrielBB/xvfb-action@v1
       with:
         run: nix-shell --run "clojure -M:test"
+# Uncomment for ssh
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
     - name: Deploy Preview
       run: |
         git clean -fxd
