@@ -15,11 +15,15 @@
      var req = new XMLHttpRequest();
      var prog = document.getElementById("progress");
      req.addEventListener("progress", function(event) {
+       var progress;
        if (event.lengthComputable) {
-         var percentComplete = event.loaded / event.total;
-         prog.setAttribute("value", percentComplete);
-         prog.innerHTML = percentComplete + "%";
-       } else {}
+         progress = event.total / 100;
+       } else {
+         progress = 150000;
+       }
+       var percentComplete = event.loaded / progress;
+       prog.setAttribute("value", percentComplete);
+       prog.innerHTML = percentComplete + "%";
      }, false);
      req.addEventListener("load", function(event) {
        var e = event.target;

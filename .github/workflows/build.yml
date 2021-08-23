@@ -24,7 +24,7 @@ jobs:
         git config --global user.email "noreply@visr.pl"
         nix-shell --run "clojure -M:package"
         rm -r node_modules
-        cp public/index.html .
+        cp public/index-loadingbar.html index.html
         echo "visr.pl" > CNAME
         git add -A -f
         git checkout -b preview
