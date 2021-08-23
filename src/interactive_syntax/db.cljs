@@ -1,11 +1,13 @@
 (ns interactive-syntax.db
+  (:require-macros
+   [interactive-syntax.slurp :refer [slurp]])
   (:require [reagent.core :as r :refer [atom]]
             [cljs.spec.alpha :as s]
             [cognitect.transit :as t]
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def version "0.1.0")
+(def version (str "0.1.1-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 
 (deftype RefAtom [ref]

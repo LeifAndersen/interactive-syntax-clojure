@@ -53,7 +53,7 @@
      [:li "This is an early prototype of VISr for ClojureScript."]
      [:li "If the prototype crashes, reset your browser's local storage."]
      [:li "This page was built on:"
-      [:p {:style {:text-align "center"}}
+      [:div {:style {:text-align "center"}}
        [:h1 [:code (slurp "src/injectable/date.inject")]]]]
      [:li "More information on interactive-syntax:"
       "[" [:a {:href "https://dl.acm.org/doi/abs/10.1145/3428290"
@@ -65,7 +65,8 @@
      [:li "Contributions and bug reports welcome on "
       [:a {:href "https://github.com/LeifAndersen/interactive-syntax-clojure"
            :target "_blank" :rel "noopener"}
-       "this project's GitHub page"] "."]]
+       "this project's GitHub page"] "."]
+     [:li "This dialog will reappear when new versions are released."]]
     [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
 
 (defn deps-dialog [{:keys [deps-env deps menu] :as db}]
@@ -757,7 +758,7 @@
 ;; Views
 
 (defn home-page [{{:keys [orientation]} :options
-                  :keys [fs buffers output]
+                  :keys [fs buffers output version menu]
                   :as db}
                  & [{editor-ref :editor
                      repl-ref :repl
@@ -768,6 +769,10 @@
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
   (set! codemirror/commands.save #(save-file db))
+  (when-not (= @version db/version)
+    (when-not (= (peek @menu) :splash)
+      (swap! menu conj :splash))
+    (reset! version db/version))
   [:main {:role "main"
           :style {:height "100%"
                   :display "flex"
