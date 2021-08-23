@@ -56,8 +56,16 @@
       [:p {:style {:text-align "center"}}
        [:h1 [:code (slurp "src/injectable/date.inject")]]]]
      [:li "More information on interactive-syntax:"
-      "[" [:a {:href "https://dl.acm.org/doi/abs/10.1145/3428290"} "Paper"] "]"
-      "[" [:a {:href "https://www.youtube.com/watch?v=8htgAxJuK5c"} "Video"] "]"]]
+      "[" [:a {:href "https://dl.acm.org/doi/abs/10.1145/3428290"
+               :target "_blank" :rel "noopener"}
+           "Paper"] "]"
+      "[" [:a {:href "https://www.youtube.com/watch?v=8htgAxJuK5c"
+               :target "_blank" :rel "noopener"}
+           "Video"] "]"]
+     [:li "Contributions and bug reports welcome on "
+      [:a {:href "https://github.com/LeifAndersen/interactive-syntax-clojure"
+           :target "_blank" :rel "noopener"}
+       "this project's GitHub page"] "."]]
     [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
 
 (defn deps-dialog [{:keys [deps-env deps menu] :as db}]
