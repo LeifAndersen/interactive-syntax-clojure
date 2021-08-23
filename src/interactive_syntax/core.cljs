@@ -1,45 +1,64 @@
 (ns interactive-syntax.core
-    (:require
-     [reagent.core :as r :refer [atom]]
-     [reagent.dom :as d]
-     [clojure.string :as string]
-     [cljs.pprint :refer [pprint]]
-     [cljs.core.match :refer [match]]
-     [oops.core :refer [oget oset! ocall oapply ocall! oapply!
-                        oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
-     [interactive-syntax.db :as db :refer [files-root]]
-     [interactive-syntax.strings :as strings]
-     [interactive-syntax.env :as env]
-     [interactive-syntax.stdlib :as stdlib]
-     [popper.js]
-     [bootstrap]
-     [alandipert.storage-atom :as storage]
-     [react-bootstrap :refer [Button ButtonGroup ButtonToolbar SplitButton
-                              Dropdown DropdownButton Tabs Tab
-                              Row Col Form Container Modal
-                              Table Spinner]]
-     [react-hotkeys :refer [GlobalHotKeys]]
-     [codemirror]
-     ["@leifandersen/react-codemirror2" :as cm]
-     [crypto-browserify]
-     ["codemirror/mode/clojure/clojure"]
-     ["codemirror/keymap/vim"]
-     ["codemirror/keymap/emacs"]
-     ["codemirror/keymap/sublime"]
-     ["codemirror/addon/search/searchcursor"]
-     [browserfs]
-     [base64-js]
-     [react-split-pane :refer [Pane]]
-     [react-switch]
-     [react-dnd :refer [DndProvider]]
-     [react-dnd-html5-backend :refer [HTML5Backend]]
-     [chonky :refer [ChonkyActions]]
-     [chonky-icon-fontawesome]))
+  (:require-macros
+   [interactive-syntax.slurp :refer [slurp]])
+  (:require
+   [reagent.core :as r :refer [atom]]
+   [reagent.dom :as d]
+   [clojure.string :as string]
+   [cljs.pprint :refer [pprint]]
+   [cljs.core.match :refer [match]]
+   [oops.core :refer [oget oset! ocall oapply ocall! oapply!
+                      oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
+   [interactive-syntax.db :as db :refer [files-root]]
+   [interactive-syntax.strings :as strings]
+   [interactive-syntax.env :as env]
+   [interactive-syntax.stdlib :as stdlib]
+   [popper.js]
+   [bootstrap]
+   [alandipert.storage-atom :as storage]
+   [react-bootstrap :refer [Button ButtonGroup ButtonToolbar SplitButton
+                            Dropdown DropdownButton Tabs Tab
+                            Row Col Form Container Modal
+                            Table Spinner]]
+   [react-hotkeys :refer [GlobalHotKeys]]
+   [codemirror]
+   ["@leifandersen/react-codemirror2" :as cm]
+   [crypto-browserify]
+   ["codemirror/mode/clojure/clojure"]
+   ["codemirror/keymap/vim"]
+   ["codemirror/keymap/emacs"]
+   ["codemirror/keymap/sublime"]
+   ["codemirror/addon/search/searchcursor"]
+   [browserfs]
+   [base64-js]
+   [react-split-pane :refer [Pane]]
+   [react-switch]
+   [react-dnd :refer [DndProvider]]
+   [react-dnd-html5-backend :refer [HTML5Backend]]
+   [chonky :refer [ChonkyActions]]
+   [chonky-icon-fontawesome]))
 
 ;; -------------------------
 ;; Components
 (def ^:private SplitPane (.-default react-split-pane))
 (def ^:private Switch (.-default react-switch))
+
+(defn splash-dialog [{:keys [menu version]}]
+  [:> Modal {:show (= (peek @menu) :splash)
+             :size "xl"}
+   [:> Modal.Header
+    [:h1 "VISr for ClojureScript Prototype"]]
+   [:> Modal.Body
+    [:ul
+     [:li "This is an early prototype of VISr for ClojureScript."]
+     [:li "If the prototype crashes, reset your browser's local storage."]
+     [:li "This page was built on:"
+      [:p {:style {:text-align "center"}}
+       [:h1 [:code (slurp "src/injectable/date.inject")]]]]
+     [:li "More information on interactive-syntax:"
+      "[" [:a {:href "https://dl.acm.org/doi/abs/10.1145/3428290"} "Paper"] "]"
+      "[" [:a {:href "https://www.youtube.com/watch?v=8htgAxJuK5c"} "Video"] "]"]]
+    [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
 
 (defn deps-dialog [{:keys [deps-env deps menu] :as db}]
   (reset! deps-env nil)
@@ -755,6 +774,7 @@
                                (.preventDefault v)
                                (reset! output #queue [])
                                (env/eval-buffer db))}}]
+   [splash-dialog db]
    [new-file-action db]
    [save-dialog db save-fb-ref]
    [load-dialog db load-fb-ref]

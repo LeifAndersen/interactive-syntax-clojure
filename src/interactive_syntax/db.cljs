@@ -5,6 +5,7 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
+(def version "0.1.0")
 (def files-root "/files")
 
 (deftype RefAtom [ref]
@@ -133,11 +134,22 @@
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
 
+;; :home - no dialog, home-screen
+;; :new - new-file-action
+;; :new-folder - new-folder-dialog
+;; :hold - hold-dialog
+;; [:confirm-save <post>] - confirm-save-dialog
+;; [:save <post>] - save-dialog
+;; :load - load-dialog
+;; :options - options-dialog
+;; :deps - deps-dialog
+;; :splash - splash-dialog
 (s/def ::menu (s/* keyword?))
 
 (s/def ::fs any?)
 
-(s/def ::database (s/keys :req-un [::fs
+(s/def ::database (s/keys :req-un [::version
+                                   ::fs
                                    ::folder
                                    ::buffers
                                    ::current
@@ -162,14 +174,18 @@
    :enable-drag-and-drop true
    :show-editors true})
 
-(def default-buffer
-  {:folder files-root
-   :file nil
-   :changed? false
-   :input ""
-   :output ""
-   :runner nil
-   :running? false})
+(defn default-buffer
+  ([] (default-buffer :temp))
+  ([mode]
+   {:folder files-root
+    :file nil
+    :changed? false
+    :input (case mode
+             :local "(println \"Hello World!\")"
+             :temp "")
+    :output ""
+    :runner nil
+    :running? false}))
 
 (defn default-db
   ([] (default-db :temp))
@@ -188,13 +204,16 @@
                                                      :options {:storeName "depsfs"}}
                                              :temp {:fs "InMemory"})}})
                                 #(when % (throw %)))
-         base {:options default-options
+         base {:version version
+               :options default-options
                :current 0
                :folder files-root
-               :buffers [default-buffer]
+               :buffers [(default-buffer mode)]
                :fs {}
                :deps {}
-               :menu [:home]}
+               :menu (case mode
+                       :local [:home :splash]
+                       :temp [:home])}
          db (atom base)
          backed-db (case mode
                      :local (local-storage db "state")
@@ -209,6 +228,7 @@
                               :enable-drag-and-drop
                               :show-editors]]
                        [i (->DBAtom backed-db [:options i])]))
+      :version (->DBAtom backed-db [:version])
       :fs fs
       :runner (atom nil)
       :backing backed-db

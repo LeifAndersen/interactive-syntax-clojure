@@ -22,6 +22,7 @@ jobs:
         git clean -fxd
         git config --global user.name "github-actions[bot]"
         git config --global user.email "noreply@visr.pl"
+        date > src/injectable/date.inject
         nix-shell --run "clojure -M:package"
         rm -r node_modules
         cp public/index-loadingbar.html index.html
