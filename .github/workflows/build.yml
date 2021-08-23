@@ -15,8 +15,8 @@ jobs:
       with:
         run: nix-shell --run "clojure -M:test"
 # Uncomment for ssh
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
+#   - name: Setup upterm session
+#     uses: lhotari/action-upterm@v1
     - name: Deploy Preview
       run: |
         git clean -fxd
