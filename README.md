@@ -4,10 +4,14 @@ This is a very early prototype of [Visual and Interactive Syntax][visr] for
 ClojureScript. Feel free to look around, but things will change and others will
 be broken.
 
-## Live Tool (Coming Soon)
+## Live Tool (Early Prototype)
 
-To run VISr for ClojureScript, you only need a browser. Unfortunately there
-currently is not any pre-built versions, that is coming soon.
+To run VISr for ClojureScript, you only need a browser. We currently provide an
+early prototype at: 
+
+[visr.pl][visrpl]
+
+A morestable prototype coming soon...
 
 ## Build Requirements
 
@@ -76,3 +80,4 @@ to take a little over 15 minutes.
 [java]: https://www.java.com/en/
 [clojure]: https://clojure.org/ 
 [nix]: https://nixos.org/
+[visrpl]: https://visr.pl
