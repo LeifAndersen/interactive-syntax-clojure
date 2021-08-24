@@ -17,7 +17,7 @@
 
 (def PROJECT "Project")
 (def NEW-PROJECT "New Project")
-(def IMPORT-PROJECT "Import Project")
+(def IMPORT-PROJECT "Import Project (coming soon...)")
 (def EXPORT-PROJECT "Export Project")
 
 (def DEPENDENCIES "Dependencies")

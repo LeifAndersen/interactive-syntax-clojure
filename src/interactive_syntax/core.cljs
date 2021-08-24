@@ -13,6 +13,8 @@
    [interactive-syntax.strings :as strings]
    [interactive-syntax.env :as env]
    [interactive-syntax.stdlib :as stdlib]
+   [interactive-syntax.fs :as fs :refer [recursive-rm filepath->id
+                                          file-description]]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
@@ -23,7 +25,6 @@
    [react-hotkeys :refer [GlobalHotKeys]]
    [codemirror]
    ["@leifandersen/react-codemirror2" :as cm]
-   [crypto-browserify]
    ["codemirror/mode/clojure/clojure"]
    ["codemirror/keymap/vim"]
    ["codemirror/keymap/emacs"]
@@ -146,43 +147,6 @@
 
 ;; -------------------------
 ;; File Dialogs
-
-(defn filepath->id [filepath]
-  (-> crypto-browserify
-      (.createHash "sha1")
-      (.update filepath)
-      (.digest "base64")))
-
-
-(defn recursive-rm [fs dir cb]
-  (ocall fs :readdir dir
-         (fn [err files]
-           ((fn rec [files cb]
-              (if (empty? files)
-                (cb)
-                (let [fullpath (js/path.join dir (first files))]
-                  (ocall fs :stat fullpath
-                         (fn [err stats]
-                           (if (ocall stats :isDirectory)
-                             (recursive-rm fs fullpath #(rec (rest files) cb))
-                             (ocall fs :unlink fullpath
-                                    #(rec (rest files) cb))))))))
-            files
-            #(ocall fs :rmdir dir cb)))))
-
-
-(defn file-description [fs filepath cb]
-  (ocall fs :stat filepath
-         (fn [err stats]
-           (cond-> {:id (filepath->id filepath)
-                    :name (js/path.basename filepath)
-                    :isDir (ocall stats :isDirectory)
-                    :modDate stats.ctime}
-             (= (.charAt filepath 0) ".") (assoc :isHidden true)
-             (ocall stats :isSymbolicLink) (assoc :isSymlink true)
-             (not (ocall stats :isDirectory)) (assoc :size (oget stats :size))
-             :always clj->js
-             :always cb))))
 
 (defn save-buffer [{:keys [fs menu current-folder current-file input
                            file-changed visr-commit!]
@@ -600,7 +564,8 @@
          [:> (oget Dropdown :Item) strings/NEW-PROJECT]
          [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
          [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
-         [:> (oget Dropdown :Item) strings/EXPORT-PROJECT]]]
+         [:> (oget Dropdown :Item) {:on-click fs/export-to-zip}
+          strings/EXPORT-PROJECT]]]
        [:> Col
         [:> Container {:class-name "d-none d-sm-block"
                        :fluid true
@@ -638,7 +603,8 @@
           [:> (oget Dropdown :Item) strings/NEW-PROJECT]
           [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
           [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
-          [:> (oget Dropdown :Item) strings/EXPORT-PROJECT]]
+          [:> (oget Dropdown :Item) {:on-click fs/export-to-zip}
+           strings/EXPORT-PROJECT]]
          [:> Button {:on-click options} strings/OPTIONS]]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"

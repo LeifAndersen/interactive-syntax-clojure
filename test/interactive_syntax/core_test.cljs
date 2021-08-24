@@ -10,6 +10,7 @@
             [chonky :refer [ChonkyActions]]
             ["@testing-library/react" :as rtl]
             [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
+            [interactive-syntax.fs :as fs]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
             [interactive-syntax.env :as env]
@@ -544,17 +545,17 @@
         :do #(is (= (count (fs.readdirSync "/files/")) 3))
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
         :do #(let [file (js/Set.)]
-                  (.add file (core/filepath->id "/files/A.cljs"))
+                  (.add file (fs/filepath->id "/files/A.cljs"))
                   (.setFileSelection @file-browser file)
                   (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/files/")) 2))
         :do #(let [file (js/Set.)]
-               (.add file (core/filepath->id "/files/B"))
+               (.add file (fs/filepath->id "/files/B"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/files/")) 1))
         :do #(let [file (js/Set.)]
-               (.add file (core/filepath->id "/files/C"))
+               (.add file (fs/filepath->id "/files/C"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (fs.readdirSync "/files/")) 0))

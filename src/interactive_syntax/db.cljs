@@ -183,7 +183,7 @@
     :file nil
     :changed? false
     :input (case mode
-             :local "(println \"Hello World!\")"
+             :local "(println \"Speak With Your Heart\")"
              :temp "")
     :output ""
     :runner nil
