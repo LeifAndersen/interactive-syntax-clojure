@@ -55,3 +55,8 @@
 (def CODE "code")
 
 (def INSERT-VISR "Insert VISr")
+
+(def IMPORT-MESSAGE "How do you want to import this project?")
+(def MERGE-PROJECT "Merge Into Existing Project")
+(def WIPE-PROJECT "Wipe Existing Project")
+

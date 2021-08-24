@@ -125,6 +125,39 @@
       (is (= (js->clj (fs.readdirSync files-root))
              [])))))
 
+(deftest zip-import-export
+  (testing "Ensure that import/export works from/to zip"
+    (async
+     done
+    (let [db (default-db :temp)
+          fs (:fs db)
+          zbox (atom nil)]
+      (test-do
+       db :check
+       :async #(fs.mkdir (.join js/path files-root "A") %)
+       :async #(fs.writeFile (.join js/path files-root "A/x") "ABCD" %)
+       :async #(fs.writeFile (.join js/path files-root "A/y") "QWER" %)
+       :async #(fs.mkdir (.join js/path files-root "B") %)
+       :async #(fs.writeFile (.join js/path files-root "B/x") "ZXCV" %)
+       :async #(fs.writeFile (.join js/path files-root "B/1") "1234" %)
+       :do #(is (= (count (.readdirSync fs files-root)) 2))
+       :async #(fs/dir->zip fs files-root (fn [x] (reset! zbox x) (%)))
+       :async #(fs/wipe-project! fs %)
+       :do #(is (= (count (.readdirSync fs files-root)) 0))
+       :async #(fs/merge-zip fs @zbox %)
+       :do #(is (= (count (.readdirSync fs files-root)) 2))
+       :do #(is (= (count (.readdirSync fs (js/path.join files-root "A"))) 2))
+       :do #(is (= (.toString (fs.readFileSync (js/path.join files-root "A/x")))
+                   "ABCD"))
+       :do #(is (= (.toString (fs.readFileSync (js/path.join files-root "A/y")))
+                   "QWER"))
+       :do #(is (= (count (.readdirSync fs (js/path.join files-root "B"))) 2))
+       :do #(is (= (.toString (fs.readFileSync (js/path.join files-root "B/x")))
+                   "ZXCV"))
+       :do #(is (= (.toString (fs.readFileSync (js/path.join files-root "B/1")))
+                   "1234"))
+       :done #(done))))))
+
 (deftest file-save-laod
   (testing "File Saving and Loading"
     (let [db (default-db :temp)
@@ -398,7 +431,7 @@
                                        (aget 1)))
         :do #(swap! file-browser-folder (fn [x] (.join js/path x "..")))
         :check
-        :do #(= (count (fs.readdirSync @file-browser-folder)) 2)
+        :do #(is (= (count (fs.readdirSync @file-browser-folder)) 2))
         :done #(done))))))
 
 (deftest simple-eval

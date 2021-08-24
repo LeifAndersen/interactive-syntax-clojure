@@ -1,9 +1,10 @@
 (ns interactive-syntax.fs
   (:require
    [crypto-browserify]
-   [jszip]
+   [jszip :refer [loadAsync]]
    [file-saver :refer [saveAs]]
    [interactive-syntax.db :as db]
+   [goog.object :as obj]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]))
 
@@ -13,23 +14,20 @@
       (.update filepath)
       (.digest "base64")))
 
-
 (defn recursive-rm [fs dir cb]
-  (ocall fs :readdir dir
-         (fn [err files]
-           ((fn rec [files cb]
-              (if (empty? files)
-                (cb)
-                (let [fullpath (js/path.join dir (first files))]
-                  (ocall fs :stat fullpath
-                         (fn [err stats]
-                           (if (ocall stats :isDirectory)
-                             (recursive-rm fs fullpath #(rec (rest files) cb))
-                             (ocall fs :unlink fullpath
-                                    #(rec (rest files) cb))))))))
-            files
-            #(ocall fs :rmdir dir cb)))))
-
+  (ocall fs :stat dir
+         (fn [err stats]
+           (if (ocall stats :isDirectory)
+             (ocall fs :readdir dir
+                    (fn [err files]
+                      ((fn rec [files cb]
+                         (if (empty? files)
+                           (cb)
+                           (let [fullpath (js/path.join dir (first files))]
+                             (recursive-rm fs fullpath #(rec (rest files) cb)))))
+                       files
+                       #(ocall fs :rmdir dir cb))))
+             (ocall fs :unlink dir cb)))))
 
 (defn file-description [fs filepath cb]
   (ocall fs :stat filepath
@@ -44,14 +42,13 @@
              :always clj->js
              :always cb))))
 
-(defn export-to-zip [fs dir & [mname]]
-  (let [name (or mname "files")
-        zip (new jszip)]
+(defn dir->zip [fs dir cb]
+  (let [zip (new jszip)]
     ((fn rec [z dir name cb]
        (ocall fs :stat dir
               (fn [err stats]
                 (if (ocall stats :isDirectory)
-                  (let [z (ocall z :folder name)]
+                  (let [z (if name (ocall z :folder name) z)]
                     (ocall fs :readdir dir
                            (fn [err files]
                              ((fn frec [files cb]
@@ -65,8 +62,49 @@
                          (fn [err txt]
                            (ocall z :file name txt)
                            (cb)))))))
-     zip dir name (fn []
-                    (-> (ocall zip :generateAsync #js {:type "blob"})
-                        (.then #(saveAs % (str name ".zip")))
-                        (.catch #(js/console.log %)))))))
+     zip dir false #(-> (ocall zip :generateAsync #js {:type "blob"})
+                        (.then cb)
+                        (.catch js/console.log)))))
 
+(defn export-to-zip [fs dir & [mname]]
+  (let [name (or mname "files")]
+    (dir->zip fs dir #(saveAs % (str name ".zip")))))
+
+(defn merge-file [fs file cb]
+  (if (oget file :dir)
+    (ocall fs :mkdir (js/path.join db/files-root (oget file :name))
+           (fn [err]
+             (when (and err (not= (oget err :code) "EEXIST"))
+               (js/console.error err))
+             (cb)))
+    (-> (ocall file :async "nodebuffer")
+        (.then (fn [buff]
+                 (ocall fs :writeFile
+                        (js/path.join db/files-root (oget file :name)) buff
+                        (fn [err]
+                          (when err
+                            (console.error err))
+                          (cb)))))
+        (.catch js/console.log))))
+
+(defn merge-zip [fs zip cb]
+  (-> (loadAsync zip)
+      (.then (fn [zip]
+               (let [files (oget zip :files)]
+                 ((fn rec [fnames cb]
+                    (if (empty? fnames)
+                      (cb)
+                      (merge-file fs (obj/get files (first fnames))
+                                  #(rec (rest fnames) cb))))
+                  (js-keys files) cb))))
+      (.catch js/console.log)))
+
+(defn wipe-project! [fs cb]
+  (ocall fs :readdir db/files-root
+         (fn [err files]
+           ((fn rec [files cb]
+              (if (empty? files)
+                (cb)
+                (let [fullpath (js/path.join db/files-root (first files))]
+                  (recursive-rm fs fullpath #(rec (rest files) cb)))))
+            files cb))))
