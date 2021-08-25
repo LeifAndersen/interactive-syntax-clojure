@@ -148,6 +148,7 @@
 ;; :splash - splash-dialog
 ;; :import - import-dialog
 ;; :error  - error-dialog
+;; :wipe - confirm-wipe-dialog
 (s/def ::menu (s/* keyword?))
 
 (s/def ::fs any?)

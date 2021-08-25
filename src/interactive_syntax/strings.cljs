@@ -61,3 +61,5 @@
 (def WIPE-PROJECT "Wipe Existing Project")
 (def WARNING-WIPE "WARNING: This will erase your existing code!")
 (def CONFIRM-WIPE "Confirm Wipe")
+
+(def ERROR-MESSAGE "Action could not be completed.")

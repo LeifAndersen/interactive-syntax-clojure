@@ -81,7 +81,7 @@
                        (.then (fn [r] (fs/merge-zip fs r #(swap! menu pop))))
                        (.catch (fn [e]
                                  (swap! menu pop)
-                                 (swap! menu conj :error))))))
+                                 (swap! menu conj [:error (str e)]))))))
         wipe+import (fn []
                       (when @file
                         (swap! menu pop)
@@ -134,6 +134,19 @@
             [:> Alert {:variant "danger"} strings/WARNING-WIPE]
             [:div {:class-name "d-grid gap-2"}
              [:> Button {:on-click wipe+import} strings/CONFIRM-WIPE]]])]]])))
+
+(defn confirm-wipe-dialog [{:keys [menu] :as db}]
+  (let [wipe (fn []
+               (swap! menu pop)
+               (swap! menu conj :hold)
+               (fs/wipe-project! db #(swap! menu pop)))]
+    [:> Modal {:show (= (peek @menu) :wipe)
+               :size "xl"
+               :on-hide #(swap! menu pop)}
+     [:> (oget Modal :Header) {:close-button true} [:h3 strings/WARNING-WIPE]]
+     [:> (oget Modal :Body)
+      [:div {:class-name "d-grid gap-2"}
+       [:> Button {:on-click wipe :variant "danger"} strings/CONFIRM-WIPE]]]]))
 
 (defn deps-dialog [{:keys [deps-env deps menu] :as db}]
   (reset! deps-env nil)
@@ -202,14 +215,26 @@
                                    (swap! menu pop))}
             strings/UPDATE]]]]]])))
 
-(defn hold-dialog [{:keys [menu]
-                    :as db}]
+(defn hold-dialog [{:keys [menu] :as db}]
   [:> Modal {:show (= (peek @menu) :hold)
              :size "xl"}
    [:> (oget Modal :Body)
     [:> Spinner {:animation "modal"
                  :role "status"}
      "Processing..."]]])
+
+(defn error-dialog [{:keys [menu] :as db}]
+  (let [err (peek @menu)]
+    [:> Modal{:show (and (coll? err) (= (first err) :error))
+              :on-hide #(swap! menu pop)}
+     [:> (oget Modal :Header) {:close-button true} [:h3 strings/ERROR-MESSAGE]]
+     [:> (oget Modal :Body)
+      [:pre [:code (and (coll? err) (second err))]]]
+     [:> (oget Modal :Footer)
+      [:> Button
+       {:variant "primary"
+        :on-click #(swap! menu pop)}
+       strings/CLOSE]]]))
 
 ;; -------------------------
 ;; File Dialogs
@@ -629,7 +654,8 @@
          [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]
          [:> (oget Dropdown :Item) {:on-click load-file} strings/LOAD]
          [:> (oget Dropdown :Item) {:on-click options} strings/OPTIONS]
-         [:> (oget Dropdown :Item) strings/NEW-PROJECT]
+         [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :wipe)}
+          strings/NEW-PROJECT]
          [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :import)}
           strings/IMPORT-PROJECT]
@@ -669,7 +695,8 @@
          [:> Button {:on-click load-file} strings/LOAD]
          [:> DropdownButton {:as ButtonGroup
                              :title strings/PROJECT}
-          [:> (oget Dropdown :Item) strings/NEW-PROJECT]
+          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :wipe)}
+           strings/NEW-PROJECT]
           [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
           [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :import)}
            strings/IMPORT-PROJECT]
@@ -828,11 +855,13 @@
    [save-dialog db save-fb-ref]
    [load-dialog db load-fb-ref]
    [import-dialog db]
+   [confirm-wipe-dialog db]
    [options-dialog db]
    [confirm-save-dialog db]
    [new-folder-dialog db]
    [deps-dialog db]
    [hold-dialog db]
+   [error-dialog db]
    [:div {:style {:flex "0 1 auto"}}
     [button-row db]]
    (if (= (count @buffers) 1)
