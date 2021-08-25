@@ -142,7 +142,7 @@
        :async #(fs.writeFile (.join js/path files-root "B/1") "1234" %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
        :async #(fs/dir->zip fs files-root (fn [x] (reset! zbox x) (%)))
-       :async #(fs/wipe-project! fs %)
+       :async #(fs/wipe-project! db %)
        :do #(is (= (count (.readdirSync fs files-root)) 0))
        :async #(fs/merge-zip fs @zbox %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
