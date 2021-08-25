@@ -17,7 +17,7 @@
 
 (def PROJECT "Project")
 (def NEW-PROJECT "New Project")
-(def IMPORT-PROJECT "Import Project (coming soon...)")
+(def IMPORT-PROJECT "Import Project")
 (def EXPORT-PROJECT "Export Project")
 
 (def DEPENDENCIES "Dependencies")
@@ -59,4 +59,5 @@
 (def IMPORT-MESSAGE "How do you want to import this project?")
 (def MERGE-PROJECT "Merge Into Existing Project")
 (def WIPE-PROJECT "Wipe Existing Project")
-
+(def WARNING-WIPE "WARNING: This will erase your existing code!")
+(def CONFIRM-WIPE "Confirm Wipe")

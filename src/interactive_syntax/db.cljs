@@ -146,6 +146,8 @@
 ;; :options - options-dialog
 ;; :deps - deps-dialog
 ;; :splash - splash-dialog
+;; :import - import-dialog
+;; :error  - error-dialog
 (s/def ::menu (s/* keyword?))
 
 (s/def ::fs any?)

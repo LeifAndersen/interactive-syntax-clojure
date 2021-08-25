@@ -21,7 +21,7 @@
    [react-bootstrap :refer [Button ButtonGroup ButtonToolbar SplitButton
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
-                            Table Spinner]]
+                            Table Spinner Alert]]
    [react-hotkeys :refer [GlobalHotKeys]]
    [codemirror]
    ["@leifandersen/react-codemirror2" :as cm]
@@ -70,6 +70,71 @@
      [:li "This dialog will reappear when new versions are released."]]
     [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
 
+(defn import-dialog [{:keys [fs menu] :as db}]
+  (let [file (atom nil)
+        show-confirm? (atom false)
+        import (fn []
+                 (when @file
+                   (swap! menu pop)
+                   (swap! menu conj :hold)
+                   (-> (ocall (aget (oget @file :target.files) 0) :arrayBuffer)
+                       (.then (fn [r] (fs/merge-zip fs r #(swap! menu pop))))
+                       (.catch (fn [e]
+                                 (swap! menu pop)
+                                 (swap! menu conj :error))))))
+        wipe+import (fn []
+                      (when @file
+                        (swap! menu pop)
+                        (swap! menu conj :hold)
+                        (-> (ocall (aget (oget @file :target.files) 0) :arrayBuffer)
+                            (.then
+                             (fn [r] (fs/wipe-project!
+                                      db (fn []
+                                           (fs/merge-zip fs r #(swap! menu pop))))))
+                            (.catch (fn [e]
+                                      (swap! menu pop)
+                                      (swap! menu conj :error))))))]
+    (fn [{:keys [menu] :as db}]
+      [:> Modal {:show (= (peek @menu) :import)
+                 :size "x"
+                 :on-hide #(swap! menu pop)}
+       [:> Modal.Header {:close-button true}
+        strings/IMPORT-PROJECT]
+       [:> Modal.Body
+        [:> Form {:onSubmit (fn [x]
+                              (.preventDefault x)
+                              (.stopPropagation x))}
+         [:> (oget Form :Group)
+          [:> (oget Form :Label) {:visuallyHidden true} strings/FILE]
+          [:> (oget Form :Control) {:type "file"
+                                    :on-change #(reset! file %)}]]
+         [:br]
+         [:div {:class-name "d-block d-md-none"}
+          [:> (oget Form :Group)
+           [:> (oget Form :Label) strings/IMPORT-PROJECT]
+           [:div {:class-name "d-grid gap-2"}
+            [:> Button {:on-click import} strings/MERGE-PROJECT]
+            [:> Button {:on-click #(reset! show-confirm? true) :variant "danger"}
+             strings/WIPE-PROJECT]]]]
+         [:div {:className "d-none d-md-block"}
+          [:> (oget Form :Group)
+           [:> (oget Form :Label) strings/IMPORT-PROJECT]
+           [:> Row {:class-name "align-items-center flex-nowrap"
+                    :style {:margin-left 0
+                           :margin-right 0}}
+            [:> Col {:xs "auto"}
+             [:> Button {:on-click import}
+              strings/MERGE-PROJECT]]
+            [:> Col {:xs "auto"}
+             [:> Button {:on-click #(reset! show-confirm? true) :variant "danger"}
+              strings/WIPE-PROJECT]]]]]
+         (when @show-confirm?
+           [:div
+            [:br]
+            [:> Alert {:variant "danger"} strings/WARNING-WIPE]
+            [:div {:class-name "d-grid gap-2"}
+             [:> Button {:on-click wipe+import} strings/CONFIRM-WIPE]]])]]])))
+
 (defn deps-dialog [{:keys [deps-env deps menu] :as db}]
   (reset! deps-env nil)
   (let [new-deps (atom @deps)]
@@ -82,8 +147,9 @@
        [:> Modal.Header {:close-button true}
         [:h3 strings/DEPENDENCIES]]
        [:> Modal.Body
-        [:> Form {:onSubmit #(do (.preventDefault %)
-                                 (.stopPropagation %))}
+        [:> Form {:onSubmit (fn [x]
+                              (.preventDefault x)
+                              (.stopPropagation x))}
          [:> Table {:striped true
                     :bordered true
                     :hover true
@@ -521,7 +587,8 @@
                           menu
                           runner
                           running?
-                          insert-visr!]
+                          insert-visr!
+                          fs]
                    :as db}]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
@@ -541,6 +608,7 @@
                        (if @file-changed
                          "*"
                          ""))
+        export-project #(fs/export-to-zip fs files-root)
         do-insert-visr #(when @insert-visr!
                           (@insert-visr!))
         run+pause #(let []
@@ -563,8 +631,9 @@
          [:> (oget Dropdown :Item) {:on-click options} strings/OPTIONS]
          [:> (oget Dropdown :Item) strings/NEW-PROJECT]
          [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
-         [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
-         [:> (oget Dropdown :Item) {:on-click fs/export-to-zip}
+         [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :import)}
+          strings/IMPORT-PROJECT]
+         [:> (oget Dropdown :Item) {:on-click export-project}
           strings/EXPORT-PROJECT]]]
        [:> Col
         [:> Container {:class-name "d-none d-sm-block"
@@ -602,8 +671,9 @@
                              :title strings/PROJECT}
           [:> (oget Dropdown :Item) strings/NEW-PROJECT]
           [:> (oget Dropdown :Item) {:on-click deps} strings/DEPENDENCIES]
-          [:> (oget Dropdown :Item) strings/IMPORT-PROJECT]
-          [:> (oget Dropdown :Item) {:on-click fs/export-to-zip}
+          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :import)}
+           strings/IMPORT-PROJECT]
+          [:> (oget Dropdown :Item) {:on-click export-project}
            strings/EXPORT-PROJECT]]
          [:> Button {:on-click options} strings/OPTIONS]]]
        [:> Col [:> Container file-name]]
@@ -757,6 +827,7 @@
    [new-file-action db]
    [save-dialog db save-fb-ref]
    [load-dialog db load-fb-ref]
+   [import-dialog db]
    [options-dialog db]
    [confirm-save-dialog db]
    [new-folder-dialog db]

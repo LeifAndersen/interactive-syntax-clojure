@@ -99,7 +99,7 @@
                   (js-keys files) cb))))
       (.catch js/console.log)))
 
-(defn wipe-project! [fs cb]
+(defn wipe-project! [{:keys [fs] :as db} cb]
   (ocall fs :readdir db/files-root
          (fn [err files]
            ((fn rec [files cb]
