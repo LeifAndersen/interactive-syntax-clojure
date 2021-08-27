@@ -8,6 +8,8 @@
             [reagent.core :as r :refer [atom]]
             [reagent.dom :as d]
             [chonky :refer [ChonkyActions]]
+            [oops.core :refer [oget oset! ocall oapply ocall! oapply!
+                               oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
             ["@testing-library/react" :as rtl]
             [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
             [interactive-syntax.fs :as fs]
@@ -835,6 +837,46 @@
         :wait 100
         :check
         :done #(done))))))
+
+(deftest edit-around-visr
+  (testing "Ensure VISrs render correctly when the user types around them"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(.click rtl/fireEvent (.getByText view strings/INSERT-VISR))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/CODE) 0))
+        :wait 200
+
+        :do #(ocall (ocall @editor :getDoc) :replaceRange
+                    "(" #js {:line 0 :ch 0})
+        :do #(ocall (ocall @editor :getDoc) :replaceRange
+                    ")" #js {:line 0 :ch 1})
+        :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/CODE) 0))
+        :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
+        :done #(done))))))
+
+;; Set identifier
+;;:do #(.change rtl/fire-event
+;;             (-> js/document
+;;                 .-body
+;;                 (.getElementsByTagName "iframe")
+;;                 (aget 0)
+;;                 .-contentDocument
+;;                 (.getElementsByTagName "input")
+;;                 (aget 0)
+;;                 #js {:target #js {:value input}}))
+;;                 ))
 
 (defn -main [& args]
   (run-tests-async 240000))

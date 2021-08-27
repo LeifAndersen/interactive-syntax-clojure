@@ -495,6 +495,7 @@
                {:size "sm"
                 :style {:padding "0"
                         :min-height "0"}
+                :aria-label strings/VISR
                 :default-value (str (:editor @info))
                 :on-change #(let [value (oget % "target.value")]
                               (swap! info assoc :editor value))}]]]
@@ -514,6 +515,8 @@
 (defn reset-editors! [source set-text editor instances operation
                       {:keys [fs options deps env] :as db}]
   (let [old @instances]
+    (doseq [[k v] old]
+      (ocall (:range v) :clear))
     (reset! instances {})
     (deps->env+caching
      db
@@ -556,10 +559,10 @@
                             (let [prev (get-in old [{:line (:line info)
                                                      :column (:column info)}])
                                   hider (.createElement js/document "span")
-                                  show-visr (if prev
+                                  show-visr (if false;prev
                                               (:show-visr prev)
                                               (atom false))
-                                  show-code (if prev
+                                  show-code (if false;prev
                                               (:show-code prev)
                                               (atom false))
                                   info (atom info)
