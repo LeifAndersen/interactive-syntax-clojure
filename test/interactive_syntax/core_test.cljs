@@ -900,6 +900,45 @@
                  alt-visr-name))
         :done #(done))))))
 
+(deftest vialid-id
+  (testing "Ensure VISrs form stays the same when an invalid id is entered"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(.click rtl/fireEvent (.getByText view strings/INSERT-VISR))
+        :do #(.click rtl/fireEvent (aget (.getAllByLabelText view strings/CODE) 0))
+        :wait 300
+        :do #(.change rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByTagName "iframe")
+                         (aget 0)
+                         .-contentDocument
+                         (.getElementsByTagName "input")
+                         (aget 0))
+                     #js {:target #js {:value "not a valid id"}})
+        :do #(-> @editor (.getDoc) (.replaceRange "123" #js {:line 0 :ch 0}))
+        :do #(.click rtl/fireEvent (aget (.getAllByLabelText view strings/CODE) 0))
+        :wait 300
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        (.getElementsByTagName "input")
+                        (aget 0)
+                        (.getAttribute "value"))
+                    "visr.core/empty-visr"))
+        :done #(done))))))
+
 ;; Set identifier
 
 (defn -main [& args]

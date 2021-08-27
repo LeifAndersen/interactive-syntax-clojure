@@ -47,6 +47,11 @@
       (when (get-in res [:value :value])
         (println (get-in res [:value :value]))))))
 
+(defn valid-id? [id]
+  (try
+    (= (symbol id) (read-string (str id)))
+    (catch js/Error e false)))
+
 ;; -------------------------
 ;; Package Manager
 
@@ -503,7 +508,8 @@
                                   (commit!)
                                   (reset! focused? false)))
                 :on-change #(let [value (oget % "target.value")]
-                              (swap! info assoc :editor value)
+                              (when (valid-id? value)
+                                (swap! info assoc :editor value))
                               (reset! changed? true)
                               (when-not @focused?
                                 (commit!)))}]]]
