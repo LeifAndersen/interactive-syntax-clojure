@@ -8,8 +8,6 @@
             [reagent.core :as r :refer [atom]]
             [reagent.dom :as d]
             [chonky :refer [ChonkyActions]]
-            [oops.core :refer [oget oset! ocall oapply ocall! oapply!
-                               oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
             ["@testing-library/react" :as rtl]
             [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
             [interactive-syntax.fs :as fs]
@@ -856,10 +854,8 @@
                      (aget (.getAllByLabelText view strings/CODE) 0))
         :wait 200
 
-        :do #(ocall (ocall @editor :getDoc) :replaceRange
-                    "(" #js {:line 0 :ch 0})
-        :do #(ocall (ocall @editor :getDoc) :replaceRange
-                    ")" #js {:line 0 :ch 1})
+        :do #(-> @editor (.getDoc) (.replaceRange "(" #js {:line 0 :ch 0}))
+        :do #(-> @editor (.getDoc) (.replaceRange ")" #js {:line 0 :ch 1}))
         :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/CODE) 0))
