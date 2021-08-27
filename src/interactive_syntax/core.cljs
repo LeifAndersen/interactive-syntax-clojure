@@ -660,7 +660,9 @@
          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :import)}
           strings/IMPORT-PROJECT]
          [:> (oget Dropdown :Item) {:on-click export-project}
-          strings/EXPORT-PROJECT]]]
+          strings/EXPORT-PROJECT]
+         [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
+          strings/ABOUT]]]
        [:> Col
         [:> Container {:class-name "d-none d-sm-block"
                        :fluid true
@@ -701,7 +703,9 @@
           [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :import)}
            strings/IMPORT-PROJECT]
           [:> (oget Dropdown :Item) {:on-click export-project}
-           strings/EXPORT-PROJECT]]
+           strings/EXPORT-PROJECT]
+          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
+           strings/ABOUT]]
          [:> Button {:on-click options} strings/OPTIONS]]]
        [:> Col [:> Container file-name]]
        [:> Col {:xs "auto"

@@ -20,6 +20,8 @@
 (def IMPORT-PROJECT "Import Project")
 (def EXPORT-PROJECT "Export Project")
 
+(def ABOUT "About")
+
 (def DEPENDENCIES "Dependencies")
 (def NAME "Name")
 (def VERSION "Version")
