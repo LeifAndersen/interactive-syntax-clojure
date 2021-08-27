@@ -115,7 +115,6 @@
         (r/flush)
         (recur (next (next cmds)) p)))))
 
-
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
 
@@ -853,7 +852,6 @@
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/CODE) 0))
         :wait 200
-
         :do #(-> @editor (.getDoc) (.replaceRange "(" #js {:line 0 :ch 0}))
         :do #(-> @editor (.getDoc) (.replaceRange ")" #js {:line 0 :ch 1}))
         :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
@@ -862,17 +860,47 @@
         :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
         :done #(done))))))
 
+(deftest name-keeps
+  (testing "Ensure VISrs keeps given name when leaving the input context"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           alt-visr-name "alt.core/not-a-visr",
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(.click rtl/fireEvent (.getByText view strings/INSERT-VISR))
+        :do #(.click rtl/fireEvent (aget (.getAllByLabelText view strings/CODE) 0))
+        :wait 300
+        :do #(.change rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByTagName "iframe")
+                         (aget 0)
+                         .-contentDocument
+                         (.getElementsByTagName "input")
+                         (aget 0))
+                     #js {:target #js {:value alt-visr-name}})
+        :do #(-> @editor (.getDoc) (.replaceRange "123" #js {:line 0 :ch 0}))
+        :do #(.click rtl/fireEvent (aget (.getAllByLabelText view strings/CODE) 0))
+        :wait 300
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        (.getElementsByTagName "input")
+                        (aget 0)
+                        (.getAttribute "value"))
+                 alt-visr-name))
+        :done #(done))))))
+
 ;; Set identifier
-;;:do #(.change rtl/fire-event
-;;             (-> js/document
-;;                 .-body
-;;                 (.getElementsByTagName "iframe")
-;;                 (aget 0)
-;;                 .-contentDocument
-;;                 (.getElementsByTagName "input")
-;;                 (aget 0)
-;;                 #js {:target #js {:value input}}))
-;;                 ))
 
 (defn -main [& args]
   (run-tests-async 240000))

@@ -422,6 +422,7 @@
 (defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
                   run-state info stx-box changed? file-src commit! update-box]
   (let [visr (atom nil)
+        focused? (atom false)
         stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
                         (with-out-str
                           (pprint %)))
@@ -474,7 +475,7 @@
          [:code "(\u03BB)"]]
         (when @show-code
           [styled-frame
-           {:onBlur commit!
+           {:on-blur commit!
             :head [:style ".frame-root, .frame-content {height: 100%;}"]}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
@@ -497,8 +498,15 @@
                         :min-height "0"}
                 :aria-label strings/VISR
                 :default-value (str (:editor @info))
+                :on-focus #(reset! focused? true)
+                :on-blur (fn [] (when changed?
+                                  (commit!)
+                                  (reset! focused? false)))
                 :on-change #(let [value (oget % "target.value")]
-                              (swap! info assoc :editor value))}]]]
+                              (swap! info assoc :editor value)
+                              (reset! changed? true)
+                              (when-not @focused?
+                                (commit!)))}]]]
             [:> (oget Form :Group) {:as Row
                                     :style {:margin "0"
                                             :flex "1 1 auto"}}
