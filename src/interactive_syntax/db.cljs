@@ -7,8 +7,9 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def version (str "0.1.3-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def version (str "0.1.4-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
+(def deps-root "/deps")
 
 (deftype RefAtom [ref]
   IAtom
@@ -198,12 +199,12 @@
    (let [fs (browserfs/BFSRequire "fs")
          _ (browserfs/configure (clj->js {:fs "MountableFileSystem"
                                           :options
-                                          {"/files"
+                                          {files-root
                                            (case mode
                                              :local {:fs "IndexedDB"
                                                      :options {:storeName "bfs"}}
                                              :temp {:fs "InMemory"})
-                                           "/deps"
+                                           deps-root
                                            (case mode
                                              :local {:fs "IndexedDB"
                                                      :options {:storeName "depsfs"}}

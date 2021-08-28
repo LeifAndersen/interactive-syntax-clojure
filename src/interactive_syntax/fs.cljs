@@ -2,11 +2,14 @@
   (:require
    [crypto-browserify]
    [jszip :refer [loadAsync]]
-   [file-saver :refer [saveAs]]
    [interactive-syntax.db :as db]
    [goog.object :as obj]
+   [cljs.pprint :refer [pprint]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]))
+
+(def zip-root "/project")
+(def manifest-path "manifest.edn")
 
 (defn filepath->id [filepath]
   (-> crypto-browserify
@@ -42,52 +45,63 @@
              :always clj->js
              :always cb))))
 
-(defn dir->zip [fs dir cb]
-  (let [zip (new jszip)]
-    ((fn rec [z dir name cb]
-       (ocall fs :stat dir
-              (fn [err stats]
-                (if (ocall stats :isDirectory)
-                  (let [z (if name (ocall z :folder name) z)]
-                    (ocall fs :readdir dir
-                           (fn [err files]
-                             ((fn frec [files cb]
-                                (if (empty? files)
+(defn add-dir-to-zip! [fs zip dir name cb]
+  (ocall fs :stat dir
+         (fn [err stats]
+           (if (ocall stats :isDirectory)
+             (let [zip (if name (ocall zip :folder name) zip)]
+               (ocall fs :readdir dir
+                      (fn [err files]
+                        ((fn rec [files cb]
+                           (if (empty? files)
                                   (cb)
                                   (let [name (first files)
                                         fullpath (js/path.join dir name)]
-                                    (rec z fullpath name #(frec (rest files) cb)))))
-                              files cb))))
-                  (ocall fs :readFile dir
-                         (fn [err txt]
-                           (ocall z :file name txt)
-                           (cb)))))))
-     zip dir false #(-> (ocall zip :generateAsync #js {:type "blob"})
-                        (.then cb)
-                        (.catch js/console.log)))))
+                                    (add-dir-to-zip! fs zip fullpath name
+                                                     #(rec (rest files) cb)))))
+                         files cb))))
+             (ocall fs :readFile dir
+                    (fn [err txt]
+                      (ocall zip :file name txt)
+                      (cb)))))))
 
-(defn export-to-zip [fs dir & [mname]]
-  (let [name (or mname "files")]
-    (dir->zip fs dir #(saveAs % (str name ".zip")))))
+(defn cb-thread [& funcs]
+  ((fn rec [funcs ret]
+     (if (empty? funcs)
+       ret
+       ((first funcs) #(rec (rest funcs) %&) ret)))
+   funcs nil))
+
+(defn export-to-zip [{:keys [fs version deps] :as db} cb]
+  (let [zip (new jszip)
+        project (ocall zip :folder "project")
+        manifest {:visr-version @version :deps (vals @deps)}]
+    (ocall project :file manifest-path (with-out-str (pprint manifest)))
+    (cb-thread #(add-dir-to-zip! fs project db/files-root "files" %)
+               #(add-dir-to-zip! fs project db/deps-root "deps" %)
+               #(-> (ocall zip :generateAsync #js {:type "blob"})
+                    (.then cb)
+                    (.catch js/console.log)))))
 
 (defn merge-file [fs file cb]
-  (if (oget file :dir)
-    (ocall fs :mkdir (js/path.join db/files-root (oget file :name))
-           (fn [err]
-             (when (and err (not= (oget err :code) "EEXIST"))
-               (js/console.error err))
-             (cb)))
-    (-> (ocall file :async "nodebuffer")
-        (.then (fn [buff]
-                 (ocall fs :writeFile
-                        (js/path.join db/files-root (oget file :name)) buff
-                        (fn [err]
-                          (when err
-                            (console.error err))
-                          (cb)))))
-        (.catch js/console.log))))
+  (let [name (js/path.relative zip-root (js/path.join "/" (oget file :name)))]
+    (cond
+      (= name manifest-path) (cb),
+      (oget file :dir) (ocall fs :mkdir (js/path.join "/" name)
+                              (fn [err]
+                                (when (and err (not= (oget err :code) "EEXIST"))
+                                  (js/console.error err))
+                                (cb))),
+      :else (-> (ocall file :async "nodebuffer")
+                (.then (fn [buff]
+                         (ocall fs :writeFile (js/path.join "/" name) buff
+                                (fn [err]
+                                  (when err
+                                    (console.error err))
+                                  (cb)))))
+                (.catch js/console.log)))))
 
-(defn merge-zip [fs zip cb]
+(defn import-from-zip [{:keys [fs] :as db} zip cb]
   (-> (loadAsync zip)
       (.then (fn [zip]
                (let [files (oget zip :files)]
@@ -99,7 +113,21 @@
                   (js-keys files) cb))))
       (.catch js/console.log)))
 
-(defn wipe-project! [{:keys [fs] :as db} cb]
+(defn wipe-project! [{:keys [fs input output menu deps deps-env env
+                             file-changed running? current-folder
+                             current-file file-browser-folder] :as db}
+                     cb]
+  (reset! input "")
+  (reset! output "")
+  (reset! deps {})
+  (reset! deps-env nil)
+  (reset! env nil)
+  (reset! file-changed false)
+  (reset! running? false)
+  (reset! current-folder db/files-root)
+  (reset! current-file nil)
+  (reset! file-browser-folder db/files-root)
+  (reset! menu [:home])
   (ocall fs :readdir db/files-root
          (fn [err files]
            ((fn rec [files cb]

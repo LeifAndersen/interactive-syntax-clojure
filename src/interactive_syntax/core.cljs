@@ -24,6 +24,7 @@
                             Table Spinner Alert]]
    [react-hotkeys :refer [GlobalHotKeys]]
    [codemirror]
+   [file-saver :refer [saveAs]]
    ["@leifandersen/react-codemirror2" :as cm]
    ["codemirror/mode/clojure/clojure"]
    ["codemirror/keymap/vim"]
@@ -78,7 +79,7 @@
                    (swap! menu pop)
                    (swap! menu conj :hold)
                    (-> (ocall (aget (oget @file :target.files) 0) :arrayBuffer)
-                       (.then (fn [r] (fs/merge-zip fs r #(swap! menu pop))))
+                       (.then (fn [r] (fs/import-from-zip db r #(swap! menu pop))))
                        (.catch (fn [e]
                                  (swap! menu pop)
                                  (swap! menu conj [:error (str e)]))))))
@@ -88,9 +89,10 @@
                         (swap! menu conj :hold)
                         (-> (ocall (aget (oget @file :target.files) 0) :arrayBuffer)
                             (.then
-                             (fn [r] (fs/wipe-project!
-                                      db (fn []
-                                           (fs/merge-zip fs r #(swap! menu pop))))))
+                             (fn [r]
+                               (fs/wipe-project!
+                                db (fn []
+                                     (fs/import-from-zip db r #(swap! menu pop))))))
                             (.catch (fn [e]
                                       (swap! menu pop)
                                       (swap! menu conj :error))))))]
@@ -633,7 +635,7 @@
                        (if @file-changed
                          "*"
                          ""))
-        export-project #(fs/export-to-zip fs files-root)
+        export-project #(fs/export-to-zip db (fn [res] (saveAs res "project.zip")))
         do-insert-visr #(when @insert-visr!
                           (@insert-visr!))
         run+pause #(let []
