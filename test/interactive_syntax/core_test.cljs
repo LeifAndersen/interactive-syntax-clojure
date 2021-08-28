@@ -128,8 +128,13 @@
   (testing "Ensure that import/export works from/to zip"
     (async
      done
-    (let [db (default-db :temp)
-          fs (:fs db)
+     (let [{:keys [fs input output current-file current-folder file-browser-folder]
+            :as db} (default-db :temp)
+          ival "hello world"
+          oval #queue ["A" "B"]
+          new-dir (js/path.join db/files-root "A")
+          new-file "x"
+          fb-dir (js/path.join db/files-root "B")
           zbox (atom nil)]
       (test-do
        db :check
@@ -141,8 +146,25 @@
        :async #(fs.writeFile (.join js/path files-root "B/1") "1234" %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
        :async #(fs/export-to-zip db (fn [x] (reset! zbox x) (%)))
+       :do #(reset! input ival)
+       :set [:input] ival
+       :do #(reset! output oval)
+       :set [:output] oval
+       :do #(reset! current-folder new-dir)
+       :set [:current-folder] new-dir
+       :do #(reset! current-file new-file)
+       :set [:current-file] new-file
+       :do #(reset! file-browser-folder fb-dir)
+       :set [:file-browser-folder] fb-dir
+       :check
        :async #(fs/wipe-project! db %)
        :do #(is (= (count (.readdirSync fs files-root)) 0))
+       :set [:input] ""
+       :set [:output] ""
+       :set [:current-folder] db/files-root
+       :set [:current-file] nil
+       :set [:file-browser-folder] db/files-root
+       :check
        :async #(fs/import-from-zip db @zbox %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
        :do #(is (= (count (.readdirSync fs (js/path.join files-root "A"))) 2))
