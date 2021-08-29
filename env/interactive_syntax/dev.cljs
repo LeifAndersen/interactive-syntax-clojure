@@ -4,7 +4,7 @@
     [devtools.core :as devtools]))
 
 (defn ^:after-load re-render []
-  (core/mount-root))
+  (core/mount-root {:debug true}))
 
 (defonce start-up
   (do (extend-protocol IPrintWithWriter
@@ -13,5 +13,5 @@
           (-write writer (str "\"" (.toString sym) "\""))))
       (enable-console-print!)
       ;(devtools/install!)
-      (core/init!)
+      (core/init! {:debug true})
       true))

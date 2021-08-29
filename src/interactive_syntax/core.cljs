@@ -833,8 +833,6 @@
                      repl-ref :repl
                      save-fb-ref :save-file-browser
                      load-fb-ref :load-file-browser}]]
-  (set! js/window.db db) ; <-- XXX For debugging, should remove
-  (set! js/window.fs fs) ; <-- XXX For debugging, should remove
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
   (set! codemirror/commands.save #(save-file db))
@@ -889,11 +887,15 @@
 ;; -------------------------
 ;; Initialize app
 
-(defn mount-root []
-  (d/render
-   [home-page (db/default-db :local)]
-   (.getElementById js/document "app")))
+(defn mount-root [& [{:keys [debug]}]]
+  (let [{:keys [fs] :as db} (db/default-db :local)]
+    (when debug
+      (set! js/window.db db)
+      (set! js/window.fs fs))
+    (d/render
+     [home-page db]
+     (.getElementById js/document "app"))))
 
-(defn init! []
-  (mount-root))
+(defn init! [& [opts]]
+  (mount-root opts))
 

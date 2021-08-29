@@ -1,5 +1,5 @@
 ^{:auto-bundle :webpack
-  :watch-dirs ["src" "test" "env/dev"]
+  :watch-dirs ["src" "test" "env"]
   :auto-testing true}
 {:main interactive-syntax.dev
  ;;:deps-command "npm"

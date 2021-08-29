@@ -17,4 +17,4 @@
                               "--compile-opts" "test.cljs.edn"
                               "--main" "interactive-syntax.core-test"]}
            :package {:main-opts ["-m" "figwheel.main" "--build-once" "prod"]}}
- :paths ["src" "test" "target" "resources" "env/dev" "env/prod"]}
+ :paths ["src" "test" "target" "resources" "env"]}

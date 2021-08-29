@@ -7,6 +7,7 @@
             [clojure.string :as string]
             [reagent.core :as r :refer [atom]]
             [reagent.dom :as d]
+            [reagent.ratom :as ratom]
             [chonky :refer [ChonkyActions]]
             ["@testing-library/react" :as rtl]
             [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
@@ -118,10 +119,19 @@
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
 
+(deftest debug-respected
+  (testing "Ensure globals aren't set unless debug mode is enable"
+    (let [db (default-db :temp)]
+      (rtl/render (r/as-element [core/home-page db {:debug false}]))
+      (is (or (not js/window.db)
+              (not (instance? ratom/RAtom js/window.db))))
+      (is (or (not js/window.fs)
+              (not (instance? ratom/RAtom js/window.fs)))))))
+
 (deftest file-system-available
   (testing "File System Access"
     (let [fs (:fs (default-db :temp))]
-      (is (= (js->clj (fs.readdirSync files-root))
+      (is (= (js->clj (.readdirSync fs files-root))
              [])))))
 
 (deftest zip-import-export
@@ -187,7 +197,7 @@
       (reset! (:file-changed db) true)
       (reset! (:current-file db) "sample.cljs")
       (core/save-buffer db)
-      (is (= (js->clj (fs.readdirSync files-root)) ["sample.cljs"]))
+      (is (= (js->clj (.readdirSync fs files-root)) ["sample.cljs"]))
       (is (= @(:file-changed db) false))
       (reset! (:input db) ":new-file")
       (reset! (:file-changed db) true)
@@ -297,7 +307,7 @@
        :set [:menu] [:home]
        :set [:current-file] "foo.cljs"
        :set [:current-folder] files-root :check
-       :do #(is (= (js->clj (fs.readdirSync files-root)) ["foo.cljs"]))
+       :do #(is (= (js->clj (.readdirSync fs files-root)) ["foo.cljs"]))
        :do #(.click rtl/fireEvent (first (.getAllByText view strings/NEW)))
        :set [:current-file] nil
        :set [:input] "" :check
@@ -421,7 +431,7 @@
   (testing "Adding a peer folder in the root files directory"
     (async
      done
-     (let [{:keys [input file-changed file-browser-folder] :as db}
+     (let [{:keys [fs input file-changed file-browser-folder] :as db}
            (default-db :temp)
            file-browser #js {:current nil}
            view (rtl/render
@@ -452,7 +462,7 @@
                                        (aget 1)))
         :do #(swap! file-browser-folder (fn [x] (.join js/path x "..")))
         :check
-        :do #(is (= (count (fs.readdirSync @file-browser-folder)) 2))
+        :do #(is (= (count (.readdirSync fs @file-browser-folder)) 2))
         :done #(done))))))
 
 (deftest simple-eval
@@ -596,23 +606,23 @@
         :async #(fs.mkdir "/files/B" %)
         :async #(fs.mkdir "/files/C" %)
         :async #(fs.writeFile "/files/C/f.cljs" file-body %)
-        :do #(is (= (count (fs.readdirSync "/files/")) 3))
+        :do #(is (= (count (.readdirSync fs "/files/")) 3))
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
         :do #(let [file (js/Set.)]
                   (.add file (fs/filepath->id "/files/A.cljs"))
                   (.setFileSelection @file-browser file)
                   (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
-        :then :do #(is (= (count (fs.readdirSync "/files/")) 2))
+        :then :do #(is (= (count (.readdirSync fs "/files/")) 2))
         :do #(let [file (js/Set.)]
                (.add file (fs/filepath->id "/files/B"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
-        :then :do #(is (= (count (fs.readdirSync "/files/")) 1))
+        :then :do #(is (= (count (.readdirSync fs "/files/")) 1))
         :do #(let [file (js/Set.)]
                (.add file (fs/filepath->id "/files/C"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
-        :then :do #(is (= (count (fs.readdirSync "/files/")) 0))
+        :then :do #(is (= (count (.readdirSync fs "/files/")) 0))
         :do #(swap! menu pop) :check
         :done #(done))))))
 
