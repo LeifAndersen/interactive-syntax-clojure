@@ -961,7 +961,7 @@
                     "visr.core/empty-visr"))
         :done #(done))))))
 
-(deftest circular-depe
+(deftest circular-dep
   (testing "Ensure VISrs render even with a circular dep."
     (async
      done

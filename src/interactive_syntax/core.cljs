@@ -364,6 +364,7 @@
          choice-text
          choice-callback
          & [ref]]
+      (js/console.log @dir-list)
       [:div {:style #js {:height "450px"}}
        [:> chonky/FileBrowser
         {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
