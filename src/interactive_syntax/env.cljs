@@ -347,6 +347,8 @@
                  fs file-src cb]
   (let [ns (namespace editor)
         srcloc (info->srcloc data)
+        catch-fn (fn [e]
+                   (cb e))
         mk-fn (fn [res]
                 (when (and res (:error res))
                   (throw res))
@@ -360,26 +362,28 @@
                            :ns ns
                            :fs fs}
                           cb))]
-    (cond
-      ns (ns->string fs {:name ns
-                         :macros false
-                         :path (apply js/path.join (.split ns "."))}
-                     (fn [src]
-                       (let [src (if src (:source src) "")]
-                         (eval-str src
-                                   {:runner runner
-                                    :loaded @loaded
-                                    :state state
-                                    :ns-cache ns-cache
-                                    :fs fs}
-                                   mk-fn))))
-      :else (eval-str file-src
-                      {:runner runner
-                       :loaded @loaded
-                       :state state
-                       :ns-cache ns-cache
-                       :fs fs}
-                      mk-fn))))
+    (try
+      (cond
+        ns (ns->string fs {:name ns
+                           :macros false
+                           :path (apply js/path.join (.split ns "."))}
+                       (fn [src]
+                         (let [src (if src (:source src) "")]
+                           (eval-str src
+                                     {:runner runner
+                                      :loaded @loaded
+                                      :state state
+                                      :ns-cache ns-cache
+                                      :fs fs}
+                                     mk-fn))))
+        :else (eval-str file-src
+                        {:runner runner
+                         :loaded @loaded
+                         :state state
+                         :ns-cache ns-cache
+                         :fs fs}
+                        mk-fn))
+      (catch :default e (catch-fn e)))))
 
 (defn dom->reagent [element]
   [(keyword (-> element .-nodeName .toLowerCase))
@@ -573,10 +577,10 @@
                             (let [prev (get-in old [{:line (:line info)
                                                      :column (:column info)}])
                                   hider (.createElement js/document "span")
-                                  show-visr (if false;prev
+                                  show-visr (if prev
                                               (:show-visr prev)
                                               (atom false))
-                                  show-code (if false;prev
+                                  show-code (if prev
                                               (:show-code prev)
                                               (atom false))
                                   info (atom info)

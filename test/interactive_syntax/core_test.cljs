@@ -961,7 +961,28 @@
                     "visr.core/empty-visr"))
         :done #(done))))))
 
-;; Set identifier
+(deftest circular-depe
+  (testing "Ensure VISrs render even with a circular dep."
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           prog "
+(ns test.user
+  (:require [test.use]))
+^{:editor Counter}(Counter+elaborate 4)"
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue prog))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
+        :done #(done))))))
 
 (defn -main [& args]
   (run-tests-async 240000))
