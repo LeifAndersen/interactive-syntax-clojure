@@ -624,7 +624,6 @@
                                 (add-watch show-code ::visr-resize
                                            (fn [k r o n]
                                              (when-not (= o n)
-                                               (js/console.log "code changed")
                                                (ocall r-mark :changed))))
                                 (swap! instances assoc
                                        (info->srcloc @info)

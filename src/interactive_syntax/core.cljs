@@ -887,6 +887,7 @@
        [editor-view db editor-ref]
        [result-view db repl-ref]]]
      [:div {:style {:flex "1 1 auto"
+                    :overflow "auto"
                     :height "100%"
                     :display "flex"
                     :flex-flow "column"}}

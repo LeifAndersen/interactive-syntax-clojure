@@ -10,6 +10,7 @@
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         alandipert/storage-atom {:mvn/version "2.0.1"}
         binaryage/oops {:mvn/version "0.7.1"}
+        garden/garden {:mvn/version "1.3.10"}
         com.bhauman/figwheel-main {:mvn/version "0.2.14"}
         com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}}
  :aliases {:fig {:main-opts ["-m" "figwheel.main" "--build" "dev" "--repl"]}
