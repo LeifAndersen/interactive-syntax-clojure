@@ -326,15 +326,16 @@
                      :as db}
                     choice-text
                     choice-callback
-                    & [ref]]
+                    & [{ref :file-browser
+                        list-ref :file-browser-list}]]
   (let [text (atom "")
         dir-list (atom [nil])
-        populate-dir-list (fn []
+        populate-dir-list (fn [& [cb]]
                             (ocall fs :readdir @file-browser-folder
                                    (fn [err files]
                                      ((fn rec [acc rst]
                                         (if (empty? rst)
-                                          (reset! dir-list acc)
+                                          (do (reset! dir-list acc) (when cb (cb)))
                                           (file-description
                                            fs
                                            (js/path.join @file-browser-folder
@@ -351,6 +352,8 @@
                                             (conj rest (second item))
                                             rest)))))
         ref (or ref #js {:current nil})]
+    (when list-ref
+      (reset! list-ref dir-list)) ; don't deref dir-list here
     (add-watch file-browser-folder ::folder-change
                (fn [k r o n]
                  (when (not= o n)
@@ -364,7 +367,8 @@
           :as db}
          choice-text
          choice-callback
-         & [ref]]
+         & [{ref :file-browser
+             list-ref :file-browser-list}]]
       [:div {:style #js {:height "450px"}}
        [:> chonky/FileBrowser
         {:disable-drag-and-drop (not @(:enable-drag-and-drop options))
@@ -394,7 +398,9 @@
                   :as data}
                  (js->clj data-js)
                  begin-transaction #(swap! menu conj :hold)
-                 end-transaction #(swap! menu pop)]
+                 end-transaction (fn []
+                                   (populate-dir-list
+                                    #(swap! menu pop)))]
              ;;(js/console.log data)
              (condp = id
                (oget ChonkyActions :OpenParentFolder.id) nil,
@@ -461,9 +467,7 @@
                         (let [f (first files)
                               name (js/path.join @file-browser-folder
                                                  (get-in f ["name"]))]
-                          (if (get-in f ["isDir"])
-                            (recursive-rm fs name #(rec (rest files)))
-                            (ocall fs :unlink name #(rec (rest files)))))))
+                          (recursive-rm fs name #(rec (rest files))))))
                     (get-in state ["selectedFilesForAction"])))
                (js/console.log data))
              (reset! file-browser-folder @file-browser-folder)))}
@@ -492,8 +496,11 @@
                            current-folder
                            current-file]
                     :as db}
-                   & [ref]]
+                   & [{fb-ref :save-file-browser
+                       fb-list-ref :save-file-browser-list}]]
   (let [item (peek @menu)]
+    (when fb-ref
+      (js-debugger))
     [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
                :on-hide #(swap! menu pop)}
@@ -504,14 +511,16 @@
         (reset! current-folder @file-browser-folder)
         (reset! current-file file)
         (save-buffer db))
-      ref]]))
+      {:file-browser fb-ref
+       :file-browser-list fb-list-ref}]]))
 
 (defn load-dialog [{:keys [menu
                            file-browser-folder
                            current-folder
                            current-file]
                     :as db}
-                   & [ref]]
+                   & [{fb-ref :load-file-browser
+                       fb-list-ref :load-file-browser-list}]]
   [:> Modal {:show (= (peek @menu) :load)
              :size "xl"
              :on-hide #(swap! menu pop)}
@@ -523,7 +532,8 @@
        (reset! current-folder @file-browser-folder)
        (reset! current-file file)
        (load-buffer db))
-     ref]]])
+     {:file-browser fb-ref
+      :file-browser-list fb-list-ref}]]])
 
 (defn new-file-action [{:keys [menu current-file input file-changed]
                         :as db}]
@@ -549,6 +559,7 @@
                                theme]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
+             ;;:size "lg"
              :on-hide #(swap! menu pop)}
    [:> (oget Modal :Header) {:close-button true}
     [:h3 strings/OPTIONS-MENU]]
@@ -570,6 +581,7 @@
       [:> (oget Form :Label) {:column true}
        [:h4 (str strings/KEYMAP ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/KEYMAP}
+               ;;[option-button keymap false "Default"]
                [option-button keymap "vim" "Vim"]
                [option-button keymap "emacs" "Emacs"]
                [option-button keymap "sublime" "Sublime"]]]]
@@ -832,8 +844,7 @@
                   :as db}
                  & [{editor-ref :editor
                      repl-ref :repl
-                     save-fb-ref :save-file-browser
-                     load-fb-ref :load-file-browser}]]
+                     :as opts}]]
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
   (set! codemirror/commands.save #(save-file db))
@@ -857,8 +868,8 @@
                                (env/eval-buffer db))}}]
    [splash-dialog db]
    [new-file-action db]
-   [save-dialog db save-fb-ref]
-   [load-dialog db load-fb-ref]
+   [save-dialog db opts]
+   [load-dialog db opts]
    [import-dialog db]
    [confirm-wipe-dialog db]
    [options-dialog db]

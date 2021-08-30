@@ -122,7 +122,7 @@
 (deftest debug-respected
   (testing "Ensure globals aren't set unless debug mode is enable"
     (let [db (default-db :temp)]
-      (rtl/render (r/as-element [core/home-page db {:debug false}]))
+      (rtl/render (r/as-element [core/home-page db]))
       (is (or (not js/window.db)
               (not (instance? ratom/RAtom js/window.db))))
       (is (or (not js/window.fs)
@@ -412,7 +412,8 @@
            ref #js {:current nil}
            _ (reset! (-> db :options :enable-drag-and-drop) false)
            view (rtl/render (r/as-element
-                             [core/file-browser db "Unused" (fn [] nil) ref]))]
+                             [core/file-browser db "Unused" (fn [] nil)
+                              {:file-browser ref}]))]
        (test-do
         db :check
         :do #(reset! (-> db :menu) [:home :load])
@@ -594,11 +595,13 @@
      (let [{:keys [fs input output menu current-file current-folder file-changed]
             :as db}
            (default-db :temp)
+           fb-list (atom nil)
            file-body "(+ 1 2)"
            file-browser #js {:current nil}
            view (rtl/render
                  (r/as-element
-                  [core/home-page db {:load-file-browser file-browser}]))
+                  [core/home-page db {:load-file-browser file-browser
+                                      :load-file-browser-list fb-list}]))
            file-browser (->RefAtom file-browser)]
        (test-do
         db :check
@@ -608,21 +611,25 @@
         :async #(fs.writeFile "/files/C/f.cljs" file-body %)
         :do #(is (= (count (.readdirSync fs "/files/")) 3))
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+        :do #(is (= (count @@fb-list) 3))
         :do #(let [file (js/Set.)]
                   (.add file (fs/filepath->id "/files/A.cljs"))
                   (.setFileSelection @file-browser file)
                   (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (.readdirSync fs "/files/")) 2))
+        :do #(is (= (count @@fb-list) 2))
         :do #(let [file (js/Set.)]
                (.add file (fs/filepath->id "/files/B"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (.readdirSync fs "/files/")) 1))
+        :do #(is (= (count @@fb-list) 1))
         :do #(let [file (js/Set.)]
                (.add file (fs/filepath->id "/files/C"))
                (.setFileSelection @file-browser file)
                (.requestFileAction @file-browser ChonkyActions.DeleteFiles))
         :then :do #(is (= (count (.readdirSync fs "/files/")) 0))
+        :do #(is (= (count @@fb-list) 0))
         :do #(swap! menu pop) :check
         :done #(done))))))
 

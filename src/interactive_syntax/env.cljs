@@ -577,12 +577,12 @@
                             (let [prev (get-in old [{:line (:line info)
                                                      :column (:column info)}])
                                   hider (.createElement js/document "span")
-                                  show-visr (if prev
-                                              (:show-visr prev)
-                                              (atom false))
-                                  show-code (if prev
-                                              (:show-code prev)
-                                              (atom false))
+                                  show-visr (atom (if prev
+                                                    @(:show-visr prev)
+                                                    false))
+                                  show-code (atom (if prev
+                                                    @(:show-code prev)
+                                                    false))
                                   info (atom info)
                                   form (atom (second form))
                                   changed? (atom false)
@@ -607,26 +607,35 @@
                                [visr-hider db editor show-visr show-code
                                 run-state info form changed? @source commit! update]
                                hider)
-                              (swap! instances assoc
-                                     (info->srcloc @info)
-                                     {:range
-                                      (-> @editor
-                                          (ocall :getDoc)
-                                          (ocall
-                                           :markText
-                                           #js {:line (dec (:line @info)),
-                                                :ch (dec (:column @info))}
-                                           #js {:line (dec (:end-line @info)),
-                                                :ch (dec (:end-column @info))}
-                                           #js {:collapsed true
-                                                :replacedWith hider}))
-                                      :commit! commit!
-                                      :update update
-                                      :visr hider
-                                      :show-visr show-visr
-                                      :show-code show-code
-                                      :info info
-                                      :stx form})))
+                              (let [r-mark (-> @editor
+                                               (ocall :getDoc)
+                                               (ocall
+                                                :markText
+                                                #js {:line (dec (:line @info)),
+                                                     :ch (dec (:column @info))}
+                                                #js {:line (dec (:end-line @info)),
+                                                     :ch (dec (:end-column @info))}
+                                                #js {:collapsed true
+                                                     :replacedWith hider}))]
+                                (add-watch show-visr ::visr-resize
+                                           (fn [k r o n]
+                                             (when-not (= o n)
+                                               (ocall r-mark :changed))))
+                                (add-watch show-code ::visr-resize
+                                           (fn [k r o n]
+                                             (when-not (= o n)
+                                               (js/console.log "code changed")
+                                               (ocall r-mark :changed))))
+                                (swap! instances assoc
+                                       (info->srcloc @info)
+                                       {:range r-mark
+                                        :commit! commit!
+                                        :update update
+                                        :visr hider
+                                        :show-visr show-visr
+                                        :show-code show-code
+                                        :info info
+                                        :stx form}))))
                           (doseq [e form]
                             (when (coll? e)
                               (rec e)))))
