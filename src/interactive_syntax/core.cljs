@@ -385,10 +385,10 @@
                                 :isDir true
                                 :name folder}))
          :file-actions [(oget ChonkyActions :CreateFolder)
-                        (oget ChonkyActions :DeleteFiles)
-                        (oget ChonkyActions :UploadFiles)
-                        (oget ChonkyActions :DownloadFiles)
-                        (oget ChonkyActions :CopyFiles)]
+                        ;;(oget ChonkyActions :UploadFiles)
+                        ;;(oget ChonkyActions :DownloadFiles)
+                        ;;(oget ChonkyActions :CopyFiles)
+                        (oget ChonkyActions :DeleteFiles)]
          :on-file-action
          (fn [data-js]
            (let [{id "id"
@@ -881,7 +881,8 @@
    [:div {:style {:flex "0 1 auto"}}
     [button-row db]]
    (if (= (count @buffers) 1)
-     [:div {:style {:flex "1 1 auto"}}
+     [:div {:style {:flex "1 1 auto"
+                    :overflow "auto"}}
       [:> SplitPane {:split @orientation}
        [editor-view db editor-ref]
        [result-view db repl-ref]]]
