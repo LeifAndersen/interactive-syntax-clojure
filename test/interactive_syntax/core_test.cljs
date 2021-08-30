@@ -994,6 +994,43 @@
         :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
         :done #(done))))))
 
+(deftest continue-with-save
+  (testing "Ensure save works in continue with saving and an existing save file"
+    (async
+     done
+     (let [{:keys [fs input current-folder current-file file-changed]
+            :as db}
+           (default-db :temp),
+           fpath (js/path.join files-root "x.cljs"),
+           orig-prog "",
+           prog "(+ 1 2)",
+           _ (reset! input prog),
+           _ (reset! current-file "x.cljs"),
+           _ (reset! current-folder files-root),
+           _ (reset! file-changed true)
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db
+        :set [:input] prog
+        :set [:current-file] "x.cljs"
+        :check
+        :async #(fs.writeFile fpath orig-prog %)
+        :do #(is (= (.toString (fs.readFileSync fpath)) orig-prog))
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+        :set [:menu] [:home [:confirm-save :load]]
+        :check
+        :do #(.click rtl/fireEvent (-> (get-modal)
+                                       (.getElementsByClassName "btn-primary")
+                                       (aget 0)))
+        :set [:menu] [:home :load]
+        :set [:file-changed] false
+        :check
+        :do #(is (= (.toString (fs.readFileSync fpath)) prog))
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 240000))
 

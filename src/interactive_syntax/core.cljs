@@ -310,7 +310,8 @@
        {:variant "primary"
         :on-click (fn []
                     (if @current-file
-                      (save-buffer db)
+                      (do (save-buffer db)
+                          (swap! menu #(-> % pop (conj (second item)))))
                       (swap! menu #(-> % pop (conj [:save (second item)])))))}
        strings/SAVE]
       [:> Button {:variant "secondary"
