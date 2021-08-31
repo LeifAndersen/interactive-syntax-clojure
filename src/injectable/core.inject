@@ -3,6 +3,7 @@
   (:require [visr.private :as private]))
 (def print private/print)
 (def println private/println)
+(def css private/css)
 (def render-visr private/render-visr)
 (defmacro defvisr [name & props]
   (let [{:keys [render

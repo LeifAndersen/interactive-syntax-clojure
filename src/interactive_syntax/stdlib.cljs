@@ -13,6 +13,7 @@
                             Table]]
    [react-split-pane]
    [react-switch]
+   [garden.core :as garden :refer [css]]
    [interactive-syntax.fakegoog :as fakegoog]))
 
 (def injectable (slurp "src/injectable/core.inject"))
@@ -105,7 +106,8 @@
                           {:print (partial wrap-printer core/print db)
                            :println (partial wrap-printer core/println db)
                            :parse_defvisr parse-defvisr
-                           :render_visr (partial render-visr db)}}
+                           :render_visr (partial render-visr db)
+                           :css css}}
                    :reagent {:core reagent.core
                              :dom reagent.dom}})
            :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
