@@ -10,6 +10,7 @@
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [interactive-syntax.db :as db :refer [files-root]]
+   [interactive-syntax.utils :as utils :refer [cb-thread]]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.env :as env]
    [interactive-syntax.stdlib :as stdlib]
@@ -247,14 +248,16 @@
 
 (defn save-buffer [{:keys [fs menu current-folder current-file input
                            file-changed visr-commit!]
-                    :as db}]
+                    :as db}
+                   & [cb]]
   (swap! menu conj :hold)
   (when @visr-commit!
     (@visr-commit!))
   (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
          (fn [err res]
            (reset! file-changed false)
-           (swap! menu pop))))
+           (swap! menu pop)
+           (when cb (cb)))))
 
 (defn load-buffer [{:keys [fs menu current-folder current-file input file-changed]
                     :as db}]
@@ -314,8 +317,9 @@
        {:variant "primary"
         :on-click (fn []
                     (if @current-file
-                      (do (save-buffer db)
-                          (swap! menu #(-> % pop (conj (second item)))))
+                      (cb-thread
+                       #(save-buffer db %)
+                       #(swap! menu (fn [x] (-> x pop (conj (second item))))))
                       (swap! menu #(-> % pop (conj [:save (second item)])))))}
        strings/SAVE]
       [:> Button {:variant "secondary"
@@ -432,7 +436,7 @@
                  :else (do
                          (reset! text (get-in payload ["targetFile" "name"]))
                          (confirm-action))),
-               (oget ChonkyActions :ClearSelection.id) (swap! menu pop),
+               (oget ChonkyActions :ClearSelection.id) nil,
                (oget ChonkyActions :ChangeSelection.id) nil,
                (oget ChonkyActions :MoveFiles.id)
                (do (begin-transaction)
@@ -503,8 +507,6 @@
                    & [{fb-ref :save-file-browser
                        fb-list-ref :save-file-browser-list}]]
   (let [item (peek @menu)]
-    (when fb-ref
-      (js-debugger))
     [:> Modal {:show (and (coll? item) (= (first item) :save))
                :size "xl"
                :on-hide #(swap! menu pop)}

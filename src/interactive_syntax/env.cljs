@@ -533,6 +533,10 @@
 (defn reset-editors! [source set-text editor instances operation
                       {:keys [fs options deps env] :as db}]
   (let [old @instances]
+    (when @env
+      (try
+        (ocall (:runner @env) :pause)
+        (catch js/Error e)))
     (doseq [[k v] old]
       (ocall (:range v) :clear))
     (reset! instances {})

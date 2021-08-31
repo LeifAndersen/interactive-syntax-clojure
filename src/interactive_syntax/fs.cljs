@@ -3,6 +3,7 @@
    [crypto-browserify]
    [jszip :refer [loadAsync]]
    [interactive-syntax.db :as db]
+   [interactive-syntax.utils :refer [cb-thread]]
    [goog.object :as obj]
    [cljs.pprint :refer [pprint]]
    [isomorphic-git]
@@ -66,13 +67,6 @@
                     (fn [err txt]
                       (ocall zip :file name txt)
                       (cb)))))))
-
-(defn cb-thread [& funcs]
-  ((fn rec [funcs ret]
-     (if (empty? funcs)
-       ret
-       ((first funcs) #(rec (rest funcs) %&) ret)))
-   funcs nil))
 
 (defn export-to-zip [{:keys [fs version deps] :as db} cb]
   (let [zip (new jszip)
