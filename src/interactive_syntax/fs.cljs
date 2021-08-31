@@ -5,6 +5,8 @@
    [interactive-syntax.db :as db]
    [goog.object :as obj]
    [cljs.pprint :refer [pprint]]
+   [isomorphic-git]
+   ["isomorphic-git/http/web" :as isohttp]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]))
 
@@ -136,3 +138,17 @@
                 (let [fullpath (js/path.join db/files-root (first files))]
                   (recursive-rm fs fullpath #(rec (rest files) cb)))))
             files cb))))
+
+;; -------------------------
+;; Git
+
+(defn git-clone [{:keys [fs] :as db} dir url cb]
+  (cb-thread
+   #(-> (ocall isomorphic-git :clone #js {:fs fs :http isohttp :dir dir :url url})
+        (.then (fn [v] (cb v)))
+        (.catch (fn [e] (%))))
+   #(-> (ocall isomorphic-git :clone
+               #js {:fs fs :http isohttp :dir dir
+                    :url (str "https://cors.isomorphic-git.org/" url)})
+        (.then (fn [v] (cb v)))
+        (.catch (fn [e] (cb e))))))

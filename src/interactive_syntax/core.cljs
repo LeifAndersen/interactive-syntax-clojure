@@ -37,6 +37,8 @@
    [react-switch]
    [react-dnd :refer [DndProvider]]
    [react-dnd-html5-backend :refer [HTML5Backend]]
+   [isomorphic-git]
+   ["isomorphic-git/http/web" :as isohttp]
    [chonky :refer [ChonkyActions]]
    [chonky-icon-fontawesome]))
 
@@ -45,6 +47,8 @@
 (def ^:private SplitPane (.-default react-split-pane))
 (def ^:private Switch (.-default react-switch))
 
+;; -------------------------
+;; Dialogs
 (defn splash-dialog [{:keys [menu version]}]
   [:> Modal {:show (= (peek @menu) :splash)
              :size "xl"}
@@ -904,8 +908,10 @@
 (defn mount-root [& [{:keys [debug]}]]
   (let [{:keys [fs] :as db} (db/default-db :local)]
     (when debug
+      (set! js/window.git isomorphic-git)
       (set! js/window.db db)
-      (set! js/window.fs fs))
+      (set! js/window.fs fs)
+      (set! js/window.isohttp isohttp))
     (d/render
      [home-page db]
      (.getElementById js/document "app"))))
