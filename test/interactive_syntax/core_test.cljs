@@ -119,7 +119,6 @@
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
 
-(comment
 (deftest debug-respected
   (testing "Ensure globals aren't set unless debug mode is enable"
     (let [db (default-db :temp)]
@@ -1001,7 +1000,6 @@
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
         :done #(done))))))
-)
 
 (deftest continue-to-load-with-save
   (testing "Ensure save works in continue with saving for loading files"

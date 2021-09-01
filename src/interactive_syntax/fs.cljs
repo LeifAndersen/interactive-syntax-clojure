@@ -3,7 +3,7 @@
    [crypto-browserify]
    [jszip :refer [loadAsync]]
    [interactive-syntax.db :as db]
-   [interactive-syntax.utils :refer [cb-thread]]
+   [interactive-syntax.utils :refer [cb-thread cb-loop]]
    [goog.object :as obj]
    [cljs.pprint :refer [pprint]]
    [isomorphic-git]
@@ -26,13 +26,10 @@
            (if (ocall stats :isDirectory)
              (ocall fs :readdir dir
                     (fn [err files]
-                      ((fn rec [files cb]
-                         (if (empty? files)
-                           (cb)
-                           (let [fullpath (js/path.join dir (first files))]
-                             (recursive-rm fs fullpath #(rec (rest files) cb)))))
-                       files
-                       #(ocall fs :rmdir dir cb))))
+                      (cb-loop files
+                               #(let [fullpath (js/path.join dir %2)]
+                                  (recursive-rm fs fullpath %))
+                               #(ocall fs :rmdir dir cb))))
              (ocall fs :unlink dir cb)))))
 
 (defn file-description [fs filepath cb]
@@ -126,12 +123,10 @@
   (reset! menu [:home])
   (ocall fs :readdir db/files-root
          (fn [err files]
-           ((fn rec [files cb]
-              (if (empty? files)
-                (cb)
-                (let [fullpath (js/path.join db/files-root (first files))]
-                  (recursive-rm fs fullpath #(rec (rest files) cb)))))
-            files cb))))
+           (cb-loop files
+                    #(let [fullpath (js/path.join db/files-root %2)]
+                       (recursive-rm fs fullpath %))
+                    cb))))
 
 ;; -------------------------
 ;; Git
