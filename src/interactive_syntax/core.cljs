@@ -761,7 +761,7 @@
     (reset! insert-visr!
             #(let [doc (ocall @edit :getDoc)
                    pos (ocall doc :getCursor)]
-               (ocall doc :replaceRange stdlib/empty-visr pos)))
+               (ocall doc :replaceRange stdlib/starter-visr pos)))
     (fn [{:keys [menu input options file-changed current-file]
           :as db}
          & [editor-ref]]

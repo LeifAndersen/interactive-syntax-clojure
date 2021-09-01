@@ -153,7 +153,7 @@
                         (cb res)))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
-   ;;:verbose true
+   ;:verbose true
    :ns ns
    :source-map true})
 
@@ -353,8 +353,7 @@
                 (when (and res (:error res))
                   (throw res))
                 (eval-str (str "(" (stdlib/visr->render editor)
-                               " '" stx
-                               " (fn [x] ((js/srcloc->updater " srcloc ") x)))")
+                               " (js/srcloc->atom " srcloc "))")
                           {:runner runner
                            :loaded @loaded
                            :state state
@@ -396,12 +395,14 @@
 (defn styled-frame [mopts & mbody]
   (let [opts (if (map? mopts) mopts {})
         body (if (map? mopts) mbody (into [mopts] mbody))]
-    (into [:> Frame (assoc opts :head
+    (into [:> Frame (conj opts
+                          {:head
                            (r/as-element
                             (into [:<> (:head opts)]
                                   (for [i (-> js/document .-head
                                               (.getElementsByTagName "style"))]
-                                    (dom->reagent i)))))]
+                                    (dom->reagent i))))
+                           :style {:resize "both"}})]
           body)))
 
 (defn codemirror-options [{:keys [options] :as db}]
@@ -438,19 +439,19 @@
         stx (atom @stx-box)
         stx-str (atom (stx->stx-str @stx-box))]
     (reset! stx-box @stx-str)
+    (reset! update-box stx) ;; Intentionally not dereffing
     (add-watch stx ::update-stx-box
                (fn [k r o n]
                  (when-not (= o n)
                    (reset! stx-box (stx->stx-str n))
-                   (reset! changed? true))))
+                   (reset! changed? true)
+                   (when-not @focused?
+                     (commit!)))))
     (add-watch stx-str ::update-stx-box
                (fn [k r o n]
                  (when-not (= o n)
                    (reset! stx-box n)
                    (reset! changed? true))))
-    (reset! update-box (fn [x]
-                         (reset! stx x)
-                         (commit!)))
     (fn [{:keys [options fs] :as db} editor show-visr show-code
          run-state info stx-box changed? file-src commit! update-box]
       (when (and @show-visr (= @visr nil))
@@ -553,7 +554,7 @@
                               ""
                               (stdlib/reagent-opts
                                {:env (assoc (:env deps-env)
-                                            (munge "srcloc->updater")
+                                            (munge "srcloc->atom")
                                             (fn [x]
                                               @(get-in @instances [x :update])))
                                 :loaded (:loaded deps-env)

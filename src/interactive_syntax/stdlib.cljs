@@ -118,4 +118,7 @@
 (defn write-visr [visr state]
   (str "^{:editor " visr "}(" (visr->elaborate visr) " " (str state) ")"))
 
-(def empty-visr (write-visr "visr.core/empty-visr" "'()"))
+(def empty-visr (write-visr "visr.core/empty-visr" "{}"))
+
+(def starter-visr (write-visr "visr.core/empty-visr"
+                            "{:message \"Endless Possibility\"}"))

@@ -738,9 +738,9 @@
 (ns test.core
   (:require [react-bootstrap :refer [Button]]))
 (defvisr Counter
-  (render [this update]
+  (render [this]
     [:> Button {:aria-label \"Counter\"
-                :onClick #(update (inc this))}
+                :onClick #(swap! this inc)}
       this])
   (elaborate [this] `'~this))"
 
@@ -800,11 +800,11 @@
   (:require [react-bootstrap :refer [Button]]))
 
 (defvisr Counter
-  (render [this update]
+  (render [this]
     [:> ButtonGroup
-     [:> Button {:onClick #(update (dec this))} \"-\"]
+     [:> Button {:onClick #(swap! this dec)} \"-\"]
      this
-     [:> Button {:onClick #(update (inc this))} \"+\"]])
+     [:> Button {:onClick #(swap! this inc)} \"+\"]])
    (elaborate [this] this))"
            use-prog "
 (ns test.use
@@ -848,8 +848,7 @@
                  (.setCursor @editor #js {:line 0 :ch 2}))
         :do #(.click rtl/fireEvent
                      (first (.getAllByText view strings/INSERT-VISR)))
-        :set [:input] (str "AB^{:editor visr.core/empty-visr}"
-                           "(visr.core/empty-visr+elaborate '())CD") :check
+        :set [:input] (str "AB" stdlib/starter-visr "CD") :check
         :done #(done))))))
 
 (deftest shown-on-load
@@ -1047,6 +1046,23 @@
         :set [:file-changed] false :check
         :do #(is (= (.toString (fs.readFileSync fpath)) prog))
         :done #(done))))))
+
+(deftest deps-in-fs
+  (testing "Ensure deps are stored into the /deps folder"
+    (async
+     done
+     (let [{:keys [fs input menu current-folder current-file file-changed]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db
+        :done #(done))))))
+
+
 
 (defn -main [& args]
   (run-tests-async 240000))

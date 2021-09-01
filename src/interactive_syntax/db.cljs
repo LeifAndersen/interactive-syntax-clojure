@@ -7,7 +7,7 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def version (str "0.1.4-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def version (str "0.1.5-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
 
