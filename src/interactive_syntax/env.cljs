@@ -2,6 +2,8 @@
   (:require
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
+   [react]
+   [react-dom]
    ;;[reagent-catch.core :as rc]
    [clojure.string :as string]
    [clojure.walk :as walk]
@@ -19,6 +21,7 @@
    [interactive-syntax.db :refer [files-root]]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
+   [garden.core :as garden :refer [css]]
    ["@stopify/higher-order-functions" :as hof]
    ["@babel/parser" :as babylon]
    ["@babel/template" :as babel-template]
@@ -93,6 +96,8 @@
 
 (defn deps->env [{:keys [deps deps-env env] :as db} cb]
   (let [system (new (.-constructor js/System))]
+    (.set system "app:react" react)
+    (.set system "app:react-dom" react-dom)
     ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
          (do
@@ -476,7 +481,13 @@
          "\uD83D\uDC41"]
         (when @show-visr
           [err-boundary
-           [styled-frame @visr]])
+           [styled-frame
+            {:head [:script {:type "systemjs-importmap"}
+                    "{\"imports\": {"
+                    "\"react\": \"app:react\"" ","
+                    "\"react-dom\": \"app:react-dom\""
+                    "}}"]}
+            @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
                     :style {:padding 0 :font-size "0.8em"}
@@ -486,7 +497,7 @@
         (when @show-code
           [styled-frame
            {:on-blur commit!
-            :head [:style ".frame-root, .frame-content {height: 100%;}"]}
+            :head [:style (css [:.frame-root :.frame-content {:height "100%"}])]}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
                      :style {:height "100%"
