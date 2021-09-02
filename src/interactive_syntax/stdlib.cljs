@@ -7,6 +7,8 @@
    [clojure.set :refer [union]]
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
+   [react]
+   [react-dom]
    [react-bootstrap :refer [Button ButtonGroup SplitButton
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
@@ -86,12 +88,15 @@
    :$stopifyArray js/stopifyArray})
 
 (defn builtin-libs []
-  {:env {:react_bootstrap react-bootstrap
+  {:env {:react react
+         :react_dom react-dom
+         :react_bootstrap react-bootstrap
          :react_split_pane react-split-pane
          :react_switch react-switch}
-   :loaded #{'react-bootstrap 'react-split-pane 'react-switch}
+   :loaded #{'react 'react-dom 'react-bootstrap 'react-split-pane 'react-switch}
    :js-deps (into {}
-                  (for [k '[react-bootstrap react-split-pane react-switch]]
+                  (for [k '[react react-dom react-bootstrap
+                            react-split-pane react-switch]]
                     [(str k) {:global-exports {k (munge k)}}]))})
 
 (defn reagent-opts [opts db]
