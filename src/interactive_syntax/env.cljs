@@ -481,13 +481,7 @@
          "\uD83D\uDC41"]
         (when @show-visr
           [err-boundary
-           [styled-frame
-            {:head [:script {:type "systemjs-importmap"}
-                    "{\"imports\": {"
-                    "\"react\": \"app:react\"" ","
-                    "\"react-dom\": \"app:react-dom\""
-                    "}}"]}
-            @visr]])
+           [styled-frame @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
                     :style {:padding 0 :font-size "0.8em"}
