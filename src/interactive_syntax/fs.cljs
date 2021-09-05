@@ -6,6 +6,7 @@
    [interactive-syntax.utils :refer [cb-thread cb-loop]]
    [goog.object :as obj]
    [cljs.pprint :refer [pprint]]
+   [cljs.reader :refer [read-string]]
    [isomorphic-git]
    ["isomorphic-git/http/web" :as isohttp]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
@@ -68,7 +69,7 @@
 (defn export-to-zip [{:keys [fs version deps] :as db} cb]
   (let [zip (new jszip)
         project (ocall zip :folder "project")
-        manifest {:visr-version @version :deps (vals @deps)}]
+        manifest {:visr-version @version :deps @deps}]
     (ocall project :file manifest-path (with-out-str (pprint manifest)))
     (cb-thread #(add-dir-to-zip! fs project db/files-root "files" %)
                #(add-dir-to-zip! fs project db/deps-root "deps" %)
@@ -76,10 +77,17 @@
                     (.then cb)
                     (.catch js/console.log)))))
 
-(defn merge-file [fs file cb]
+(defn merge-file [{:keys [fs deps deps-env env] :as db} file cb]
   (let [name (js/path.relative zip-root (js/path.join "/" (oget file :name)))]
     (cond
-      (= name manifest-path) (cb),
+      (= name manifest-path)
+      (-> (ocall file :async "string")
+          (.then #(let [new-db (read-string %)]
+                    (reset! deps-env nil)
+                    (reset! env nil)
+                    (swap! deps into (:deps new-db))
+                    (cb)))
+          (.catch js/console.log)),
       (oget file :dir) (ocall fs :mkdir (js/path.join "/" name)
                               (fn [err]
                                 (when (and err (not= (oget err :code) "EEXIST"))
@@ -94,17 +102,15 @@
                                   (cb)))))
                 (.catch js/console.log)))))
 
-(defn import-from-zip [{:keys [fs] :as db} zip cb]
-  (-> (loadAsync zip)
-      (.then (fn [zip]
-               (let [files (oget zip :files)]
-                 ((fn rec [fnames cb]
-                    (if (empty? fnames)
-                      (cb)
-                      (merge-file fs (obj/get files (first fnames))
-                                  #(rec (rest fnames) cb))))
-                  (js-keys files) cb))))
-      (.catch js/console.log)))
+(defn import-from-zip [db zip cb]
+  (cb-thread
+   #(-> (loadAsync zip)
+        (.then %)
+        (.catch js/console.log))
+   #(let [files (oget %2 :files)]
+      (cb-loop (js-keys files)
+               (fn [next name] (merge-file db (obj/get files name) next))
+               cb))))
 
 (defn wipe-project! [{:keys [fs input output menu deps deps-env env
                              file-changed running? current-folder
@@ -121,12 +127,19 @@
   (reset! current-file nil)
   (reset! file-browser-folder db/files-root)
   (reset! menu [:home])
-  (ocall fs :readdir db/files-root
-         (fn [err files]
-           (cb-loop files
-                    #(let [fullpath (js/path.join db/files-root %2)]
-                       (recursive-rm fs fullpath %))
-                    cb))))
+  (cb-thread
+   (fn [next]
+     (ocall fs :readdir db/files-root
+            (fn [err files]
+              (cb-loop files
+                       #(recursive-rm fs (js/path.join db/files-root %2) %)
+                       next))))
+   (fn []
+     (ocall fs :readdir db/deps-root
+            (fn [err files]
+              (cb-loop files
+                       #(recursive-rm fs (js/path.join db/deps-root %2) %)
+                       cb))))))
 
 ;; -------------------------
 ;; Git

@@ -10,7 +10,8 @@
             [reagent.ratom :as ratom]
             [chonky :refer [ChonkyActions]]
             ["@testing-library/react" :as rtl]
-            [interactive-syntax.db :as db :refer [default-db ->RefAtom files-root]]
+            [interactive-syntax.db :as db :refer [default-db ->RefAtom
+                                                  files-root deps-root]]
             [interactive-syntax.fs :as fs]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
@@ -60,15 +61,17 @@
 ;; EXCEPTIONS:
 ;;  - Does not check fs, runner, env, etc.
 ;;  - output has pure newlines stripped
-(defn is-db= [this other & [keys]]
-  (when (or (not keys) (some #{:output} key))
+(defn is-db= [this other & [check-keys]]
+  (when (or (not check-keys) (some #{:output} check-keys))
     (is (= (filter #(not (= % "\n")) @(:output this))
            (filter #(not (= % "\n")) @(:output other)))))
-  (let [test-keys (or keys [:input
-                            :menu
-                            :current-file
-                            :current-folder
-                            :file-browser-folder])]
+  (when (or (not check-keys) (some #{:deps} check-keys))
+    (is (= (vals @(:deps this)) (vals @(:deps other)))))
+  (let [test-keys (or check-keys [:input
+                                  :menu
+                                  :current-file
+                                  :current-folder
+                                  :file-browser-folder])]
     (doseq [key test-keys]
       (is (= @(key this) @(key other))))))
 
@@ -138,14 +141,17 @@
   (testing "Ensure that import/export works from/to zip"
     (async
      done
-     (let [{:keys [fs input output current-file current-folder file-browser-folder]
+     (let [{:keys [fs input output deps deps-env env
+                   current-file current-folder file-browser-folder]
             :as db} (default-db :temp)
-          ival "hello world"
-          oval #queue ["A" "B"]
-          new-dir (js/path.join db/files-root "A")
-          new-file "x"
-          fb-dir (js/path.join db/files-root "B")
-          zbox (atom nil)]
+           ival "hello world"
+           oval #queue ["A" "B"]
+           new-deps {1 {:name "react-hexgrid"
+                        :url (env/module->uri test-dep)}}
+           new-dir (js/path.join db/files-root "A")
+           new-file "x"
+           fb-dir (js/path.join db/files-root "B")
+           zbox (atom nil)]
       (test-do
        db :check
        :async #(fs.mkdir (.join js/path files-root "A") %)
@@ -154,7 +160,9 @@
        :async #(fs.mkdir (.join js/path files-root "B") %)
        :async #(fs.writeFile (.join js/path files-root "B/x") "ZXCV" %)
        :async #(fs.writeFile (.join js/path files-root "B/1") "1234" %)
+       :async #(fs.writeFile (.join js/path deps-root "react-hexgrid") test-dep %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
+       :do #(reset! deps new-deps)
        :async #(fs/export-to-zip db (fn [x] (reset! zbox x) (%)))
        :do #(reset! input ival)
        :set [:input] ival
@@ -166,14 +174,24 @@
        :set [:current-file] new-file
        :do #(reset! file-browser-folder fb-dir)
        :set [:file-browser-folder] fb-dir
+       :set [:deps] new-deps
+       :do #(reset! deps-env :changed)
+       :do #(is (= @deps-env :changed))
+       :do #(reset! env :changed)
+       :do #(is (= @env :changed))
+       :set [:env] :changed
        :check
        :async #(fs/wipe-project! db %)
        :do #(is (= (count (.readdirSync fs files-root)) 0))
+       :do #(is (= (count (.readdirSync fs deps-root)) 0))
        :set [:input] ""
        :set [:output] ""
        :set [:current-folder] db/files-root
        :set [:current-file] nil
        :set [:file-browser-folder] db/files-root
+       :set [:deps] {}
+       :do #(is (= @deps-env nil))
+       :do #(is (= @env nil))
        :check
        :async #(fs/import-from-zip db @zbox %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
@@ -187,6 +205,12 @@
                    "ZXCV"))
        :do #(is (= (.toString (fs.readFileSync (js/path.join files-root "B/1")))
                    "1234"))
+       :do #(is (= (count (.readdirSync fs deps-root)) 1))
+       :do #(is (= (.toString (fs.readFileSync (js/path.join deps-root
+                                                             "react-hexgrid")))
+                   test-dep))
+       :set [:deps] new-deps
+       :check
        :done #(done))))))
 
 (deftest file-save-laod
@@ -715,6 +739,8 @@
         :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/URL))
                       #js {:target #js {:value (env/module->uri test-dep)}})
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/UPDATE)))
+        :set [:deps] {1 {:name "react-hexgrid" :version ""
+                         :url (env/module->uri test-dep)}}
         :wait 0
         :do #(reset! input prog1)
         :set [:input] prog1 :check
@@ -1061,8 +1087,6 @@
        (test-do
         db
         :done #(done))))))
-
-
 
 (defn -main [& args]
   (run-tests-async 240000))

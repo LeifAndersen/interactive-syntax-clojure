@@ -18,7 +18,8 @@
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
-   [interactive-syntax.db :refer [files-root]]
+   [interactive-syntax.utils :refer [cb-thread cb-loop]]
+   [interactive-syntax.db :refer [files-root deps-root]]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
    [garden.core :as garden :refer [css]]
@@ -76,17 +77,22 @@
     (ocall req "open" "GET" url)
     (ocall req "send")))
 
-(defn setup-deps [{:keys [deps]} force-update]
-  ((fn rec [acc packages]
-     (if (empty? packages)
-       (reset! deps acc)
-       (let [[[key {:keys [source] :as package}] & remaining] packages]
-         (if (or force-update (not source))
-           (get-pkg package #(rec
-                              (assoc acc key (assoc package :source %))
-                              remaining))
-           (rec (conj acc package) remaining)))))
-   {} @deps))
+(defn setup-deps [{:keys [deps fs] :as db} force-update & [cb]]
+  (cb-thread
+   #(cb-loop @deps
+             (fn [next [key {:keys [name] :as pkg}]]
+               (cb-thread
+                (fn [n] (ocall fs :readFile (js/path.join deps-root name) n))
+                (fn [n e src]
+                  (if (or force-update e)
+                    (cb-thread
+                     (fn [n] (get-pkg pkg n))
+                     (fn [_ src]
+                       (ocall fs :writeFile
+                              (js/path.join deps-root name) src next)))
+                    (next)))))
+             %)
+   #(when cb (cb %2))))
 
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
@@ -94,24 +100,30 @@
               (let [m (.split module "")]
                 (.map m #(.charCodeAt % 0))))))
 
-(defn deps->env [{:keys [deps deps-env env] :as db} cb]
+(defn deps->env [{:keys [deps deps-env env fs] :as db} cb]
   (let [system (new (.-constructor js/System))]
-    (.set system "app:react" react)
-    (.set system "app:react-dom" react-dom)
     ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
          (do
            (reset! deps-env {:env denv :loaded dloaded :js-deps djs})
            (reset! env nil)
            (cb {:env denv :loaded dloaded :js-deps djs}))
-         (let [[[key {:keys [name source] :as dep}] & rest-deps] deps]
-           (-> system (ocall :import (module->uri source))
-               (.then #(rec (assoc denv (munge name) %)
-                            (conj dloaded (symbol name))
-                            (assoc djs (str name)
-                                   {:global-exports {(symbol name) (munge name)}})
-                            rest-deps))
-               (.catch #(js/console.log %))))))
+         (let [[[key {:keys [name] :as dep}] & rest-deps] deps]
+           (cb-thread
+            #(ocall fs :readFile (js/path.join deps-root name) %)
+            (fn [next err source]
+              (if err
+                (js/console.log err)
+                (next source)))
+            (fn [next source]
+              (-> system (ocall :import (module->uri (.toString source)))
+                  (.then #(rec (assoc denv (munge name) %)
+                               (conj dloaded (symbol name))
+                               (assoc djs (str name)
+                                      {:global-exports {(symbol name)
+                                                        (munge name)}})
+                               rest-deps))
+                  (.catch #(js/console.log %))))))))
      {} [] {} @deps)))
 
 (defn deps->env+caching [{:keys [deps-env] :as db} cb]

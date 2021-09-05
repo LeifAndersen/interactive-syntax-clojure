@@ -218,8 +218,11 @@
                        :on-click (fn []
                                    (reset! deps @new-deps)
                                    (reset! deps-env nil)
-                                   (env/setup-deps db true)
-                                   (swap! menu pop))}
+                                   (swap! menu pop)
+                                   (swap! menu conj :hold)
+                                   (cb-thread
+                                    #(env/setup-deps db true %)
+                                    #(swap! menu pop)))}
             strings/UPDATE]]]]]])))
 
 (defn hold-dialog [{:keys [menu] :as db}]
