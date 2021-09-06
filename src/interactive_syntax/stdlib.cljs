@@ -16,6 +16,13 @@
    [react-split-pane]
    [react-switch]
    [garden.core :as garden :refer [css]]
+   [garden.color]
+   [garden.compiler]
+   [garden.compression]
+   [garden.util]
+   [garden.selectors]
+   [garden.types]
+   [garden.units]
    [interactive-syntax.fakegoog :as fakegoog]))
 
 (def injectable (slurp "src/injectable/core.inject"))
@@ -114,9 +121,20 @@
                            :render_visr (partial render-visr db)
                            :css css}}
                    :reagent {:core reagent.core
-                             :dom reagent.dom}})
+                             :dom reagent.dom}
+                   :garden {:core garden.core
+                            :color garden.color
+                            :compiler garden.compiler
+                            :compression garden.compression
+                            :selectors garden.selectors
+                            :types garden.types
+                            :units garden.units
+                            :util garden.util}})
            :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
-                         'visr.private 'reagent.core 'reagent.dom)
+                         'visr.private 'reagent.core 'reagent.dom
+                         'garden.core 'garden.color 'garden.compiler
+                         'garden.compression 'garden.selectors 'garden.types
+                         'garden.units 'garden.util)
            :js-deps (conj (into {} (:js-deps opts))
                           (:js-deps builtins))})))
 
