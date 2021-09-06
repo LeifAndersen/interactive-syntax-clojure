@@ -54,6 +54,10 @@
 (defn click-run [view]
   (.click rtl/fireEvent (first (.getAllByText view strings/RUN))))
 
+(defn default-clean-db [type cb]
+  (let [db (db/default-db type)]
+    (fs/wipe-project! db #(cb db))))
+
 (use-fixtures :each
   {:after rtl/cleanup})
 
@@ -1030,63 +1034,49 @@
   (testing "Ensure save works in continue with saving for loading files"
     (async
      done
-     (let [{:keys [fs input menu current-folder current-file file-changed]
-            :as db}
-           (default-db :temp),
-           fpath (js/path.join files-root "x.cljs"),
-           orig-prog "",
-           prog "(+ 1 2)",
-           _ (reset! input prog),
-           _ (reset! current-folder files-root),
-           _ (reset! file-changed true)
-           editor (atom nil),
-           repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))]
-       (test-do
-        db
-        :set [:input] prog
-        :set [:file-changed] true
-        :check
-        :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
-        :set [:menu] [:home [:confirm-save :load]]
-        :check
-        :do #(.click rtl/fireEvent (-> (get-modal)
-                                       (.getElementsByClassName "btn-primary")
-                                       (aget 0)))
-
-        :set [:menu] [:home [:save :load]] :check
-        :do #(reset! menu [:home])
-        :set [:menu] [:home] :check
-        :do #(reset! current-file "x.cljs"),
-        :set [:current-file] "x.cljs" :check
-        :async #(fs.writeFile fpath orig-prog %)
-        :do #(is (= (.toString (fs.readFileSync fpath)) orig-prog))
-        :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
-        :set [:menu] [:home [:confirm-save :load]]
-        :check
-        :do #(.click rtl/fireEvent (-> (get-modal 0)
-                                       (.getElementsByClassName "btn-primary")
-                                       (aget 0)))
-        :set [:menu] [:home :load]
-        :set [:file-changed] false :check
-        :do #(is (= (.toString (fs.readFileSync fpath)) prog))
-        :done #(done))))))
-
-(deftest deps-in-fs
-  (testing "Ensure deps are stored into the /deps folder"
-    (async
-     done
-     (let [{:keys [fs input menu current-folder current-file file-changed]
-            :as db}
-           (default-db :temp),
-           editor (atom nil),
-           repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))]
-       (test-do
-        db
-        :done #(done))))))
+     (default-clean-db
+      :persist-test
+      (fn [db]
+        (let [{:keys [fs input menu current-folder current-file file-changed]
+               :as db} db
+              fpath (js/path.join files-root "x.cljs"),
+              orig-prog "",
+              prog "(+ 1 2)",
+              _ (reset! input prog),
+              _ (reset! current-folder files-root),
+              _ (reset! file-changed true)
+              editor (atom nil),
+              repl (atom nil),
+              view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                                 :repl repl}]))]
+          (test-do
+           db
+           :set [:input] prog
+           :set [:file-changed] true
+           :check
+           :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+           :set [:menu] [:home [:confirm-save :load]]
+           :check
+           :do #(.click rtl/fireEvent (-> (get-modal)
+                                          (.getElementsByClassName "btn-primary")
+                                          (aget 0)))
+           :set [:menu] [:home [:save :load]] :check
+           :do #(reset! menu [:home])
+           :set [:menu] [:home] :check
+           :do #(reset! current-file "x.cljs"),
+           :set [:current-file] "x.cljs" :check
+           :async #(fs.writeFile fpath orig-prog %)
+           :do #(is (= (.toString (fs.readFileSync fpath)) orig-prog))
+           :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+           :set [:menu] [:home [:confirm-save :load]]
+           :check
+           :do #(.click rtl/fireEvent (-> (get-modal 0)
+                                          (.getElementsByClassName "btn-primary")
+                                          (aget 0)))
+           :set [:menu] [:home :load]
+           :set [:file-changed] false :check
+           :do #(is (= (.toString (fs.readFileSync fpath)) prog))
+           :done #(done))))))))
 
 (defn -main [& args]
   (run-tests-async 240000))

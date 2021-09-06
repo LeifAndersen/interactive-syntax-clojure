@@ -189,6 +189,7 @@
     :changed? false
     :input (case mode
              :local "(println \"Speak With Your Heart\")"
+             :persist-test ""
              :temp "")
     :output ""
     :runner nil
@@ -204,11 +205,17 @@
                                            (case mode
                                              :local {:fs "IndexedDB"
                                                      :options {:storeName "bfs"}}
+                                             :persist-test {:fs "IndexedDB"
+                                                            :options {:storeName
+                                                                      "bfstest"}}
                                              :temp {:fs "InMemory"})
                                            deps-root
                                            (case mode
                                              :local {:fs "IndexedDB"
                                                      :options {:storeName "depsfs"}}
+                                             :persist-test {:fs "IndexedDB"
+                                                            :options {:storeName
+                                                                      "depsfstest"}}
                                              :temp {:fs "InMemory"})}})
                                 #(when % (throw %)))
          base {:version version
@@ -220,10 +227,12 @@
                :deps {}
                :menu (case mode
                        :local [:home :splash]
+                       :persist-test [:home]
                        :temp [:home])}
          db (atom base)
          backed-db (case mode
                      :local (local-storage db "state")
+                     :persist-test db
                      :temp db)]
      {:options (into {}
                      (for [i [:orientation
