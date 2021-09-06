@@ -185,6 +185,7 @@
                         running?
                         sandbox
                         state
+                        state-injections
                         js-deps
                         ns-cache
                         fakegoog-global
@@ -276,6 +277,8 @@
                              (onYield))
                            (throw e))))]
     (try
+      (swap! state update-in [:cljs.analyzer/namespaces]
+             (partial merge state-injections))
       (reset! internal-running? true)
       (reset! running? true)
       (if resume

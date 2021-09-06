@@ -59,6 +59,12 @@
           (and (list? fst) (= (first fst) 'elaborate))
           (recur (assoc props :elaborate (rest fst)) (rest rst)))))))
 
+(defn state-injection [lib-name lib-publics]
+  {lib-name
+   {:name lib-name :defs (into {}
+                               (for [[k v] lib-publics]
+                                 [k {:name (symbol v)}]))}})
+
 (defn sandbox-env [runner]
   {:cljs {:core js/cljs.core
           :core$macros js/cljs.core$macros
@@ -135,6 +141,16 @@
                          'garden.core 'garden.color 'garden.compiler
                          'garden.compression 'garden.selectors 'garden.types
                          'garden.units 'garden.util)
+           :state-injections
+           (conj (state-injection 'garden.core (ns-publics 'garden.core))
+                 (state-injection 'garden.color (ns-publics 'garden.color))
+                 (state-injection 'garden.compiler (ns-publics 'garden.compiler))
+                 (state-injection 'garden.compression
+                                  (ns-publics 'garden.compression))
+                 (state-injection 'garden.selectors (ns-publics 'garden.selectors))
+                 (state-injection 'garden.types (ns-publics 'garden.types))
+                 (state-injection 'garden.units (ns-publics 'garden.units))
+                 (state-injection 'garden.util (ns-publics 'garden.util)))
            :js-deps (conj (into {} (:js-deps opts))
                           (:js-deps builtins))})))
 

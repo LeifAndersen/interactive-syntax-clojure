@@ -1018,7 +1018,7 @@
            repl (atom nil),
            prog "
 (ns test.user
-  (:require [test.use]))
+  (:require [test.user]))
 ^{:editor Counter}(Counter+elaborate 4)"
            view (rtl/render (r/as-element [core/home-page db {:editor editor
                                                               :repl repl}]))]
@@ -1077,6 +1077,64 @@
            :set [:file-changed] false :check
            :do #(is (= (.toString (fs.readFileSync fpath)) prog))
            :done #(done))))))))
+
+(deftest find-injected-dep-refs
+  (testing "Ensure :refer works for injected clojurescript deps"
+    (async
+     done
+     (let [{:keys [fs input output menu runner]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           prog1 "
+(ns test.user
+  (:require [garden.selectors]))
+(println garden.selectors/attr)"
+           prog2 "
+(ns test.user
+  (:require [garden.selectors :as sel]))
+(println sel/attr)"
+           prog3 "
+(ns test.user
+  (:require [garden.selectors :refer [attr]]))
+(println attr)"
+           out #queue["#object[garden$selectors$attr]"]
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue prog1))
+        :set [:input] prog1
+        :do #(click-run view)
+        :set [:output] out
+        :check
+        :do #(-> @editor .getDoc (.setValue ""))
+        :set [:input] ""
+        :do #(click-run view)
+        :set [:output] ""
+        :check
+        :do #(-> @editor .getDoc (.setValue prog2))
+        :set [:input] prog2
+        :do #(click-run view)
+        :set [:output] out
+        :check
+        :do #(-> @editor .getDoc (.setValue ""))
+        :set [:input] ""
+        :do #(click-run view)
+        :set [:output] ""
+        :check
+        :do #(-> @editor .getDoc (.setValue prog3))
+        :set [:input] prog3
+        :do #(click-run view)
+        :set [:output] out
+        :check
+        :do #(-> @editor .getDoc (.setValue ""))
+        :set [:input] ""
+        :do #(click-run view)
+        :set [:output] ""
+        :check
+        :done #(done))))))
 
 (defn -main [& args]
   (run-tests-async 240000))
