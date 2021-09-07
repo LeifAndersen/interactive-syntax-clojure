@@ -15,6 +15,7 @@
             [interactive-syntax.fs :as fs]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
+            [interactive-syntax.utils :refer [cb-thread cb-loop]]
             [interactive-syntax.env :as env]
             [interactive-syntax.stdlib :as stdlib]))
 
@@ -1036,10 +1037,9 @@
      done
      (default-clean-db
       :persist-test
-      (fn [db]
-        (let [{:keys [fs input menu current-folder current-file file-changed]
-               :as db} db
-              fpath (js/path.join files-root "x.cljs"),
+      (fn [{:keys [fs input menu current-folder current-file file-changed]
+            :as db}]
+        (let [fpath (js/path.join files-root "x.cljs"),
               orig-prog "",
               prog "(+ 1 2)",
               _ (reset! input prog),
@@ -1135,6 +1135,37 @@
         :set [:output] ""
         :check
         :done #(done))))))
+
+(deftest test-fs-ready
+  (testing "Test that the FS is ready to go when the database is constructed"
+    (async
+     done
+     (let [dep-db {1 {:name "react-hexgrid"}}
+           editor (atom nil),
+           repl (atom nil),
+           err-msg (atom ""),
+           old-error js/console.error]
+       (set! console.error #(swap! err-msg (fn [old] (str old %))))
+       (cb-thread
+        #(default-clean-db :persist-test %)
+        (fn [next {:keys [fs input output menu runner deps] :as db}]
+          (is (= @err-msg ""))
+          (reset! deps dep-db)
+          (fs.writeFile (js/path.join deps-root "react-hexgrid") test-dep next))
+        (fn [next err source]
+          (is (not err))
+          (default-clean-db :persist-test next))
+        (fn [next {:keys [fs input output menu runner deps] :as db}]
+          (is (= @err-msg ""))
+          (reset! deps dep-db)
+          (let [view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                                   :repl repl}]))]
+            (set! console.)
+            (test-do
+             db
+             :set [:deps] dep-db :check
+             :do #(set! js/console.error old-error)
+             :done #(done)))))))))
 
 (defn -main [& args]
   (run-tests-async 240000))

@@ -263,3 +263,7 @@
       :visr-commit! (atom nil)
       :insert-visr! (atom nil)})))
 
+;; For some reason without this it errors on the first (and only first)
+;; filesystem access.
+;; This line _should_ not matter. So TODO, figure out why (maybe a browserfs bug).
+(default-db :temp)
