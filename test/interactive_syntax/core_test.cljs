@@ -1152,7 +1152,7 @@
           (is (= @err-msg ""))
           (reset! deps dep-db)
           (fs.writeFile (js/path.join deps-root "react-hexgrid") test-dep next))
-        (fn [next err source]
+        (fn [next err]
           (is (not err))
           (default-clean-db :persist-test next))
         (fn [next {:keys [fs input output menu runner deps] :as db}]
@@ -1165,6 +1165,37 @@
              db
              :set [:deps] dep-db :check
              :do #(set! js/console.error old-error)
+             :done #(done)))))))))
+
+(deftest wipe-resets-deps-view
+  (testing "Ensure that the deps view properly resets when a project is wiped"
+    (async
+     done
+     (let [dep-db {1 {:name "react-hexgrid"}}
+           editor (atom nil),
+           repl (atom nil)]
+       (cb-thread
+        #(default-clean-db :persist-test %)
+        (fn [next {:keys [fs deps] :as db}]
+          (reset! deps dep-db)
+          (fs.writeFile (js/path.join deps-root "react-hexgrid") test-dep
+                        #(next db %)))
+        (fn [next {:keys [fs input output menu runner deps] :as db} err]
+          (is (not err))
+          (let [view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                                   :repl repl}]))]
+            (test-do
+             db
+             :set [:deps] dep-db :check
+             :wait 1000
+             :do #(.click rtl/fireEvent (.getByText view strings/MENU))
+             :do #(.click rtl/fireEvent (.getByText view strings/NEW-PROJECT))
+             :do #(.click rtl/fireEvent (.getByText view strings/CONFIRM-WIPE))
+             :wait 1000
+             :do #(.click rtl/fireEvent (.getByText view strings/MENU))
+             :do #(.click rtl/fireEvent (.getByText view strings/DEPENDENCIES))
+             :do #(is (not (-> (get-modal)
+                               (.querySelector "[value='react-hexgrid']"))))
              :done #(done)))))))))
 
 (defn -main [& args]

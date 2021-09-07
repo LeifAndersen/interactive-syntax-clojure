@@ -158,6 +158,10 @@
 (defn deps-dialog [{:keys [deps-env deps menu] :as db}]
   (reset! deps-env nil)
   (let [new-deps (atom @deps)]
+    (add-watch deps ::update-new-deps
+               (fn [k r o n]
+                 (when-not (and (= o n) (= n @new-deps))
+                   (reset! new-deps n))))
     (fn [{:keys [deps menu] :as db}]
       [:> Modal {:show (= (peek @menu) :deps)
                  :size "xl"
