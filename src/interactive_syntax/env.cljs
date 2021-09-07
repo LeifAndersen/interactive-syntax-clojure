@@ -113,7 +113,7 @@
             #(ocall fs :readFile (js/path.join deps-root name) %)
             (fn [next err source]
               (if err
-                (js/console.log err)
+                (console.error err)
                 (next source)))
             (fn [next source]
               (-> system (ocall :import (module->uri (.toString source)))
@@ -123,7 +123,7 @@
                                       {:global-exports {(symbol name)
                                                         (munge name)}})
                                rest-deps))
-                  (.catch #(js/console.log %))))))))
+                  (.catch #(js/console.error %))))))))
      {} [] {} @deps)))
 
 (defn deps->env+caching [{:keys [deps-env] :as db} cb]
