@@ -142,7 +142,9 @@
                          'garden.compression 'garden.selectors 'garden.types
                          'garden.units 'garden.util)
            :state-injections
-           (conj (state-injection 'garden.core (ns-publics 'garden.core))
+           (conj (state-injection 'reagent.dom (ns-publics 'reagent.dom))
+                 (state-injection 'reagent.core (ns-publics 'reagent.core))
+                 (state-injection 'garden.core (ns-publics 'garden.core))
                  (state-injection 'garden.color (ns-publics 'garden.color))
                  (state-injection 'garden.compiler (ns-publics 'garden.compiler))
                  (state-injection 'garden.compression
