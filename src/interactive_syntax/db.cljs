@@ -266,6 +266,6 @@
                                        :temp {:fs "InMemory"})}})
                           (fn [e]
                             (when e (throw e))
-                            (cb ret))))
-   ret))
+                            (cb ret)))
+     ret)))
 
