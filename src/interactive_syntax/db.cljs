@@ -11,7 +11,7 @@
 (def files-root "/files")
 (def deps-root "/deps")
 (def prompt "> ")
-(def end-prompt "<>")
+(def end-prompt "<EOF>")
 
 (deftype RefAtom [ref]
   IAtom
@@ -199,27 +199,9 @@
 
 (defn default-db
   ([] (default-db :temp))
-  ([mode]
+  ([mode] (default-db mode #()))
+  ([mode cb]
    (let [fs (browserfs/BFSRequire "fs")
-         _ (browserfs/configure (clj->js {:fs "MountableFileSystem"
-                                          :options
-                                          {files-root
-                                           (case mode
-                                             :local {:fs "IndexedDB"
-                                                     :options {:storeName "bfs"}}
-                                             :persist-test {:fs "IndexedDB"
-                                                            :options {:storeName
-                                                                      "bfstest"}}
-                                             :temp {:fs "InMemory"})
-                                           deps-root
-                                           (case mode
-                                             :local {:fs "IndexedDB"
-                                                     :options {:storeName "depsfs"}}
-                                             :persist-test {:fs "IndexedDB"
-                                                            :options {:storeName
-                                                                      "depsfstest"}}
-                                             :temp {:fs "InMemory"})}})
-                                #(when % (throw %)))
          base {:version version
                :options default-options
                :current 0
@@ -235,37 +217,55 @@
          backed-db (case mode
                      :local (local-storage db "state")
                      :persist-test db
-                     :temp db)]
-     {:options (into {}
-                     (for [i [:orientation
-                              :keymap
-                              :font-size
-                              :theme
-                              :line-wrapping
-                              :line-numbers
-                              :enable-drag-and-drop
-                              :show-editors]]
-                       [i (->DBAtom backed-db [:options i])]))
-      :version (->DBAtom backed-db [:version])
-      :fs fs
-      :runner (atom nil)
-      :backing backed-db
-      :buffers (->DBAtom backed-db [:buffers])
-      :menu (->DBAtom backed-db [:menu])
-      :input (->DBAtom backed-db [:current :input])
-      :output (atom "") ;;(->DBAtom backed-db [:current :output])
-      :current-folder (->DBAtom backed-db [:current :folder])
-      :current-file (->DBAtom backed-db [:current :file])
-      :file-browser-folder (->DBAtom backed-db [:folder])
-      :deps (->DBAtom backed-db [:deps])
-      :deps-env (atom nil)
-      :env (atom nil)
-      :file-changed (->DBAtom backed-db [:current :changed?])
-      :running? (atom false)
-      :visr-commit! (atom nil)
-      :insert-visr! (atom nil)})))
+                     :temp db)
+         ret {:options (into {}
+                             (for [i [:orientation
+                                      :keymap
+                                      :font-size
+                                      :theme
+                                      :line-wrapping
+                                      :line-numbers
+                                      :enable-drag-and-drop
+                                      :show-editors]]
+                               [i (->DBAtom backed-db [:options i])]))
+              :version (->DBAtom backed-db [:version])
+              :fs fs
+              :runner (atom nil)
+              :backing backed-db
+              :buffers (->DBAtom backed-db [:buffers])
+              :menu (->DBAtom backed-db [:menu])
+              :input (->DBAtom backed-db [:current :input])
+              :output (atom "") ;;(->DBAtom backed-db [:current :output])
+              :current-folder (->DBAtom backed-db [:current :folder])
+              :current-file (->DBAtom backed-db [:current :file])
+              :file-browser-folder (->DBAtom backed-db [:folder])
+              :deps (->DBAtom backed-db [:deps])
+              :deps-env (atom nil)
+              :env (atom nil)
+              :file-changed (->DBAtom backed-db [:current :changed?])
+              :running? (atom false)
+              :visr-commit! (atom nil)
+              :insert-visr! (atom nil)}]
+     (browserfs/configure (clj->js {:fs "MountableFileSystem"
+                                    :options
+                                    {files-root
+                                     (case mode
+                                       :local {:fs "IndexedDB"
+                                               :options {:storeName "bfs"}}
+                                       :persist-test {:fs "IndexedDB"
+                                                      :options {:storeName
+                                                                "bfstest"}}
+                                       :temp {:fs "InMemory"})
+                                     deps-root
+                                     (case mode
+                                       :local {:fs "IndexedDB"
+                                               :options {:storeName "depsfs"}}
+                                       :persist-test {:fs "IndexedDB"
+                                                      :options {:storeName
+                                                                "depsfstest"}}
+                                       :temp {:fs "InMemory"})}})
+                          (fn [e]
+                            (when e (throw e))
+                            (cb ret))))
+   ret))
 
-;; For some reason without this it errors on the first (and only first)
-;; filesystem access.
-;; This line _should_ not matter. So TODO, figure out why (maybe a browserfs bug).
-(default-db :temp)

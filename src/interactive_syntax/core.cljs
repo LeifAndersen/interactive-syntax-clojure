@@ -10,7 +10,7 @@
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [interactive-syntax.db :as db :refer [files-root]]
-   [interactive-syntax.utils :as utils :refer [cb-thread]]
+   [interactive-syntax.utils :as utils :refer [cb-thread cb-loop]]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.env :as env]
    [interactive-syntax.stdlib :as stdlib]
@@ -809,7 +809,9 @@
         (fn [k r o n]
           (when (and @edit (not= o n))
             (-> @edit (ocall "getDoc")
-                (ocall "setValue" (string/join "\n" (filter string? n))))
+                (ocall "setValue"
+                       (str (string/join "\n" (filter string? n))
+                            db/end-prompt)))
             (doseq [i @instances]
               (ocall i :clear))
             (loop [line 0
@@ -820,7 +822,7 @@
                    (recur (+ line (-> i (.split #"\r\n|\r|\n") .-length)) rest),
                    (vector? i)
                    (let [element (.createElement js/document "div")]
-                     (d/render i element)
+                     (d/render [env/styled-frame i] element)
                      (swap! instances conj
                             (-> @edit (ocall "getDoc")
                                 (ocall "addLineWidget" (max 0 (dec line)) element)))
@@ -915,15 +917,19 @@
 ;; Initialize app
 
 (defn mount-root [& [{:keys [debug]}]]
-  (let [{:keys [fs] :as db} (db/default-db :local)]
-    (when debug
-      (set! js/window.git isomorphic-git)
-      (set! js/window.db db)
-      (set! js/window.fs fs)
-      (set! js/window.isohttp isohttp))
-    (d/render
-     [home-page db]
-     (.getElementById js/document "app"))))
+  (cb-thread
+   #(db/default-db :local %)
+   (fn [next {:keys [fs menu] :as db}]
+     (when debug
+       (set! js/window.git isomorphic-git)
+       (set! js/window.db db)
+       (set! js/window.fs fs)
+       (set! js/window.isohttp isohttp))
+     (when (= (peek @menu) :hold)
+       (swap! menu pop))
+     (d/render
+      [home-page db]
+      (.getElementById js/document "app")))))
 
 (defn init! [& [opts]]
   (mount-root opts))
