@@ -757,6 +757,9 @@
                    (-> @edit (ocall :getDoc) (ocall :setValue txt)))
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
+                          (doseq [[k v] @editors]
+                            (reset! (:show-visr v) false)
+                            (reset! (:show-code v) false))
                           (let [fc @file-changed]
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! file-changed fc))))]
