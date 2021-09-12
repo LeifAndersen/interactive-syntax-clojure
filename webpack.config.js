@@ -6,6 +6,11 @@ const config = {
     module: {
         rules: [
             {
+                test: /\.worker\.js$/,
+                loader: "worker-loader",
+                options: {inline: "no-fallback"}
+            },
+            {
                 test: /\.js$/,
                 enforce: 'pre',
                 use: ['source-map-loader'],

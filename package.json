@@ -19,7 +19,8 @@
     "source-map-loader": "^3.0.0",
     "style-loader": "^2.0.0",
     "webpack": "^5.47.1",
-    "webpack-cli": "^4.7.2"
+    "webpack-cli": "^4.7.2",
+    "worker-loader": "^3.0.8"
   },
   "dependencies": {
     "@babel/core": "^7.13.10",

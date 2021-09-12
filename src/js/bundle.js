@@ -16,3 +16,20 @@ window.stopifyArray = function(array) {
     return require('@stopify/higher-order-functions/dist/ts/simpleHofPolyfill.lazy')
         .stopifyArray(array);
 };
+
+import asyncCompile from "./stopify-compile.worker.js";
+let worker = new asyncCompile();
+let workerTable = {};
+let workerKey = 0;
+
+worker.onmessage = ({data: {prog, key}}) => {
+    let cb = workerTable[key];
+    delete workerTable[key];
+    cb(prog);
+};
+
+window.asyncStopifyCompile = (prog, cb) => {
+    workerTable[workerKey] = cb;
+    worker.postMessage({key: workerKey, prog});
+    workerKey++;
+};

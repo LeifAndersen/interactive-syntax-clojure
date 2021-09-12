@@ -162,12 +162,14 @@
            (fn [{:keys [source name cache]} cb]
              (let [ast (babylon/parse source)
                    polyfilled (hof/polyfillHofFromAst ast)]
-               (ocall runner :evalAsyncFromAst polyfilled
-                      (fn [res]
-                        (when-not (or (= (:type res) "normal")
-                                      (= (:value res) nil))
-                          (println res))
-                        (cb res)))))
+               (cb-thread
+                #(js/asyncStopifyCompile polyfilled %)
+                #(ocall runner :evalCompiled %2
+                        (fn [res]
+                          (when-not (or (= (:type res) "normal")
+                                        (= (:value res) nil))
+                            (println res))
+                          (cb res))))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    ;;:verbose true
