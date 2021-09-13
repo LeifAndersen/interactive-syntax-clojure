@@ -113,6 +113,15 @@
       (let [[_ timeout & rest] cmds]
         (js/setTimeout (fn [] (test-do-helper expected-state ui-state rest nil))
                        timeout))
+      :wait-until
+      (let [[_ pred atm & rest] cmds]
+        (if (pred @atm)
+          (test-do-helper expected-state ui-state rest nil)
+          (add-watch atm ::temp
+                     (fn [k r o n]
+                       (when (pred n)
+                         (remove-watch atm ::temp)
+                         (test-do-helper expected-state ui-state rest nil))))))
       :async
       (let [[_ proc & rest] cmds]
         (proc #(test-do-helper expected-state ui-state rest nil)))
@@ -293,7 +302,7 @@
 
 (deftest bad-ns-buff
   (testing "Requiring a namespace that does not exist"
-    (let [{:keys [input file-changed] :as db} (default-db :temp)
+    (let [{:keys [input file-changed running?] :as db} (default-db :temp)
           editor (atom nil)
           view (rtl/render (r/as-element [core/home-page db {:editor editor}]))
           prog "
@@ -311,6 +320,7 @@
        :set [:file-changed] true :check
        :do #(-> @editor .getDoc (.setValue prog))
        :do #(click-run view)
+       :wait-until not running?
        :set [:input] prog
        :set [:output] #queue [err-msg]
        :set [:file-changed] true :check))))
@@ -497,7 +507,8 @@
 
 (deftest simple-eval
   (testing "Make sure eval works"
-    (let [{:keys [fs input output menu current-file current-folder file-changed]
+    (let [{:keys [fs input output running?
+                  menu current-file current-folder file-changed]
            :as db}
           (default-db :temp),
           editor (atom nil),
@@ -508,7 +519,8 @@
        db :check
        :do #(-> @editor .getDoc (.setValue "(println (+ 1 2))"))
        :set [:input] "(println (+ 1 2))" :check
-       :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+       :do #(click-run view)
+       :wait-until not running?
        :set [:output] #queue ["3"] :check
        :do #(is (= (-> @repl .getDoc .getValue) "3"))))))
 
@@ -516,7 +528,7 @@
   (testing "Make sure stopify works"
     (async
      done
-     (let [{:keys [fs input output menu runner]
+     (let [{:keys [fs input output menu runner running?]
             :as db}
            (default-db :temp),
            editor (atom nil),
@@ -536,6 +548,7 @@
         :do #(reset! input prog1)
         :set [:input] prog1 :check
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] #queue ["0" "1" "2" "3" "4"] :check
         :do #(reset! input prog2)
         :set [:input] prog2 :check
@@ -552,7 +565,8 @@
   (testing "Make sure eval works"
     (async
      done
-     (let [{:keys [fs input output menu current-file current-folder file-changed]
+     (let [{:keys [fs input output running?
+                   menu current-file current-folder file-changed]
             :as db}
            (default-db :temp),
            core-prog "
@@ -579,6 +593,7 @@
         :do #(-> @editor .getDoc (.setValue use-prog))
         :set [:input] use-prog :check
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
+        :wait-until not running?
         :set [:output] expected-res :check
         :do #(is (= (-> @repl .getDoc .getValue) (string/join "\n" expected-res)))
         :done #(done))))))
@@ -666,7 +681,7 @@
   (testing "Test :require on dependencies"
     (async
      done
-     (let [{:keys [fs input output menu runner]
+     (let [{:keys [fs input output menu runner running?]
             :as db}
            (default-db :temp),
            editor (atom nil),
@@ -694,22 +709,27 @@
         :do #(reset! input prog1)
         :set [:input] prog1 :check
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] #queue ["false"] :check
         :do #(reset! input interum)
         :set [:input] interum
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] #queue ["3"] :check
         :do #(reset! input prog2)
         :set [:input] prog2
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] #queue ["false"] :check
         :do #(reset! input interum)
         :set [:input] interum
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] #queue ["3"] :check
         :do #(reset! input prog3)
         :set [:input] prog3
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] #queue ["false"] :check
         :done #(done))))))
 
@@ -717,7 +737,7 @@
   (testing "Test an installed/additional dep"
     (async
      done
-     (let [{:keys [fs input output menu runner]
+     (let [{:keys [fs input output menu runner running?]
             :as db}
            (default-db :temp),
            editor (atom nil),
@@ -750,7 +770,7 @@
         :do #(reset! input prog1)
         :set [:input] prog1 :check
         :do #(click-run view)
-        :wait 0
+        :wait-until not running?
         :set [:output] #queue ["false" "false" "false" "false"] :check
         :done #(done))))))
 
@@ -758,7 +778,7 @@
   (testing "Ensure a basic visr runs"
     (async
      done
-     (let [{:keys [fs input output menu runner]
+     (let [{:keys [fs input output menu runner running?]
             :as db}
            (default-db :temp),
            editor (atom nil),
@@ -794,7 +814,7 @@
         :do #(-> @editor .getDoc (.setValue use-prog))
         :set [:input] use-prog :check
         :do #(click-run view)
-        :wait 0
+        :wait-until not running?
         :set [:output] #queue ["334"] :check
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
@@ -809,7 +829,7 @@
                          (aget 0)))
         :wait 0
         :do #(click-run view)
-        :wait 0
+        :wait-until not running?
         :set [:input] new-use
         :set [:output] #queue ["335"] :check
         :done #(done))))))
@@ -1082,7 +1102,7 @@
   (testing "Ensure :refer works for injected clojurescript deps"
     (async
      done
-     (let [{:keys [fs input output menu runner]
+     (let [{:keys [fs input output menu runner running?]
             :as db}
            (default-db :temp),
            editor (atom nil),
@@ -1107,31 +1127,37 @@
         :do #(-> @editor .getDoc (.setValue prog1))
         :set [:input] prog1
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] out
         :check
         :do #(-> @editor .getDoc (.setValue ""))
         :set [:input] ""
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] ""
         :check
         :do #(-> @editor .getDoc (.setValue prog2))
         :set [:input] prog2
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] out
         :check
         :do #(-> @editor .getDoc (.setValue ""))
         :set [:input] ""
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] ""
         :check
         :do #(-> @editor .getDoc (.setValue prog3))
         :set [:input] prog3
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] out
         :check
         :do #(-> @editor .getDoc (.setValue ""))
         :set [:input] ""
         :do #(click-run view)
+        :wait-until not running?
         :set [:output] ""
         :check
         :done #(done))))))

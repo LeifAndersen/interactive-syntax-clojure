@@ -17,6 +17,6 @@ window.stopifyArray = function(array) {
         .stopifyArray(array);
 };
 
-import asyncCompile from "./stopify-compile.worker.js";
-
-window.StopifyWorker = asyncCompile;
+// For async stoppify compile (when it works).
+//import asyncCompile from "./stopify-compile.worker.js";
+//window.StopifyWorker = asyncCompile;
