@@ -770,6 +770,7 @@
         :do #(reset! input prog1)
         :set [:input] prog1 :check
         :do #(click-run view)
+        :wait 1000
         :wait-until not running?
         :set [:output] #queue ["false" "false" "false" "false"] :check
         :done #(done))))))

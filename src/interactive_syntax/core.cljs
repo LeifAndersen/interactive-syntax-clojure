@@ -750,7 +750,7 @@
 (defn editor-view [{:keys [menu input output options file-changed
                            current-file fs visr-commit! insert-visr!]
                     :as db}
-                   & [editor-ref]]
+                   & [editor-ref visr-run-ref]]
   (let [edit (atom nil)
         editors (atom {})
         set-text (fn [txt]
@@ -787,7 +787,7 @@
                     (reset! file-changed true)
                     (reset! input value)
                     (env/reset-editors!
-                     input set-text edit editors operation db))
+                     input set-text edit editors operation db visr-run-ref))
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)
@@ -801,7 +801,7 @@
                           (when editor-ref
                             (reset! editor-ref e))
                           (env/reset-editors!
-                           input set-text edit editors nil db))}])))
+                           input set-text edit editors nil db visr-run-ref))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
@@ -862,6 +862,7 @@
                   :as db}
                  & [{editor-ref :editor
                      repl-ref :repl
+                     visr-run-ref :visr-run
                      :as opts}]]
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
@@ -902,7 +903,7 @@
      [:div {:style {:flex "1 1 auto"
                     :overflow "auto"}}
       [:> SplitPane {:split @orientation}
-       [editor-view db editor-ref]
+       [editor-view db editor-ref visr-run-ref]
        [result-view db repl-ref]]]
      [:div {:style {:flex "1 1 auto"
                     :overflow "auto"
@@ -913,7 +914,7 @@
        [:> Tab {:eventKey "1"
                 :title "Test"}
         [:> SplitPane {:split @orientation}
-         [editor-view db editor-ref]
+         [editor-view db editor-ref visr-run-ref]
          [result-view db repl-ref]]]]])])
 
 ;; -------------------------

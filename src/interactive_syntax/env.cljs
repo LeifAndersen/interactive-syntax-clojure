@@ -364,7 +364,8 @@
 (defn mk-editor [{:keys [editor] :as data}
                  stx
                  {:keys [runner loaded state ns-cache] :as run-state}
-                 fs file-src cb]
+                 fs file-src cb
+                 & [visr-run-ref]]
   (let [ns (namespace editor)
         srcloc (info->srcloc data)
         catch-fn (fn [e]
@@ -379,6 +380,7 @@
                            :state state
                            :ns-cache ns-cache
                            :ns ns
+                           :running? visr-run-ref
                            :fs fs}
                           cb))]
     (try
@@ -393,6 +395,7 @@
                                       :loaded @loaded
                                       :state state
                                       :ns-cache ns-cache
+                                      :running? visr-run-ref
                                       :fs fs}
                                      mk-fn))))
         :else (eval-str file-src
@@ -400,6 +403,7 @@
                          :loaded @loaded
                          :state state
                          :ns-cache ns-cache
+                         :running? visr-run-ref
                          :fs fs}
                         mk-fn))
       (catch :default e (catch-fn e)))))
@@ -552,7 +556,8 @@
                                       (ocall "setValue" @stx-str)))}]]]]])]])))
 
 (defn reset-editors! [source set-text editor instances operation
-                      {:keys [fs options deps env] :as db}]
+                      {:keys [fs options deps env] :as db}
+                      & [visr-run-ref]]
   (let [old @instances]
     (when @env
       (try
@@ -579,6 +584,7 @@
                                               @(get-in @instances [x :update])))
                                 :loaded (:loaded deps-env)
                                 :js-deps (:js-deps deps-env)
+                                :running? visr-run-ref
                                 :fs fs}
                                db)
                             #())]
