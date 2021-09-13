@@ -158,17 +158,30 @@
      ["cljs" "cljc" "js"])))
 
 (defn eval-opts [fs runner print-fn sandbox? ns]
-  {:eval (if sandbox?
-           (fn [{:keys [source name cache]} cb]
-             (let [ast (babylon/parse source)
-                   polyfilled (hof/polyfillHofFromAst ast)]
-               (ocall runner :evalAsyncFromAst  polyfilled
-                      (fn [res]
-                        (when-not (or (= (:type res) "normal")
-                                      (= (:value res) nil))
-                          (println res))
-                        (cb res)))))
-           cljs.js/js-eval)
+  {:eval (cond
+           ;; sync path
+           sandbox? (fn [{:keys [source name cache]} cb]
+                      (let [ast (babylon/parse source)
+                            polyfilled (hof/polyfillHofFromAst ast)]
+                        (ocall runner :evalAsyncFromAst  polyfilled
+                               (fn [res]
+                                 (when-not (or (= (:type res) "normal")
+                                               (= (:value res) nil))
+                                   (println res))
+                                 (cb res)))))
+           ;; async path, currently disabled (needed for responsive UI)
+           false (fn [{:keys [source name cache]} cb]
+                   (let [worker (new js/StopifyWorker)]
+                     (set! worker.onmessage
+                           #(ocall runner :evalCompiled (oget % :data.prog)
+                                   (fn [res]
+                                     (when-not (or (= (:type res) "normal")
+                                                   (= (:value res) nil))
+                                       (println res))
+                                     (cb res))))
+                     (.postMessage worker (clj->js
+                                           {:prog source}))))
+           :else cljs.js/js-eval)
    :load (partial ns->string fs)
    ;;:verbose true
    :source-map false ; true
