@@ -1226,6 +1226,65 @@
                                (.querySelector "[value='react-hexgrid']"))))
              :done #(done)))))))))
 
+(deftest test-multi-update
+  (testing "Ensure visrs update correctly when two cursors update simultaniously"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running?]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           lib "
+(ns test.core (:require [reagent.core :refer [cursor]]))
+(defvisr multi-update
+  (elaborate [this] 42)
+  (render [this]
+   (let [a (cursor this [:a])
+         b (cursor this [:b])]
+    [:button {:onClick (fn [] (when-not @a (reset! a 42))
+                              (when-not @b (reset! b 819)))}
+      \"Setup\"])))"
+           use "
+(ns test.use (:require [test.core :include-macros true]))
+^{:editor test.core/multi-update}(test.core/multi-update+elaborate {})"
+           new-use "
+(ns test.use (:require [test.core :include-macros true]))
+^{:editor test.core/multi-update}(test.core/multi-update+elaborate {:a 42, :b 819}
+)"
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
+        :do #(set! js/window.fs fs)
+        :do #(-> @editor .getDoc (.setValue use))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 1000
+        :do #(.click rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByTagName "iframe")
+                         (aget 0)
+                         .-contentDocument
+                         (.getElementsByTagName "button")
+                         (aget 0)))
+        :wait 1000
+        :do #(.click rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByTagName "iframe")
+                         (aget 0)
+                         .-contentDocument
+                         (.getElementsByTagName "button")
+                         (aget 0)))
+        :wait 1000
+        :set [:input] new-use
+        :check
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 240000))
 

@@ -621,12 +621,8 @@
                             (let [prev (get-in old [{:line (:line info)
                                                      :column (:column info)}])
                                   hider (.createElement js/document "span")
-                                  show-visr (atom (if prev
-                                                    @(:show-visr prev)
-                                                    false))
-                                  show-code (atom (if prev
-                                                    @(:show-code prev)
-                                                    false))
+                                  show-visr (atom false)
+                                  show-code (atom false)
                                   info (atom info)
                                   form (atom (second form))
                                   changed? (atom false)
@@ -644,8 +640,10 @@
                                                   (:editor info) form)
                                                  (subs @source end)))
                                   update (atom nil)
-                                  commit! #(when @changed?
+                                  can-commit? (atom true)
+                                  commit! #(when (and @changed? @can-commit?)
                                              (set-text (new-str @info @form))
+                                             (reset! can-commit? false)
                                              (reset! changed? false))]
                               (d/render
                                [visr-hider db editor show-visr show-code
@@ -678,7 +676,11 @@
                                         :show-visr show-visr
                                         :show-code show-code
                                         :info info
-                                        :stx form}))))
+                                        :stx form})
+                                (when (and prev @(:show-visr prev))
+                                  (reset! show-visr true))
+                                (when (and prev @(:show-code prev))
+                                  (reset! show-code true)))))
                           (doseq [e form]
                             (when (coll? e)
                               (rec e)))))
