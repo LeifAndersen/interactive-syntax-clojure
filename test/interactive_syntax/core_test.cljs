@@ -68,8 +68,8 @@
 ;;  - output has pure newlines stripped
 (defn is-db= [this other & [check-keys]]
   (when (or (not check-keys) (some #{:output} check-keys))
-    (is (= (filter #(not (= % "\n")) @(:output this))
-           (filter #(not (= % "\n")) @(:output other)))))
+    (is (= (filter #(and (not (= % "\n")) (not (= % "<EOF>"))) @(:output this))
+           (filter #(and (not (= % "\n")) (not (= % "<EOF>"))) @(:output other)))))
   (when (or (not check-keys) (some #{:deps} check-keys))
     (is (= (vals @(:deps this)) (vals @(:deps other)))))
   (let [test-keys (or check-keys [:input
@@ -553,7 +553,7 @@
         :do #(reset! input prog2)
         :set [:input] prog2 :check
         :do #(click-run view)
-        :wait 10
+        :wait 1000
         :async #((:pause-eval @runner) %)
         :do #(do
                (is (seq @output))
@@ -595,7 +595,8 @@
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
         :wait-until not running?
         :set [:output] expected-res :check
-        :do #(is (= (-> @repl .getDoc .getValue) (string/join "\n" expected-res)))
+        :do #(is (= (-> @repl .getDoc .getValue)
+                    (str (string/join "\n" expected-res) "")))
         :done #(done))))))
 
 (deftest change-folder-in-browser
@@ -766,7 +767,7 @@
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/UPDATE)))
         :set [:deps] {1 {:name "react-hexgrid" :version ""
                          :url (env/module->uri test-dep)}}
-        :wait 0
+        :wait 1000
         :do #(reset! input prog1)
         :set [:input] prog1 :check
         :do #(click-run view)
@@ -793,7 +794,7 @@
   (render [this]
     [:> Button {:aria-label \"Counter\"
                 :onClick #(swap! this inc)}
-      this])
+      @this])
   (elaborate [this] `'~this))"
 
            use-prog "
@@ -819,7 +820,7 @@
         :set [:output] #queue ["334"] :check
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
-        :wait 100
+        :wait 1000
         :do #(.click rtl/fireEvent
                      (-> js/document
                          .-body
@@ -828,7 +829,7 @@
                          .-contentDocument
                          (.getElementsByTagName "button")
                          (aget 0)))
-        :wait 0
+        :wait 1000
         :do #(click-run view)
         :wait-until not running?
         :set [:input] new-use

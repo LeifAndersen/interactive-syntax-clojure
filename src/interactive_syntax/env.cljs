@@ -157,31 +157,31 @@
      ["clj" "cljc" "cljs"]
      ["cljs" "cljc" "js"])))
 
-(defn eval-opts [fs runner print-fn sandbox? ns]
-  {:eval (cond
-           ;; sync path
-           sandbox? (fn [{:keys [source name cache]} cb]
-                      (let [ast (babylon/parse source)
-                            polyfilled (hof/polyfillHofFromAst ast)]
-                        (ocall runner :evalAsyncFromAst  polyfilled
-                               (fn [res]
-                                 (when-not (or (= (:type res) "normal")
-                                               (= (:value res) nil))
-                                   (println res))
-                                 (cb res)))))
-           ;; async path, currently disabled (needed for responsive UI)
-           false (fn [{:keys [source name cache]} cb]
-                   (let [worker (new js/StopifyWorker)]
-                     (set! worker.onmessage
-                           #(ocall runner :evalCompiled (oget % :data.prog)
-                                   (fn [res]
-                                     (when-not (or (= (:type res) "normal")
-                                                   (= (:value res) nil))
-                                       (println res))
-                                     (cb res))))
-                     (.postMessage worker (clj->js
-                                           {:prog source}))))
-           :else cljs.js/js-eval)
+(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun]
+  {:eval (if sandbox?
+           (fn [{:keys [source name cache]} cb]
+             (if true ;; sync v async, currently always sync
+               (let [ast (babylon/parse source)
+                     polyfilled (hof/polyfillHofFromAst ast)]
+                 (ocall runner :evalAsyncFromAst polyfilled
+                        (fn [res]
+                          (when-not (or (= (:type res) "normal")
+                                        (= (:value res) nil))
+                            (println res))
+                          (cb res))))
+               (let [worker (new js/StopifyWorker)]
+                 (onYield)
+                 (set! worker.onmessage
+                       (fn [msg]
+                         (onRun)
+                         (ocall runner :evalCompiled (oget msg :data.prog)
+                                (fn [res]
+                                  (when-not (or (= (:type res) "normal")
+                                                (= (:value res) nil))
+                                    (println res))
+                                  (cb res)))))
+                 (.postMessage worker #js {:prog source}))))
+           cljs.js/js-eval)
    :load (partial ns->string fs)
    ;;:verbose true
    :source-map false ; true
@@ -223,8 +223,6 @@
                  :else loaded)
         file-name (or file-name strings/UNTITLED)
         print-fn (or print-fn #())
-        opts (eval-opts fs runner print-fn sandbox ns)
-        bootstrap-opts (eval-opts fs runner print-fn sandbox nil)
         lang (or lang :clj)
         state (or state (empty-state))
         ns-cache (or ns-cache (atom nil))
@@ -261,6 +259,8 @@
                     (set! *additional-core* @coop-additional-core)
                     (set! *compiler* @coop-state))
                   true)
+        opts (eval-opts fs runner print-fn sandbox ns onYield onRun)
+        bootstrap-opts (eval-opts fs runner print-fn sandbox nil onYield onRun)
         pause-eval (fn [cb]
                      (.pause runner
                              (fn [ln]
