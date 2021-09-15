@@ -302,28 +302,31 @@
 
 (deftest bad-ns-buff
   (testing "Requiring a namespace that does not exist"
-    (let [{:keys [input file-changed running?] :as db} (default-db :temp)
-          editor (atom nil)
-          view (rtl/render (r/as-element [core/home-page db {:editor editor}]))
-          prog "
+    (async
+     done
+     (let [{:keys [input file-changed running?] :as db} (default-db :temp)
+           editor (atom nil)
+           view (rtl/render (r/as-element [core/home-page db {:editor editor}]))
+           prog "
 (ns bob.core
   (:require [bill.core :as bill]))"
-          err-msg (str "#error {:message No such namespace: bill.core, "
-                       "could not locate bill/core.cljs, bill/core.cljc, "
-                       "or JavaScript source providing \"bill.core\", "
-                       ":data {:tag :cljs/analysis-error}}")]
-
-      (test-do
-       db :check
-       :do #(-> @editor .getDoc (.setValue "(ns bob.core)"))
-       :set [:input] "(ns bob.core)"
-       :set [:file-changed] true :check
-       :do #(-> @editor .getDoc (.setValue prog))
-       :do #(click-run view)
-       :wait-until not running?
-       :set [:input] prog
-       :set [:output] #queue [err-msg]
-       :set [:file-changed] true :check))))
+           err-msg (str "#error {:message No such namespace: bill.core, "
+                        "could not locate bill/core.cljs, bill/core.cljc, "
+                        "or JavaScript source providing \"bill.core\", "
+                        ":data {:tag :cljs/analysis-error}}")]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue "(ns bob.core)"))
+        :set [:input] "(ns bob.core)"
+        :set [:file-changed] true :check
+        :do #(-> @editor .getDoc (.setValue prog))
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 100
+        :set [:input] prog
+        :set [:output] #queue [err-msg]
+        :set [:file-changed] true :check
+        :done #(done))))))
 
 (deftest file-save-load-view
   (testing "File Save And load through view actions"
@@ -507,22 +510,26 @@
 
 (deftest simple-eval
   (testing "Make sure eval works"
-    (let [{:keys [fs input output running?
-                  menu current-file current-folder file-changed]
-           :as db}
-          (default-db :temp),
-          editor (atom nil),
-          repl (atom nil),
-          view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                             :repl repl}]))]
-      (test-do
-       db :check
-       :do #(-> @editor .getDoc (.setValue "(println (+ 1 2))"))
-       :set [:input] "(println (+ 1 2))" :check
-       :do #(click-run view)
-       :wait-until not running?
-       :set [:output] #queue ["3"] :check
-       :do #(is (= (-> @repl .getDoc .getValue) "3"))))))
+    (async
+     done
+     (let [{:keys [fs input output running?
+                   menu current-file current-folder file-changed]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue "(println (+ 1 2))"))
+        :set [:input] "(println (+ 1 2))" :check
+        :do #(click-run view)
+        :wait-until not running?
+        :set [:output] #queue ["3"] :check
+        :do #(is (or (= (-> @repl .getDoc .getValue) "3")
+                     (= (-> @repl .getDoc .getValue) "3<EOF>")))
+        :done #(done))))))
 
 (deftest test-stopify
   (testing "Make sure stopify works"
@@ -595,8 +602,10 @@
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
         :wait-until not running?
         :set [:output] expected-res :check
-        :do #(is (= (-> @repl .getDoc .getValue)
-                    (str (string/join "\n" expected-res) "")))
+        :do #(is (or (= (-> @repl .getDoc .getValue)
+                        (str (string/join "\n" expected-res) ""))
+                     (= (-> @repl .getDoc .getValue)
+                        (str (string/join "\n" expected-res) "<EOF>"))))
         :done #(done))))))
 
 (deftest change-folder-in-browser
