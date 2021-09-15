@@ -755,6 +755,7 @@
         editors (atom {})
         set-text (fn [txt]
                    (-> @edit (ocall :getDoc) (ocall :setValue txt)))
+        mounted? (clojure.core/atom false)
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (doseq [[k v] @editors]
@@ -786,8 +787,9 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (env/reset-editors!
-                     input set-text edit editors operation db visr-run-ref))
+                    (when @mounted?
+                      (env/reset-editors!
+                       input set-text edit editors operation db #() visr-run-ref)))
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)
@@ -801,7 +803,9 @@
                           (when editor-ref
                             (reset! editor-ref e))
                           (env/reset-editors!
-                           input set-text edit editors nil db visr-run-ref))}])))
+                           input set-text edit editors nil db
+                           #(reset! mounted? true)
+                           visr-run-ref))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}

@@ -570,7 +570,7 @@
 
 (defn reset-editors! [source set-text editor instances operation
                       {:keys [fs options deps env] :as db}
-                      & [visr-run-ref]]
+                      cb & [visr-run-ref]]
   (let [old @instances]
     (when @env
       (try
@@ -686,6 +686,7 @@
                               (rec e)))))
                       form))
                    (recur))))
+             (cb)
              (catch ExceptionInfo e
                (js/console.log e))
              (catch js/Error e
