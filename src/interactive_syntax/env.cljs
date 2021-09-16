@@ -27,6 +27,7 @@
    ["@babel/parser" :as babylon]
    ["@babel/template" :as babel-template]
    ["@leifandersen/react-codemirror2" :as cm]
+   [react-resize-detector]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
@@ -40,6 +41,7 @@
 
 (def ^:private template (.-default babel-template))
 (def ^:private Frame (.-default react-frame-component))
+(def ^:private ReactResizeDetector (.-default react-resize-detector))
 
 (defn print-res [{:keys [output]
                   :as db}
@@ -430,17 +432,21 @@
    (-> element .-innerHTML)])
 
 (defn styled-frame [mopts & mbody]
-  (let [opts (if (map? mopts) mopts {})
-        body (if (map? mopts) mbody (into [mopts] mbody))]
-    (into [:> Frame (conj opts
-                          {:head
-                           (r/as-element
-                            (into [:<> (:head opts)]
-                                  (for [i (-> js/document .-head
-                                              (.getElementsByTagName "style"))]
-                                    (dom->reagent i))))
-                           :style {:resize "both"}})]
-          body)))
+  (let [opts (if (map? mopts) (dissoc mopts :on-resize) {})
+        body (if (map? mopts) mbody (into [mopts] mbody))
+        on-resize (and (map? mopts) (:on-resize mopts))]
+    [:span
+     [:> ReactResizeDetector {:handleWidth true :handleHeight true
+                              :on-resize #(when on-resize (on-resize))}]
+     (into [:> Frame (conj opts
+                           {:head
+                            (r/as-element
+                             (into [:<> (:head opts)]
+                                   (for [i (-> js/document .-head
+                                               (.getElementsByTagName "style"))]
+                                     (dom->reagent i))))
+                            :style {:resize "both"}})]
+           body)]))
 
 (defn codemirror-options [{:keys [options] :as db}]
   {:mode "clojure"
@@ -467,7 +473,8 @@
                                            (pr-str info)]])))})))
 
 (defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
-                  run-state info stx-box changed? file-src commit! update-box]
+                  run-state info stx-box changed? file-src commit! update-box
+                  rmark-box]
   (let [visr (atom nil)
         focused? (atom false)
         stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
@@ -513,7 +520,8 @@
          "\uD83D\uDC41"]
         (when @show-visr
           [err-boundary
-           [styled-frame @visr]])
+           [styled-frame {:on-resize #(when @rmark-box (ocall @rmark-box :changed))}
+            @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
                     :style {:padding 0 :font-size "0.8em"}
@@ -522,7 +530,8 @@
          [:code "(\u03BB)"]]
         (when @show-code
           [styled-frame
-           {:on-blur commit!
+           {:on-resize #(when @rmark-box (ocall @rmark-box :changed))
+            :on-blur commit!
             :head [:style (css [:.frame-root :.frame-content {:height "100%"}])]}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
@@ -644,10 +653,12 @@
                                   commit! #(when (and @changed? @can-commit?)
                                              (set-text (new-str @info @form))
                                              (reset! can-commit? false)
-                                             (reset! changed? false))]
+                                             (reset! changed? false))
+                                  rmark-box (atom nil)]
                               (d/render
                                [visr-hider db editor show-visr show-code
-                                run-state info form changed? @source commit! update]
+                                run-state info form changed? @source commit! update
+                                rmark-box]
                                hider)
                               (let [r-mark (-> @editor
                                                (ocall :getDoc)
@@ -659,6 +670,7 @@
                                                      :ch (dec (:end-column @info))}
                                                 #js {:collapsed true
                                                      :replacedWith hider}))]
+                                (reset! rmark-box r-mark)
                                 (add-watch show-visr ::visr-resize
                                            (fn [k r o n]
                                              (when-not (= o n)
