@@ -34,7 +34,8 @@
    ["codemirror/addon/search/searchcursor"]
    [browserfs]
    [base64-js]
-   [react-split-pane :refer [Pane]]
+   [react-split-pane]
+   ["react-split-pane/lib/Pane" :as Pane]
    [react-switch]
    [react-dnd :refer [DndProvider]]
    [react-dnd-html5-backend :refer [HTML5Backend]]
@@ -862,7 +863,7 @@
 ;; Views
 
 (defn home-page [{{:keys [orientation]} :options
-                  :keys [fs buffers output version menu]
+                  :keys [fs buffers output version menu split]
                   :as db}
                  & [{editor-ref :editor
                      repl-ref :repl
@@ -906,8 +907,11 @@
    (if (= (count @buffers) 1)
      [:div {:style {:flex "1 1 auto"
                     :overflow "auto"}}
-      [:> SplitPane {:split @orientation}
-       [editor-view db editor-ref visr-run-ref]
+      [:> SplitPane {:split @orientation
+                     :on-change #(reset! split (aget % 0))}
+       [:> Pane {:initialSize @split
+                 :style [:height "100%"]}
+        [editor-view db editor-ref visr-run-ref]]
        [result-view db repl-ref]]]
      [:div {:style {:flex "1 1 auto"
                     :overflow "auto"

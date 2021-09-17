@@ -7,7 +7,7 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def version (str "0.1.6-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def version (str "0.1.7-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
 (def prompt "> ")
@@ -129,13 +129,15 @@
 (s/def ::file (s/nilable string?))
 (s/def ::changed? boolean?)
 (s/def ::running? boolean?)
+(s/def ::split integer?)
 (s/def ::buffer (s/keys :req-un [::input
                                  ::output
                                  ::folder
                                  ::file
                                  ::changed?
                                  ::runner
-                                 ::running?]))
+                                 ::running?
+                                 ::split]))
 
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
@@ -195,7 +197,8 @@
              :temp "")
     :output ""
     :runner nil
-    :running? false}))
+    :running? false
+    :split "50%"}))
 
 (defn default-db
   ([] (default-db :temp))
@@ -245,7 +248,8 @@
               :file-changed (->DBAtom backed-db [:current :changed?])
               :running? (atom false)
               :visr-commit! (atom nil)
-              :insert-visr! (atom nil)}]
+              :insert-visr! (atom nil)
+              :split (->DBAtom backed-db [:current :split])}]
      (browserfs/configure (clj->js {:fs "MountableFileSystem"
                                     :options
                                     {files-root
