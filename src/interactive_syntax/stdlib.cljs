@@ -95,8 +95,11 @@
    :Array js/Array
    :Set js/Set
    :Math js/Math
+   :DOMParser js/DOMParser
    :atob js/atob
    :btoa js/btoa
+   :parseInt js/parseInt
+   :parseFloat js/parseFloat
    :stopify js/stopify
    :$stopifyArray js/stopifyArray})
 
