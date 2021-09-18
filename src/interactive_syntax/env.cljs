@@ -435,7 +435,11 @@
   (let [opts (if (map? mopts) (dissoc mopts :on-resize) {})
         body (if (map? mopts) mbody (into [mopts] mbody))
         on-resize (and (map? mopts) (:on-resize mopts))]
-    [:span
+    [:span {:style {:margin 0
+                    :padding 0
+                    :resize "both"
+                    :overflow "hidden"
+                    :display "flex"}}
      [:> ReactResizeDetector {:handleWidth true :handleHeight true
                               :on-resize #(when on-resize (on-resize))}]
      (into [:> Frame (conj opts
@@ -445,7 +449,12 @@
                                    (for [i (-> js/document .-head
                                                (.getElementsByTagName "style"))]
                                      (dom->reagent i))))
-                            :style {:resize "both"}})]
+                            :style {:flex-grow 1
+                                    :margin 0
+                                    :border 0
+                                    :padding 0
+                                    :width "100%"
+                                    :height "100%"}})]
            body)]))
 
 (defn codemirror-options [{:keys [options] :as db}]
