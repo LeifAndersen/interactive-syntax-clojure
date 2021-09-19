@@ -159,10 +159,21 @@
      ["clj" "cljc" "cljs"]
      ["cljs" "cljc" "js"])))
 
+(def stopified-cache (atom {}))
+
 (defn eval-opts [fs runner print-fn sandbox? ns onYield onRun]
   {:eval (if sandbox?
-           (fn [{:keys [source name cache]} cb]
-             (if true ;; sync v async, currently always sync
+           (fn [{:keys [source name cache clj-source]} cb]
+             (cond
+               (contains? @stopified-cache clj-source)
+               (ocall runner :evalCompiled (get @stopified-cache clj-source)
+                      (fn [res]
+                        (when-not (or (= (:type res) "normal")
+                                      (= (:value res) nil))
+                          (println res))
+                        (cb res))),
+               ;; sync v async, currently always sync
+               true ; false
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)]
                  (ocall runner :evalAsyncFromAst polyfilled
@@ -170,11 +181,14 @@
                           (when-not (or (= (:type res) "normal")
                                         (= (:value res) nil))
                             (println res))
-                          (cb res))))
+                          (cb res)))),
+               :else
                (let [worker (new js/StopifyWorker)]
                  (onYield)
                  (set! worker.onmessage
                        (fn [msg]
+                         (swap! stopified-cache assoc clj-source
+                                (oget msg :data.prog))
                          (onRun)
                          (ocall runner :evalCompiled (oget msg :data.prog)
                                 (fn [res]

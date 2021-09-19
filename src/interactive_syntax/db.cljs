@@ -115,32 +115,32 @@
 (s/def ::url string?)
 (s/def ::sandbox boolean?)
 (s/def ::code string?)
-(s/def ::dep (s/keys :req-un [::sandbox]
-                            :opt-un [::name
-                                     ::version
-                                     ::url
-                                     ::source]))
+(s/def ::dep (s/keys :opt-un [::name
+                              ::version
+                              ::url
+                              ::sandbox]))
 (s/def ::deps (s/map-of number? ::dep))
+
+(s/def ::compiler any?)
+(s/def ::runner any?)
+(s/def ::running? boolean?)
 
 (s/def ::input string?)
 (s/def ::output string?)
-(s/def ::runner any?)
 (s/def ::folder string?)
 (s/def ::file (s/nilable string?))
 (s/def ::changed? boolean?)
-(s/def ::running? boolean?)
-(s/def ::split integer?)
+(s/def ::split string?)
 (s/def ::buffer (s/keys :req-un [::input
                                  ::output
                                  ::folder
                                  ::file
                                  ::changed?
-                                 ::runner
-                                 ::running?
                                  ::split]))
 
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
+
 
 ;; :home - no dialog, home-screen
 ;; :new - new-file-action
@@ -196,8 +196,6 @@
              :persist-test ""
              :temp "")
     :output ""
-    :runner nil
-    :running? false
     :split "50%"}))
 
 (defn default-db
