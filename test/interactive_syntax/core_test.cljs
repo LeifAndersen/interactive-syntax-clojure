@@ -561,7 +561,7 @@
         :set [:input] prog2 :check
         :do #(click-run view)
         :wait 1000
-        :async #((:pause-eval @runner) %)
+        :async #((:stop-eval @runner) %)
         :do #(do
                (is (seq @output))
                (is (>= (count @output) 1))
