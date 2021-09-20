@@ -166,7 +166,9 @@
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
              (cond
-               (contains? @stopified-cache clj-source)
+               (and
+                (not (string/ends-with? (str (:name cache)) "$macros"))
+                (contains? @stopified-cache clj-source))
                (ocall runner :evalCompiled (get @stopified-cache clj-source)
                       (fn [res]
                         (when-not (or (= (:type res) "normal")
@@ -176,8 +178,11 @@
                ;; sync v async, currently always sync
                true ; false
                (let [ast (babylon/parse source)
-                     polyfilled (hof/polyfillHofFromAst ast)]
-                 (ocall runner :evalAsyncFromAst polyfilled
+                     polyfilled (hof/polyfillHofFromAst ast)
+                     compiled (ocall runner :compileFromAst polyfilled)]
+                 (when-not (string/ends-with? (str (:name cache)) "$macros")
+                   (swap! stopified-cache assoc clj-source compiled))
+                 (ocall runner :evalCompiled compiled
                         (fn [res]
                           (when-not (or (= (:type res) "normal")
                                         (= (:value res) nil))
@@ -386,6 +391,7 @@
   (deps->env
    db
    (fn [deps-env]
+     (reset! stopified-cache {})
      (let [cb (or callback
                   #(print-res db %))
            res
