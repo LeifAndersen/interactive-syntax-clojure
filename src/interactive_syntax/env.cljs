@@ -712,20 +712,21 @@
                                           @source
                                           (:line @info)
                                           (:column @info)),
-                                  end (buffer-position->index
-                                       @source
-                                       (:end-line @info)
-                                       (:end-column @info))
+                                  end (atom (buffer-position->index
+                                             @source
+                                             (:end-line @info)
+                                             (:end-column @info)))
                                   new-str (fn [info form]
-                                            (str (subs @source 0 start)
-                                                 (stdlib/write-visr
-                                                  (:editor info) form)
-                                                 (subs @source end)))
+                                            (let [s (stdlib/write-visr
+                                                     (:editor info) form)
+                                                  ret (str (subs @source 0 start)
+                                                           s
+                                                           (subs @source @end))]
+                                              (reset! end (+ start (count s)))
+                                              ret))
                                   update (atom nil)
-                                  can-commit? (atom true)
-                                  commit! #(when (and @changed? @can-commit?)
+                                  commit! #(when @changed?
                                              (set-text (new-str @info @form))
-                                             (reset! can-commit? false)
                                              (reset! changed? false))
                                   rmark-box (atom nil)]
                               (d/render

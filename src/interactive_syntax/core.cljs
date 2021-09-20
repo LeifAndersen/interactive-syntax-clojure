@@ -873,6 +873,7 @@
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
   (set! codemirror/commands.save #(save-file db))
   (when-not (= @version db/version)
+    (reset-db! db)
     (when-not (= (peek @menu) :splash)
       (swap! menu conj :splash))
     (reset! version db/version))

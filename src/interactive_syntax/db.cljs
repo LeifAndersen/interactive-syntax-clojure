@@ -7,7 +7,7 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def version (str "0.1.7-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def version (str "0.1.8-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
 (def prompt "> ")
@@ -196,7 +196,9 @@
              :persist-test ""
              :temp "")
     :output ""
-    :split "50%"}))
+    :split "50%"
+    :cursor nil
+    :scroll nil}))
 
 (defn default-db
   ([] (default-db :temp))
@@ -271,3 +273,8 @@
                             (cb ret)))
      ret)))
 
+(defn reset-db! [{:keys [deps] :as db}]
+  (let [cdeps @deps]
+    (storage/remove-local-storage! "state")
+    (reset! deps cdeps)
+    db))

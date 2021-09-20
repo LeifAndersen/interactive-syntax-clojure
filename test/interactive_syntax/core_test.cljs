@@ -1281,15 +1281,6 @@
                          (.getElementsByTagName "button")
                          (aget 0)))
         :wait 1000
-        :do #(.click rtl/fireEvent
-                     (-> js/document
-                         .-body
-                         (.getElementsByTagName "iframe")
-                         (aget 0)
-                         .-contentDocument
-                         (.getElementsByTagName "button")
-                         (aget 0)))
-        :wait 1000
         :set [:input] new-use
         :check
         :done #(done))))))
