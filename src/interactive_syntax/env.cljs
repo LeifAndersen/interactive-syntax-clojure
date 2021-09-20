@@ -193,8 +193,9 @@
                  (onYield)
                  (set! worker.onmessage
                        (fn [msg]
-                         (swap! stopified-cache assoc clj-source
-                                (oget msg :data.prog))
+                         (when-not (string/ends-with? (str (:name cache)) "$macros")
+                           (swap! stopified-cache assoc clj-source
+                                  (oget msg :data.prog)))
                          (onRun)
                          (ocall runner :evalCompiled (oget msg :data.prog)
                                 (fn [res]
@@ -477,16 +478,20 @@
    (-> element .-innerHTML)])
 
 (defn styled-frame [mopts & mbody]
-  (let [opts (if (map? mopts) (dissoc mopts :on-resize) {})
+  (let [opts (if (map? mopts) (dissoc mopts :on-resize :width :height) {})
         body (if (map? mopts) mbody (into [mopts] mbody))
-        on-resize (and (map? mopts) (:on-resize mopts))]
+        on-resize (and (map? mopts) (:on-resize mopts))
+        width (and (map? mopts) (:width mopts))
+        height (and (map? mopts) (:height mopts))]
     [:span {:style {:margin 0
                     :padding 0
                     :resize "both"
                     :overflow "hidden"
-                    :display "flex"}}
+                    :display "flex"
+                    :width width
+                    :height height}}
      [:> ReactResizeDetector {:handleWidth true :handleHeight true
-                              :on-resize #(when on-resize (on-resize))}]
+                              :on-resize #(when on-resize (apply on-resize %&))}]
      (into [:> Frame (conj opts
                            {:head
                             (r/as-element
@@ -526,9 +531,9 @@
                             [styled-frame [:div {:style {:white-space "pre"}}
                                            (pr-str info)]])))})))
 
-(defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code
-                  run-state info stx-box changed? file-src commit! update-box
-                  rmark-box]
+(defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code visr-size
+                  code-size run-state info stx-box changed? file-src commit!
+                  update-box rmark-box]
   (let [visr (atom nil)
         focused? (atom false)
         stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
@@ -550,7 +555,7 @@
                  (when-not (= o n)
                    (reset! stx-box n)
                    (reset! changed? true))))
-    (fn [{:keys [options fs] :as db} editor show-visr show-code
+    (fn [{:keys [options fs] :as db} editor show-visr show-code visr-size code-size
          run-state info stx-box changed? file-src commit! update-box]
       (when (and @show-visr (= @visr nil))
         (mk-editor @info @stx run-state fs file-src
@@ -574,7 +579,13 @@
          "\uD83D\uDC41"]
         (when @show-visr
           [err-boundary
-           [styled-frame {:on-resize #(when @rmark-box (ocall @rmark-box :changed))}
+           [styled-frame {:on-resize (fn [width height]
+                                       (reset! visr-size {:width width
+                                                          :height height})
+                                       (when @rmark-box
+                                         (ocall @rmark-box :changed)))
+                          :width (:width @visr-size)
+                          :height (:height @visr-size)}
             @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
@@ -584,7 +595,13 @@
          [:code "(\u03BB)"]]
         (when @show-code
           [styled-frame
-           {:on-resize #(when @rmark-box (ocall @rmark-box :changed))
+           {:on-resize (fn [width height]
+                         (reset! code-size {:width width
+                                            :height height})
+                         (when @rmark-box
+                           (ocall @rmark-box :changed)))
+            :width (:width @code-size)
+            :height (:height @code-size)
             :on-blur commit!
             :head [:style (css [:.frame-root :.frame-content {:height "100%"}])]}
            [:> Form {:onSubmit #(do (.preventDefault %)
@@ -686,6 +703,8 @@
                                   hider (.createElement js/document "span")
                                   show-visr (atom false)
                                   show-code (atom false)
+                                  visr-size (atom nil)
+                                  code-size (atom nil)
                                   info (atom info)
                                   form (atom (second form))
                                   changed? (atom false)
@@ -710,9 +729,9 @@
                                              (reset! changed? false))
                                   rmark-box (atom nil)]
                               (d/render
-                               [visr-hider db editor show-visr show-code
-                                run-state info form changed? @source commit! update
-                                rmark-box]
+                               [visr-hider db editor show-visr show-code visr-size
+                                code-size run-state info form changed? @source
+                                commit! update rmark-box]
                                hider)
                               (let [r-mark (-> @editor
                                                (ocall :getDoc)
@@ -741,12 +760,18 @@
                                         :visr hider
                                         :show-visr show-visr
                                         :show-code show-code
+                                        :visr-size visr-size
+                                        :code-size code-size
                                         :info info
                                         :stx form})
                                 (when (and prev @(:show-visr prev))
                                   (reset! show-visr true))
                                 (when (and prev @(:show-code prev))
-                                  (reset! show-code true)))))
+                                  (reset! show-code true))
+                                (if-let [s (and prev @(:visr-size prev))]
+                                  (reset! visr-size s))
+                                (if-let [s (and prev @(:code-size prev))]
+                                  (reset! code-size s)))))
                           (doseq [e form]
                             (when (coll? e)
                               (rec e)))))
