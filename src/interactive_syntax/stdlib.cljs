@@ -102,6 +102,8 @@
    :parseFloat js/parseFloat
    :encodeURI js/encodeURI
    :encodeURIComponent js/encodeURIComponent
+   :decodeURI js/decodeURI
+   :decodeURIComponent js/decodeURIComponent
    :stopify js/stopify
    :$stopifyArray js/stopifyArray})
 
