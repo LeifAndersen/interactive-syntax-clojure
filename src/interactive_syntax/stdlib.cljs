@@ -100,6 +100,8 @@
    :btoa js/btoa
    :parseInt js/parseInt
    :parseFloat js/parseFloat
+   :encodeURI js/encodeURI
+   :encodeURIComponent js/encodeURIComponent
    :stopify js/stopify
    :$stopifyArray js/stopifyArray})
 
