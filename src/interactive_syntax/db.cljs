@@ -198,7 +198,7 @@
     :output ""
     :split "50%"
     :cursor nil
-    :scroll nil}))
+    :scroll {}}))
 
 (defn default-db
   ([] (default-db :temp))
@@ -249,7 +249,10 @@
               :running? (atom false)
               :visr-commit! (atom nil)
               :insert-visr! (atom nil)
-              :split (->DBAtom backed-db [:current :split])}]
+              :split (->DBAtom backed-db [:current :split])
+              :cm-ref (clojure.core/atom nil) ; <- really gross, can we remove?
+              :scroll (clojure.core/atom nil)
+              :cursor (clojure.core/atom nil)}]
      (browserfs/configure (clj->js {:fs "MountableFileSystem"
                                     :options
                                     {files-root

@@ -255,17 +255,22 @@
 ;; File Dialogs
 
 (defn save-buffer [{:keys [fs menu current-folder current-file input
-                           file-changed visr-commit!]
+                           file-changed visr-commit! cm-ref scroll cursor]
                     :as db}
                    & [cb]]
-  (swap! menu conj :hold)
-  (when @visr-commit!
-    (@visr-commit!))
-  (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
-         (fn [err res]
-           (reset! file-changed false)
-           (swap! menu pop)
-           (when cb (cb)))))
+  (let [c @cursor
+        s @scroll]
+    (swap! menu conj :hold)
+    (when @visr-commit!
+      (@visr-commit!))
+    (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
+           (fn [err res]
+             (reset! file-changed false)
+             (swap! menu pop)
+             (if-let [cm @cm-ref]
+               (do (-> cm (ocall :getDoc) (ocall :setCursor c))
+                   (-> cm (ocall :scrollTo (:x s) (:y s)))))
+             (when cb (cb))))))
 
 (defn load-buffer [{:keys [fs menu current-folder current-file input file-changed]
                     :as db}]
@@ -417,7 +422,6 @@
                  end-transaction (fn []
                                    (populate-dir-list
                                     #(swap! menu pop)))]
-             ;;(js/console.log data)
              (condp = id
                (oget ChonkyActions :OpenParentFolder.id) nil,
                (oget ChonkyActions :StartDragNDrop.id) nil,
@@ -749,13 +753,18 @@
          [:> Button {:variant "danger"} strings/STOP]]]]]]))
 
 (defn editor-view [{:keys [menu input output options file-changed
-                           current-file fs visr-commit! insert-visr!]
+                           current-file fs visr-commit! insert-visr! cursor scroll]
                     :as db}
                    & [editor-ref visr-run-ref]]
   (let [edit (atom nil)
         editors (atom {})
         set-text (fn [txt]
-                   (-> @edit (ocall :getDoc) (ocall :setValue txt)))
+                   (let [c @cursor
+                         s @scroll
+                         cm @edit]
+                     (-> @edit (ocall :getDoc) (ocall :setValue txt))
+                     (-> cm (ocall :getDoc) (ocall :setCursor c))
+                     (-> cm (ocall :scrollTo (:x s) (:y s)))))
         mounted? (clojure.core/atom false)
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
@@ -768,13 +777,13 @@
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
     (reset! visr-commit!
-            #(doseq [[k v] @editors]
-               ((:commit! v))))
+            (doseq [[k v] @editors]
+              ((:commit! v))))
     (reset! insert-visr!
             #(let [doc (ocall @edit :getDoc)
                    pos (ocall doc :getCursor)]
                (ocall doc :replaceRange stdlib/starter-visr pos)))
-    (fn [{:keys [menu input options file-changed current-file]
+    (fn [{:keys [menu input options file-changed current-file cursor scroll cm-ref]
           :as db}
          & [editor-ref]]
       @current-file
@@ -791,6 +800,10 @@
                     (when @mounted?
                       (env/reset-editors!
                        input set-text edit editors operation db #() visr-run-ref)))
+        :onCursor (fn [editor data]
+                    (reset! cursor data))
+        :onScroll (fn [editor data]
+                    (reset! scroll {:x (oget data :left) :y (oget data :top)}))
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)
@@ -801,6 +814,7 @@
                             (-> e (ocall "getDoc") (ocall "setValue" @input))
                             (reset! file-changed fc))
                           (reset! edit e)
+                          (reset! cm-ref e)
                           (when editor-ref
                             (reset! editor-ref e))
                           (env/reset-editors!
