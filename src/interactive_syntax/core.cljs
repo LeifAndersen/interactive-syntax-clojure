@@ -574,7 +574,8 @@
                                orientation
                                keymap
                                font-size
-                               theme]} :options
+                               theme
+                               smooth-editing]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
              ;;:size "lg"
@@ -623,7 +624,12 @@
        [:h4 (str strings/THEME ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/THEME}
                [option-button theme "neat" strings/LIGHT]
-        [option-button theme "material" strings/DARK]]]]]]
+               [option-button theme "material" strings/DARK]]]]
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
+       [:h4 "Smooth Editing (beta):"]]
+      [:> Col [:> Switch {:checked @smooth-editing
+                          :on-change #(reset! smooth-editing %)}]]]]]
    [:> (oget Modal :Footer)
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}

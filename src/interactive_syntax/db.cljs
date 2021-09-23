@@ -7,7 +7,7 @@
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [browserfs]))
 
-(def version (str "0.1.8-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def version (str "0.1.9-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
 (def prompt "> ")
@@ -183,7 +183,8 @@
    :line-wrapping false
    :line-numbers true
    :enable-drag-and-drop true
-   :show-editors true})
+   :show-editors true
+   :smooth-editing false})
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -229,7 +230,8 @@
                                       :line-wrapping
                                       :line-numbers
                                       :enable-drag-and-drop
-                                      :show-editors]]
+                                      :show-editors
+                                      :smooth-editing]]
                                [i (->DBAtom backed-db [:options i])]))
               :version (->DBAtom backed-db [:version])
               :fs fs
@@ -276,8 +278,13 @@
                             (cb ret)))
      ret)))
 
-(defn reset-db! [{:keys [deps] :as db}]
-  (let [cdeps @deps]
+(defn reset-db! [{{:keys [smooth-editing theme]} :options
+                  :keys [deps] :as db}]
+  (let [cdeps @deps
+        csmooth @smooth-editing
+        ctheme @theme]
     (storage/remove-local-storage! "state")
-    (reset! deps cdeps)
+    (when cdeps (reset! deps cdeps))
+    (when csmooth (reset! smooth-editing csmooth))
+    (when ctheme (reset! theme ctheme))
     db))
