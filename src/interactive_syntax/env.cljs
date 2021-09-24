@@ -36,7 +36,7 @@
                             Row Col Form Container Modal
                             Table]]
    [base64-js]
-   [react-frame-component]
+   [react-frame-component :refer [useFrame]]
    [react-switch]))
 
 (def ^:private template (.-default babel-template))
@@ -162,7 +162,7 @@
 (def stopified-cache (atom {}))
 (def stopify-queue (atom #queue []))
 
-(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun]
+(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun smooth-editing]
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
              (cond
@@ -176,7 +176,7 @@
                           (println res))
                         (cb res))),
                ;; sync v async, currently always sync
-               true ; false
+               (not smooth-editing)
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)
                      compiled (ocall runner :compileFromAst polyfilled)]
@@ -225,7 +225,8 @@
                         js-deps
                         ns-cache
                         fakegoog-global
-                        ns]}
+                        ns
+                        smooth-editing]} ; <-Beta, will become only path when stable
                 cb]
   (let [internal-res (atom {})
         job (fn []
@@ -284,9 +285,10 @@
                                 (set! *additional-core* @coop-additional-core)
                                 (set! *compiler* @coop-state))
                               true)
-                    opts (eval-opts fs runner print-fn sandbox ns onYield onRun)
+                    opts (eval-opts fs runner print-fn sandbox ns onYield onRun
+                                    smooth-editing)
                     bootstrap-opts (eval-opts fs runner print-fn sandbox nil
-                                              onYield onRun)
+                                              onYield onRun smooth-editing)
                     pause-eval (fn [cb]
                                  (.pause runner
                                          (fn [ln]
@@ -387,6 +389,7 @@
                            fs
                            running?
                            runner]
+                    {:keys [smooth-editing]} :options
                     :as db}
                    & [callback]]
   (deps->env
@@ -404,6 +407,7 @@
                        :fs fs
                        :running? running?
                        :file-name file-name
+                       :smooth-editing @smooth-editing
                        :print-fn #(swap! output conj %)}
                       db)
                      cb)]
@@ -425,7 +429,7 @@
 (defn mk-editor [{:keys [editor] :as data}
                  stx
                  {:keys [runner loaded state ns-cache] :as run-state}
-                 fs file-src cb
+                 fs file-src smooth-editing cb
                  & [visr-run-ref]]
   (let [ns (namespace editor)
         srcloc (info->srcloc data)
@@ -442,6 +446,7 @@
                            :ns-cache ns-cache
                            :ns ns
                            :running? visr-run-ref
+                           :smooth-editing @smooth-editing
                            :fs fs}
                           cb))]
     (try
@@ -457,6 +462,7 @@
                                       :state state
                                       :ns-cache ns-cache
                                       :running? visr-run-ref
+                                      :smooth-editing @smooth-editing
                                       :fs fs}
                                      mk-fn))))
         :else (eval-str file-src
@@ -465,6 +471,7 @@
                          :state state
                          :ns-cache ns-cache
                          :running? visr-run-ref
+                         :smooth-editing @smooth-editing
                          :fs fs}
                         mk-fn))
       (catch :default e (catch-fn e)))))
@@ -477,12 +484,17 @@
              [(.-key attr) (.-value attr)])))
    (-> element .-innerHTML)])
 
+(defn frame-box [fbox]
+  (reset! fbox (useFrame))
+  [:<>])
+
 (defn styled-frame [mopts & mbody]
   (let [opts (if (map? mopts) (dissoc mopts :on-resize :width :height) {})
         body (if (map? mopts) mbody (into [mopts] mbody))
         on-resize (and (map? mopts) (:on-resize mopts))
         width (and (map? mopts) (:width mopts))
-        height (and (map? mopts) (:height mopts))]
+        height (and (map? mopts) (:height mopts))
+        fbox (atom nil)]
     [:span {:style {:margin 0
                     :padding 0
                     :resize "both"
@@ -504,7 +516,8 @@
                                     :border 0
                                     :padding 0
                                     :width "100%"
-                                    :height "100%"}})]
+                                    :height "100%"}})
+            [:f> frame-box fbox]]
            body)]))
 
 (defn codemirror-options [{:keys [options] :as db}]
@@ -531,9 +544,11 @@
                             [styled-frame [:div {:style {:white-space "pre"}}
                                            (pr-str info)]])))})))
 
-(defn visr-hider [{:keys [options fs] :as db} editor show-visr show-code visr-size
-                  code-size run-state info stx-box changed? file-src commit!
-                  update-box rmark-box]
+(defn visr-hider [{{:keys [smooth-editing] :as options} :options
+                   :keys [fs] :as db}
+                  editor show-visr show-code visr-size visr-scroll code-size
+                  run-state info stx-box changed? file-src commit! update-box
+                  rmark-box]
   (let [visr (atom nil)
         focused? (atom false)
         stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
@@ -555,10 +570,11 @@
                  (when-not (= o n)
                    (reset! stx-box n)
                    (reset! changed? true))))
-    (fn [{:keys [options fs] :as db} editor show-visr show-code visr-size code-size
-         run-state info stx-box changed? file-src commit! update-box]
+    (fn [{:keys [options fs] :as db} editor show-visr show-code visr-size
+         visr-scroll code-size run-state info stx-box changed? file-src commit!
+         update-box]
       (when (and @show-visr (= @visr nil))
-        (mk-editor @info @stx run-state fs file-src
+        (mk-editor @info @stx run-state fs file-src smooth-editing
                    (fn [ret]
                      (reset! visr
                              (cond
@@ -649,7 +665,8 @@
                                       (ocall "setValue" @stx-str)))}]]]]])]])))
 
 (defn reset-editors! [source set-text editor instances operation
-                      {:keys [fs options deps env] :as db}
+                      {{:keys [smooth-editing] :as options} :options
+                       :keys [fs deps env] :as db}
                       cb & [visr-run-ref]]
   (let [old @instances]
     (when @env
@@ -678,6 +695,7 @@
                                 :loaded (:loaded deps-env)
                                 :js-deps (:js-deps deps-env)
                                 :running? visr-run-ref
+                                :smooth-editing @smooth-editing
                                 :fs fs}
                                db)
                             #())]
@@ -704,6 +722,7 @@
                                   show-visr (atom false)
                                   show-code (atom false)
                                   visr-size (atom nil)
+                                  visr-scroll (atom nil)
                                   code-size (atom nil)
                                   info (atom info)
                                   form (atom (second form))
@@ -731,8 +750,8 @@
                                   rmark-box (atom nil)]
                               (d/render
                                [visr-hider db editor show-visr show-code visr-size
-                                code-size run-state info form changed? @source
-                                commit! update rmark-box]
+                                visr-scroll code-size run-state info form changed?
+                                @source commit! update rmark-box]
                                hider)
                               (let [r-mark (-> @editor
                                                (ocall :getDoc)
@@ -762,6 +781,7 @@
                                         :show-visr show-visr
                                         :show-code show-code
                                         :visr-size visr-size
+                                        :visr-scroll visr-scroll
                                         :code-size code-size
                                         :info info
                                         :stx form})
@@ -772,7 +792,9 @@
                                 (if-let [s (and prev @(:visr-size prev))]
                                   (reset! visr-size s))
                                 (if-let [s (and prev @(:code-size prev))]
-                                  (reset! code-size s)))))
+                                  (reset! code-size s))
+                                (if-let [s (and prev @(:visr-scroll prev))]
+                                  (reset! visr-scroll s)))))
                           (doseq [e form]
                             (when (coll? e)
                               (rec e)))))
