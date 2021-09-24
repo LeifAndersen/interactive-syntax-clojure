@@ -489,11 +489,17 @@
   [:<>])
 
 (defn styled-frame [mopts & mbody]
-  (let [opts (if (map? mopts) (dissoc mopts :on-resize :width :height) {})
+  (let [opts (if (map? mopts)
+               (dissoc mopts :on-resize :on-scroll :width :height
+                       :scroll-top :scroll-left)
+               {})
         body (if (map? mopts) mbody (into [mopts] mbody))
         on-resize (and (map? mopts) (:on-resize mopts))
+        on-scroll (and (map? mopts) (:on-scroll mopts))
         width (and (map? mopts) (:width mopts))
         height (and (map? mopts) (:height mopts))
+        scroll-top (and (map? mopts) (:scroll-top mopts))
+        scroll-left (and (map? mopts) (:scroll-left mopts))
         fbox (atom nil)]
     [:span {:style {:margin 0
                     :padding 0
@@ -516,7 +522,19 @@
                                     :border 0
                                     :padding 0
                                     :width "100%"
-                                    :height "100%"}})
+                                    :height "100%"}
+                            :contentDidMount
+                            #(when @fbox
+                               (let [doc (oget @fbox :document)]
+                                 (when (and scroll-top scroll-left)
+                                   (-> doc (oget :scrollingElement)
+                                       (ocall :scrollTo
+                                              #js {:left scroll-left
+                                                   :top scroll-top
+                                                   :behavior "instant"})))
+                                 (when on-scroll
+                                   (ocall doc :addEventListener "scroll" on-scroll
+                                          #js {:passive true}))))})
             [:f> frame-box fbox]]
            body)]))
 
@@ -600,6 +618,14 @@
                                                           :height height})
                                        (when @rmark-box
                                          (ocall @rmark-box :changed)))
+                          :on-scroll
+                          (fn [event]
+                            (let [se (oget event :target.scrollingElement)]
+                              (reset! visr-scroll
+                                      {:scroll-left (oget se :scrollLeft)
+                                       :scroll-top (oget se :scrollTop)})))
+                          :scroll-top (:scroll-top @visr-scroll)
+                          :scroll-left (:scroll-left @visr-scroll)
                           :width (:width @visr-size)
                           :height (:height @visr-size)}
             @visr]])
