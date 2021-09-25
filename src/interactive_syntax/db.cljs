@@ -12,6 +12,7 @@
 (def deps-root "/deps")
 (def prompt "> ")
 (def end-prompt "<EOF>")
+(def shop-url "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/")
 
 (deftype RefAtom [ref]
   IAtom

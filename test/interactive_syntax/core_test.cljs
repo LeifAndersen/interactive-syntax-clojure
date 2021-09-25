@@ -1236,7 +1236,7 @@
              :done #(done)))))))))
 
 (deftest test-multi-update
-  (testing "Ensure visrs update correctly when two cursors update simultaniously"
+  (testing "Ensure visrs update when two cursor atoms update simultaniously"
     (async
      done
      (let [{:keys [fs input output menu runner running?]
@@ -1267,7 +1267,6 @@
         db :check
         :async #(fs.mkdir (.join js/path files-root "test") %)
         :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
-        :do #(set! js/window.fs fs)
         :do #(-> @editor .getDoc (.setValue use))
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
@@ -1283,6 +1282,68 @@
         :wait 1000
         :set [:input] new-use
         :check
+        :done #(done))))))
+
+(deftest scroll-persists
+  (testing "Ensure visrs presentation is kept during updates"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running?]
+            :as db}
+           (default-db :temp),
+           editor (atom nil),
+           repl (atom nil),
+           lib "
+(ns test.core
+  (:require [react-bootstrap :refer [Button]]))
+
+(defvisr Scroller
+ (elaborate [this] 42)
+ (render [this]
+  [:<>
+    (for [i (range 50)]
+      [:> Button {:key (str i)} \"not me\"])
+    [:> Button {:key (str \"pick\") :on-click #(swap! this inc)} \"Click me!\"]]))"
+           use "
+(ns test.use
+  (:require [test.core :include-macros true]))
+^{:editor test.core/Scroller}(test.core/Scroller+elaborate 0)"
+           use2 "
+(ns test.use
+  (:require [test.core :include-macros true]))
+123
+^{:editor test.core/Scroller}(test.core/Scroller+elaborate 0)"
+           view (rtl/render (r/as-element [core/home-page db {:editor editor
+                                                              :repl repl}]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
+        :do #(-> @editor .getDoc (.setValue use))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 1000
+        :do #(-> js/document
+                 .-body
+                 (.getElementsByTagName "iframe")
+                 (aget 0)
+                 .-contentDocument
+                 .-scrollingElement
+                 (.scroll #js {:top 300 :left 0 :behavior "instant"}))
+        :do #(-> @editor .getDoc (.setValue use2))
+        :do #(is (>= (-> js/document
+                         .-body
+                         (.getElementsByTagName "iframe")
+                         .-length)
+                     1))
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        .-scrollingElement
+                        .-scrollTop)
+                    300))
         :done #(done))))))
 
 (defn -main [& args]

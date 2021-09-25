@@ -73,7 +73,7 @@
         url (if (and url (not= url ""))
               url
               (str
-               "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/"
+               db/shop-url
                pkg-name ".js"))]
     (ocall req "addEventListener" "load" #(cb (oget % "target.responseText")))
     (ocall req "open" "GET" url)
