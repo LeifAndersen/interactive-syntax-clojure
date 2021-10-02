@@ -156,8 +156,7 @@
       [:div {:class-name "d-grid gap-2"}
        [:> Button {:on-click wipe :variant "danger"} strings/CONFIRM-WIPE]]]]))
 
-(defn deps-dialog [{:keys [deps-env deps menu] :as db}]
-  (reset! deps-env nil)
+(defn deps-dialog [{:keys [deps menu] :as db}]
   (let [new-deps (atom @deps)]
     (add-watch deps ::update-new-deps
                (fn [k r o n]
@@ -222,7 +221,6 @@
            [:> Button {:variant "success"
                        :on-click (fn []
                                    (reset! deps @new-deps)
-                                   (reset! deps-env nil)
                                    (swap! menu pop)
                                    (swap! menu conj :hold)
                                    (cb-thread
@@ -763,7 +761,7 @@
                     :as db}
                    & [editor-ref visr-run-ref]]
   (let [edit (atom nil)
-        editors (atom {})
+        visrs (atom {})
         set-text (fn [txt]
                    (let [c @cursor
                          s @scroll
@@ -774,16 +772,13 @@
         mounted? (clojure.core/atom false)
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
-                          (doseq [[k v] @editors]
-                            (reset! (:show-visr v) false)
-                            (reset! (:show-code v) false))
                           (let [fc @file-changed]
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! file-changed fc))))]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
     (reset! visr-commit!
-            (doseq [[k v] @editors]
+            (doseq [[k v] @visrs]
               ((:commit! v))))
     (reset! insert-visr!
             #(let [doc (ocall @edit :getDoc)
@@ -803,9 +798,8 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (when @mounted?
-                      (env/reset-editors!
-                       input set-text edit editors operation db #() visr-run-ref)))
+                    (env/reset-editors!
+                     @input set-text edit visrs operation db #() visr-run-ref))
         :onCursor (fn [editor data]
                     (reset! cursor data))
         :onScroll (fn [editor data]
@@ -824,8 +818,7 @@
                           (when editor-ref
                             (reset! editor-ref e))
                           (env/reset-editors!
-                           input set-text edit editors nil db
-                           #(reset! mounted? true)
+                           @input set-text edit visrs nil db #(reset! mounted? true)
                            visr-run-ref))}])))
 
 (defn result-view [{:keys [output options]

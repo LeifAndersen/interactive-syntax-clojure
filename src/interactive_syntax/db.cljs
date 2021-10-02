@@ -246,8 +246,6 @@
               :current-file (->DBAtom backed-db [:current :file])
               :file-browser-folder (->DBAtom backed-db [:folder])
               :deps (->DBAtom backed-db [:deps])
-              :deps-env (atom nil)
-              :env (atom nil)
               :file-changed (->DBAtom backed-db [:current :changed?])
               :running? (atom false)
               :visr-commit! (atom nil)

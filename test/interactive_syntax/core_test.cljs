@@ -155,7 +155,7 @@
   (testing "Ensure that import/export works from/to zip"
     (async
      done
-     (let [{:keys [fs input output deps deps-env env
+     (let [{:keys [fs input output deps
                    current-file current-folder file-browser-folder]
             :as db} (default-db :temp)
            ival "hello world"
@@ -189,11 +189,6 @@
        :do #(reset! file-browser-folder fb-dir)
        :set [:file-browser-folder] fb-dir
        :set [:deps] new-deps
-       :do #(reset! deps-env :changed)
-       :do #(is (= @deps-env :changed))
-       :do #(reset! env :changed)
-       :do #(is (= @env :changed))
-       :set [:env] :changed
        :check
        :async #(fs/wipe-project! db %)
        :do #(is (= (count (.readdirSync fs files-root)) 0))
@@ -204,8 +199,6 @@
        :set [:current-file] nil
        :set [:file-browser-folder] db/files-root
        :set [:deps] {}
-       :do #(is (= @deps-env nil))
-       :do #(is (= @env nil))
        :check
        :async #(fs/import-from-zip db @zbox %)
        :do #(is (= (count (.readdirSync fs files-root)) 2))
@@ -322,7 +315,7 @@
         :do #(-> @editor .getDoc (.setValue prog))
         :do #(click-run view)
         :wait-until not running?
-        :wait 100
+        :wait 500
         :set [:input] prog
         :set [:output] #queue [err-msg]
         :set [:file-changed] true :check
@@ -560,7 +553,7 @@
         :do #(reset! input prog2)
         :set [:input] prog2 :check
         :do #(click-run view)
-        :wait 1000
+        :wait 3000
         :async #((:stop-eval @runner) %)
         :do #(do
                (is (seq @output))
@@ -882,11 +875,11 @@
                               prog %)
         :do #(-> @editor .getDoc (.setValue use-prog))
         :set [:input] use-prog :check
-        :wait 0
+        :wait 1000
         :do #(console.warn "Ignore next error message.")
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
-        :wait 100
+        :wait 1000
         :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
         :do #(set! js/console.error old-error)
         :done #(done))))))
@@ -928,7 +921,7 @@
                                                               :repl repl}]))]
        (test-do
         db :set [:input] new-input :check
-        :wait 0
+        :wait 1000
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :wait 100

@@ -22,8 +22,7 @@
    [garden.util]
    [garden.selectors]
    [garden.types]
-   [garden.units]
-   [interactive-syntax.fakegoog :as fakegoog]))
+   [garden.units]))
 
 (def injectable (slurp "src/injectable/core.inject"))
 
@@ -65,7 +64,7 @@
                                (for [[k v] lib-publics]
                                  [k {:name (symbol v)}]))}})
 
-(defn sandbox-env [runner]
+(defn sandbox-env []
   {:cljs {:core js/cljs.core
           :core$macros js/cljs.core$macros
           :analyzer js/cljs.analyzer
@@ -81,13 +80,10 @@
           :test js/cljs.test
           :tools js/cljs.tools
           :user {}}
-   :goog {:provide (partial fakegoog/prov runner)
-          :require (partial fakegoog/req runner)}
    :console js/console
    :navigator js/navigator
    :document js/document
    :window js/window
-   :global runner
    :alert js/alert
    :String js/String
    :Object js/Object
@@ -119,49 +115,47 @@
                             react-split-pane react-switch]]
                     [(str k) {:global-exports {k (munge k)}}]))})
 
-(defn reagent-opts [opts db]
+(defn reagent-runtime [base db]
   (let [builtins (builtin-libs)]
-    (conj opts
-          {:fakegoog-global true
-           :env #(conj
-                  (sandbox-env %)
-                  (:env opts)
-                  (:env builtins)
-                  {:visr {:private$
-                          {:print (partial wrap-printer core/print db)
-                           :println (partial wrap-printer core/println db)
-                           :parse_defvisr parse-defvisr
-                           :render_visr (partial render-visr db)
-                           :css css}}
-                   :reagent {:core reagent.core
-                             :dom reagent.dom}
-                   :garden {:core garden.core
-                            :color garden.color
-                            :compiler garden.compiler
-                            :compression garden.compression
-                            :selectors garden.selectors
-                            :types garden.types
-                            :units garden.units
-                            :util garden.util}})
-           :loaded (conj (union (into #{} (:loaded opts)) (:loaded builtins))
-                         'visr.private 'reagent.core 'reagent.dom
-                         'garden.core 'garden.color 'garden.compiler
-                         'garden.compression 'garden.selectors 'garden.types
-                         'garden.units 'garden.util)
-           :state-injections
-           (conj (state-injection 'reagent.dom (ns-publics 'reagent.dom))
-                 (state-injection 'reagent.core (ns-publics 'reagent.core))
-                 (state-injection 'garden.core (ns-publics 'garden.core))
-                 (state-injection 'garden.color (ns-publics 'garden.color))
-                 (state-injection 'garden.compiler (ns-publics 'garden.compiler))
-                 (state-injection 'garden.compression
-                                  (ns-publics 'garden.compression))
-                 (state-injection 'garden.selectors (ns-publics 'garden.selectors))
-                 (state-injection 'garden.types (ns-publics 'garden.types))
-                 (state-injection 'garden.units (ns-publics 'garden.units))
-                 (state-injection 'garden.util (ns-publics 'garden.util)))
-           :js-deps (conj (into {} (:js-deps opts))
-                          (:js-deps builtins))})))
+    {:fakegoog true
+     :env (merge
+           (:env base)
+           (sandbox-env)
+           (:env builtins)
+           {:visr {:private$
+                   {:print (partial wrap-printer core/print db)
+                    :println (partial wrap-printer core/println db)
+                    :parse_defvisr parse-defvisr
+                    :render_visr (partial render-visr db)
+                    :css css}}
+            :reagent {:core reagent.core
+                      :dom reagent.dom}
+            :garden {:core garden.core
+                     :color garden.color
+                     :compiler garden.compiler
+                     :compression garden.compression
+                     :selectors garden.selectors
+                     :types garden.types
+                     :units garden.units
+                     :util garden.util}})
+     :loaded (union (:loaded base) (:loaded builtins)
+                    #{'visr.private 'reagent.core 'reagent.dom
+                      'garden.core 'garden.color 'garden.compiler
+                      'garden.compression 'garden.selectors 'garden.types
+                      'garden.units 'garden.util})
+     :state-injections
+     (merge (state-injection 'reagent.dom (ns-publics 'reagent.dom))
+            (state-injection 'reagent.core (ns-publics 'reagent.core))
+            (state-injection 'garden.core (ns-publics 'garden.core))
+            (state-injection 'garden.color (ns-publics 'garden.color))
+            (state-injection 'garden.compiler (ns-publics 'garden.compiler))
+            (state-injection 'garden.compression
+                             (ns-publics 'garden.compression))
+            (state-injection 'garden.selectors (ns-publics 'garden.selectors))
+            (state-injection 'garden.types (ns-publics 'garden.types))
+            (state-injection 'garden.units (ns-publics 'garden.units))
+            (state-injection 'garden.util (ns-publics 'garden.util)))
+     :js-deps (merge (:js-deps base) (:js-deps builtins))}))
 
 (defn write-visr [visr state]
   (str "^{:editor " visr "}(" (visr->elaborate visr) " " (str state) ")"))

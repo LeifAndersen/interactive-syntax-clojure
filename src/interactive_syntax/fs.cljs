@@ -83,8 +83,6 @@
       (= name manifest-path)
       (-> (ocall file :async "string")
           (.then #(let [new-db (read-string %)]
-                    (reset! deps-env nil)
-                    (reset! env nil)
                     (swap! deps into (:deps new-db))
                     (cb)))
           (.catch js/console.log)),
@@ -119,8 +117,6 @@
   (reset! input "")
   (reset! output "")
   (reset! deps {})
-  (reset! deps-env nil)
-  (reset! env nil)
   (reset! file-changed false)
   (reset! running? false)
   (reset! current-folder db/files-root)

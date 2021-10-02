@@ -6,6 +6,7 @@
    [react-dom]
    ;;[reagent-catch.core :as rc]
    [clojure.string :as string]
+   [clojure.set :as set]
    [clojure.walk :as walk]
    [cljs.pprint :refer [pprint]]
    [cljs.tools.reader :refer [read read-string]]
@@ -19,13 +20,15 @@
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
    [interactive-syntax.utils :refer [cb-thread cb-loop]]
-   [interactive-syntax.db :refer [files-root deps-root]]
+   [interactive-syntax.db :refer [files-root deps-root shop-url]]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
+   [interactive-syntax.fakegoog :as fakegoog]
    [garden.core :as garden :refer [css]]
    ["@stopify/higher-order-functions" :as hof]
    ["@babel/parser" :as babylon]
    ["@babel/template" :as babel-template]
+   [codemirror]
    ["@leifandersen/react-codemirror2" :as cm]
    [react-resize-detector]
    [popper.js]
@@ -72,9 +75,7 @@
                        :else (string/escape name sanatize-map))
         url (if (and url (not= url ""))
               url
-              (str
-               db/shop-url
-               pkg-name ".js"))]
+              (str shop-url pkg-name ".js"))]
     (ocall req "addEventListener" "load" #(cb (oget % "target.responseText")))
     (ocall req "open" "GET" url)
     (ocall req "send")))
@@ -102,14 +103,11 @@
               (let [m (.split module "")]
                 (.map m #(.charCodeAt % 0))))))
 
-(defn deps->env [{:keys [deps deps-env env fs] :as db} cb]
+(defn deps->env [{:keys [deps fs] :as db} cb]
   (let [system (new (.-constructor js/System))]
     ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
-         (do
-           (reset! deps-env {:env denv :loaded dloaded :js-deps djs})
-           (reset! env nil)
-           (cb {:env denv :loaded dloaded :js-deps djs}))
+         (cb {:env denv :loaded dloaded :js-deps djs})
          (let [[[key {:keys [name] :as dep}] & rest-deps] deps]
            (cb-thread
             #(ocall fs :readFile (js/path.join deps-root name) %)
@@ -127,12 +125,6 @@
                                rest-deps))
                   (.catch #(js/console.error %))))))))
      {} [] {} @deps)))
-
-(defn deps->env+caching [{:keys [deps-env] :as db} cb]
-  (let [denv @deps-env]
-    (if denv
-      (cb denv)
-      (deps->env db cb))))
 
 ;; -------------------------
 ;; Evaluator
@@ -176,7 +168,8 @@
                           (println res))
                         (cb res))),
                ;; sync v async, currently always sync
-               (not smooth-editing)
+               ;(not smooth-editing)
+               true ; XXX
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)
                      compiled (ocall runner :compileFromAst polyfilled)]
@@ -211,47 +204,42 @@
    :ns ns})
 
 (defn eval-str [src
-                {:keys [env
-                        fs
-                        loaded
-                        lang
-                        file-name
-                        print-fn
-                        runner
-                        running?
-                        sandbox
-                        state
-                        state-injections
-                        js-deps
-                        ns-cache
-                        fakegoog-global
-                        ns
-                        smooth-editing]} ; <-Beta, will become only path when stable
+                {{:keys [env fakegoog loaded state state-injections
+                         ns-cache js-deps bootstrapped?]} :runtime
+                 :keys [fs lang file-name print-fn running? sandbox ns
+                        smooth-editing] ; <-Beta, will become only path when stable
+                 :or {sandbox true print-fn #() file-name strings/UNTITLED}}
                 cb]
-  (let [internal-res (atom {})
+  (let [internal-ctrls (atom {})
+        loaded (cond
+                 (coll? loaded) (atom loaded)
+                 (= nil loaded) (atom #{})
+                 :else loaded)
+        running? (or running? (atom false))
+        internal-running? (atom false)
+        lang (or lang :clj)
+        state (or state (empty-state))
+        ns-cache (or ns-cache (atom nil))
+        env (clj->js (cond
+                       (fn? env) (env)
+                       env env
+                       :else (stdlib/sandbox-env)))
+        _ (when fakegoog
+            (set! env.global env)
+            (set! env.goog #js {})
+            (set! env.goog.require (partial fakegoog/req env))
+            (set! env.goog.provide (partial fakegoog/prov env))
+            (set! env.goog.global env))
+        runtime {:env env
+                 :loaded loaded
+                 :state state
+                 :ns-cache ns-cache
+                 :js-deps js-deps
+                 :bootstrapped? true}
         job (fn []
-              (let [resume (and runner true)
-                    sandbox (if (nil? sandbox) true sandbox)
-                    runner (let [new (js/stopify.stopifyLocally "")]
-                             ;; stopify bug, always uses the last runner environment
-                             (when runner
-                               (set! (.-g new) (.-g runner)))
+              (let [runner (let [new (js/stopify.stopifyLocally "")]
+                             (set! (.-g new) env)
                              new)
-                    runner-globs (clj->js (cond
-                                            (fn? env) (env runner)
-                                            env env
-                                            :else (stdlib/sandbox-env runner)))
-                    running? (or running? (atom false))
-                    internal-running? (atom false)
-                    loaded (cond
-                             (coll? loaded) (atom loaded)
-                             (= nil loaded) (atom #{})
-                             :else loaded)
-                    file-name (or file-name strings/UNTITLED)
-                    print-fn (or print-fn #())
-                    lang (or lang :clj)
-                    state (or state (empty-state))
-                    ns-cache (or ns-cache (atom nil))
                     bootstrapping? (atom false)
                     coop-loaded (atom nil)
                     coop-additional-core (atom nil)
@@ -283,8 +271,7 @@
                               (set! *sandbox-global* @coop-sandbox-global)
                               (when-not @bootstrapping?
                                 (set! *additional-core* @coop-additional-core)
-                                (set! *compiler* @coop-state))
-                              true)
+                                (set! *compiler* @coop-state)))
                     opts (eval-opts fs runner print-fn sandbox ns onYield onRun
                                     smooth-editing)
                     bootstrap-opts (eval-opts fs runner print-fn sandbox nil
@@ -311,7 +298,7 @@
                     cb (fn [res]
                          (onYield)
                          (finish-comp)
-                         (cb res))
+                         (cb res runtime))
                     post-load (fn []
                                 (try (onRun)
                                      (condp = lang
@@ -320,12 +307,6 @@
                                        :js ((:eval opts) {:source src
                                                           :name file-name}
                                             cb))
-                                     {:runner runner
-                                      :loaded loaded
-                                      :state state
-                                      :ns-cache ns-cache
-                                      :pause-eval pause-eval
-                                      :resume-eval resume-eval}
                                      (catch :default e
                                        (when @internal-running?
                                          (onYield))
@@ -334,84 +315,59 @@
                   (swap! state update-in [:cljs.analyzer/namespaces]
                          (partial merge state-injections))
                   (reset! internal-running? true)
-                  (reset! running? true)
-                  (if resume
-                    (do
-                      (onRun)
-                      (ocall runner :run
-                             (fn []
-                               (onYield)
-                               (post-load))))
-                    (do
-                      (reset! bootstrapping? true)
-                      (set! runner.g runner-globs)
-                      (when fakegoog-global
-                        (set! runner.g.goog.global runner.g))
-                      (onRun)
-                      (ocall runner :run
-                             (fn []
-                               (cljs/eval-str
-                                state stdlib/injectable
-                                "core.cljs" bootstrap-opts
-                                (fn [res]
-                                  (onYield)
-                                  (reset! bootstrapping? false)
-                                  (swap! state assoc :js-dependency-index js-deps)
-                                  (onRun)
-                                  (set! runner.g.visr.core$macros
-                                        runner.g.visr.core)
-                                  (ana/intern-macros 'visr.core)
-                                  (onYield)
-                                  (post-load))))
-                             onYield #() onRun)
-                      (let [res {:runner runner
-                                 :loaded loaded
-                                 :state state
-                                 :ns-cache ns-cache
-                                 :pause-eval pause-eval
-                                 :resume-eval resume-eval
-                                 :stop-eval stop-eval}]
-                        (reset! internal-res res))))
+                  (when-not bootstrapped?
+                    (reset! bootstrapping? true))
+                  (onRun)
+                  (ocall runner :run
+                         (fn []
+                           (if bootstrapped?
+                             (do (onYield)
+                                 (post-load))
+                             (cljs/eval-str
+                              state stdlib/injectable
+                              "core.cljs" bootstrap-opts
+                              (fn [res]
+                                (onYield)
+                                (reset! bootstrapping? false)
+                                (swap! state assoc :js-dependency-index js-deps)
+                                (onRun)
+                                (set! runner.g.visr.core$macros
+                                      runner.g.visr.core)
+                                (ana/intern-macros 'visr.core)
+                                (onYield)
+                                (post-load)))))
+                           onYield #() onRun)
+                  (reset! internal-ctrls {:pause-eval pause-eval
+                                          :resume-eval resume-eval
+                                          :stop-eval stop-eval})
                   (catch :default e
-                    (when @internal-running?
-                      (onYield))
+                    (when @internal-running? (onYield))
                     (throw e)))))]
     (swap! stopify-queue conj job)
-    (if (= (count @stopify-queue) 1)
-      (job)
-      {:pause-eval #((:pause-eval @internal-res) %)
-       :resume-eval #((:resume-eval @internal-res) %)
-       :stop-eval #((:stop-eval @internal-res) %)})))
+    (when (= (count @stopify-queue) 1)
+      (js/setTimeout job 0))
+    (reset! running? true)
+    {:pause-eval #(when @internal-ctrls ((:pause-eval @internal-ctrls) %))
+     :resume-eval #(when @internal-ctrls ((:resume-eval @internal-ctrls) %))
+     :stop-eval #(when @internal-ctrls ((:stop-eval @internal-ctrls) %))
+     :running? running?
+     :runtime runtime}))
 
-(defn eval-buffer [{:keys [input
-                           output
-                           file-name
-                           fs
-                           running?
-                           runner]
-                    {:keys [smooth-editing]} :options
-                    :as db}
-                   & [callback]]
+(defn eval-buffer [{:keys [input output file-name fs running? runner]
+                    {:keys [smooth-editing]} :options :as db} & [cb]]
   (deps->env
    db
    (fn [deps-env]
      (reset! stopified-cache {})
-     (let [cb (or callback
-                  #(print-res db %))
-           res
-           (eval-str @input
-                     (stdlib/reagent-opts
-                      {:env (:env deps-env)
-                       :loaded (:loaded deps-env)
-                       :js-deps (:js-deps deps-env)
-                       :fs fs
-                       :running? running?
-                       :file-name file-name
-                       :smooth-editing @smooth-editing
-                       :print-fn #(swap! output conj %)}
-                      db)
-                     cb)]
-       (reset! runner res)))))
+     (reset! runner
+             (eval-str @input
+                       {:runtime (stdlib/reagent-runtime deps-env db)
+                        :fs fs
+                        :running? running?
+                        :file-name file-name
+                        :smooth-editing @smooth-editing
+                        :print-fn #(swap! output conj %)}
+                       (or cb #(print-res db %)))))))
 
 ;; Converts a (1-index) line and col pair to a (0-indexed) string index.
 (defn buffer-position->index [str line column]
@@ -422,28 +378,17 @@
       (recur (inc (.indexOf str "\n" i))
              (dec line)))))
 
-(defn info->srcloc [info]
-  {:line (:line info)
-   :column (:column info)})
-
-(defn mk-editor [{:keys [editor] :as data}
-                 stx
-                 {:keys [runner loaded state ns-cache] :as run-state}
-                 fs file-src smooth-editing cb
-                 & [visr-run-ref]]
+(defn mk-editor [tag {:keys [editor] :as data}
+                 stx runtime fs file-src smooth-editing cb & [visr-run-ref]]
   (let [ns (namespace editor)
-        srcloc (info->srcloc data)
         catch-fn (fn [e]
                    (cb e))
         mk-fn (fn [res]
                 (when (and res (:error res))
                   (throw res))
                 (eval-str (str "(" (stdlib/visr->render editor)
-                               " (js/srcloc->atom " srcloc "))")
-                          {:runner runner
-                           :loaded @loaded
-                           :state state
-                           :ns-cache ns-cache
+                               " (js/visr->atom " (pr-str tag) "))")
+                          {:runtime runtime
                            :ns ns
                            :running? visr-run-ref
                            :smooth-editing @smooth-editing
@@ -457,19 +402,13 @@
                        (fn [src]
                          (let [src (if src (:source src) "")]
                            (eval-str src
-                                     {:runner runner
-                                      :loaded @loaded
-                                      :state state
-                                      :ns-cache ns-cache
+                                     {:runtime runtime
                                       :running? visr-run-ref
                                       :smooth-editing @smooth-editing
                                       :fs fs}
                                      mk-fn))))
         :else (eval-str file-src
-                        {:runner runner
-                         :loaded @loaded
-                         :state state
-                         :ns-cache ns-cache
+                        {:runtime runtime
                          :running? visr-run-ref
                          :smooth-editing @smooth-editing
                          :fs fs}
@@ -490,7 +429,7 @@
 
 (defn styled-frame [mopts & mbody]
   (let [opts (if (map? mopts)
-               (dissoc mopts :on-resize :on-scroll :width :height
+               (dissoc mopts :on-resize :on-scroll:width :height
                        :scroll-top :scroll-left)
                {})
         body (if (map? mopts) mbody (into [mopts] mbody))
@@ -548,8 +487,7 @@
    :lineNumbers @(:line-numbers options)})
 
 ;; Based on: https://lilac.town/writing/modern-react-in-cljs-error-boundaries/
-(defn err-boundary
-  [& children]
+(defn err-boundary [& children]
   (let [err-state (r/atom nil)]
     (r/create-class
      {:display-name "ErrBoundary"
@@ -559,40 +497,33 @@
                         (if (nil? @err-state)
                           (into [:<>] children)
                           (let [[_ info] @err-state]
-                            [styled-frame [:div {:style {:white-space "pre"}}
-                                           (pr-str info)]])))})))
+                            [styled-frame ;;{:ref ref}
+                             [:div {:style {:white-space "pre"}}
+                              (pr-str info)]])))})))
 
-(defn visr-hider [{{:keys [smooth-editing] :as options} :options
-                   :keys [fs] :as db}
-                  editor show-visr show-code visr-size visr-scroll code-size
-                  run-state info stx-box changed? file-src commit! update-box
-                  rmark-box]
-  (let [visr (atom nil)
+(defn stx->stx-str [stx]
+  (binding [cljs.pprint/*print-right-margin* 40]
+    (with-out-str (pprint stx))))
+
+(defn visr-hider [db runtime tag info stx file-src hidden refs mark-box]
+  (let [show-visr (atom false)
+        show-code (atom false)
+        visr-scroll (atom nil)
+        visr (atom nil)
         focused? (atom false)
-        stx->stx-str #(binding [cljs.pprint/*print-right-margin* 40]
-                        (with-out-str
-                          (pprint %)))
-        stx (atom @stx-box)
-        stx-str (atom (stx->stx-str @stx-box))]
-    (reset! stx-box @stx-str)
-    (reset! update-box stx) ;; Intentionally not dereffing
-    (add-watch stx ::update-stx-box
+        scratch (atom nil)]
+    (add-watch info ::reset-visr
                (fn [k r o n]
                  (when-not (= o n)
-                   (reset! stx-box (stx->stx-str n))
-                   (reset! changed? true)
-                   (when-not @focused?
-                     (commit!)))))
-    (add-watch stx-str ::update-stx-box
+                   (reset! visr nil))))
+    (add-watch stx ::reset-visr
                (fn [k r o n]
                  (when-not (= o n)
-                   (reset! stx-box n)
-                   (reset! changed? true))))
-    (fn [{:keys [options fs] :as db} editor show-visr show-code visr-size
-         visr-scroll code-size run-state info stx-box changed? file-src commit!
-         update-box]
-      (when (and @show-visr (= @visr nil))
-        (mk-editor @info @stx run-state fs file-src smooth-editing
+                   (reset! visr nil))))
+    (fn [{{:keys [smooth-editing]} :options :keys [fs] :as db}
+         runtime tag info stx file-src hidden refs mark-box]
+      (when (and (not @hidden) @show-visr (= @visr nil))
+        (mk-editor tag @info @stx runtime fs file-src smooth-editing
                    (fn [ret]
                      (reset! visr
                              (cond
@@ -609,15 +540,15 @@
         [:> Button {:size "sm"
                     :aria-label strings/VISUAL
                     :style {:padding 0 :font-size "1.2em"}
-                    :on-click #(swap! show-visr not)}
+                    :on-click (fn []
+                                (swap! show-visr not)
+                                (if-let [rmb @mark-box]
+                                  (ocall rmb :changed)))}
          "\uD83D\uDC41"]
-        (when @show-visr
+        (when (and (not @hidden) @show-visr)
           [err-boundary
-           [styled-frame {:on-resize (fn [width height]
-                                       (reset! visr-size {:width width
-                                                          :height height})
-                                       (when @rmark-box
-                                         (ocall @rmark-box :changed)))
+           ;;{:ref #(swap! refs assoc :visr-err %)}
+           [styled-frame {:ref #(swap! refs assoc :visr %)
                           :on-scroll
                           (fn [event]
                             (let [se (oget event :target.scrollingElement)]
@@ -625,26 +556,20 @@
                                       {:scroll-left (oget se :scrollLeft)
                                        :scroll-top (oget se :scrollTop)})))
                           :scroll-top (:scroll-top @visr-scroll)
-                          :scroll-left (:scroll-left @visr-scroll)
-                          :width (:width @visr-size)
-                          :height (:height @visr-size)}
+                          :scroll-left (:scroll-left @visr-scroll)}
             @visr]])
         [:> Button {:size "sm"
                     :aria-label strings/CODE
                     :style {:padding 0 :font-size "0.8em"}
                     :variant "secondary"
-                    :on-click #(swap! show-code not)}
+                    :on-click (fn []
+                                (swap! show-code not)
+                                (if-let [rmb @mark-box]
+                                  (ocall rmb :changed)))}
          [:code "(\u03BB)"]]
-        (when @show-code
+        (when (and (not @hidden) @show-code)
           [styled-frame
-           {:on-resize (fn [width height]
-                         (reset! code-size {:width width
-                                            :height height})
-                         (when @rmark-box
-                           (ocall @rmark-box :changed)))
-            :width (:width @code-size)
-            :height (:height @code-size)
-            :on-blur commit!
+           {:ref #(swap! refs assoc :code %)
             :head [:style (css [:.frame-root :.frame-content {:height "100%"}])]}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
@@ -667,16 +592,17 @@
                         :min-height "0"}
                 :aria-label strings/VISR
                 :default-value (str (:editor @info))
-                :on-focus #(reset! focused? true)
-                :on-blur (fn [] (when changed?
-                                  (commit!)
-                                  (reset! focused? false)))
+                :on-focus (fn []
+                            (reset! scratch (:editor @info))
+                            (reset! focused? true))
+                :on-blur (fn []
+                           (swap! info assoc :editor @scratch)
+                           (reset! focused? false))
                 :on-change #(let [value (oget % "target.value")]
                               (when (valid-id? value)
-                                (swap! info assoc :editor value))
-                              (reset! changed? true)
-                              (when-not @focused?
-                                (commit!)))}]]]
+                                (if @focused?
+                                  (reset! scratch value)
+                                  (swap! info assoc :editor value))))}]]]
             [:> (oget Form :Group) {:as Row
                                     :style {:margin "0"
                                             :flex "1 1 auto"}}
@@ -684,150 +610,138 @@
                       :style {:padding "0"}}
               [:> cm/UnControlled
                {:options (codemirror-options db)
+                :onFocus (fn []
+                           (reset! scratch (stx->stx-str @stx))
+                           (reset! focused? true))
+                :onBlur (fn []
+                          (reset! stx (read-string @scratch))
+                          (reset! focused? false))
                 :onChange (fn [this operation value]
-                            (reset! stx-str value))
+                            (if @focused?
+                              (reset! scratch value)
+                              (reset! stx (read-string value))))
                 :editorDidMount (fn [e]
                                   (-> e (ocall "getDoc")
-                                      (ocall "setValue" @stx-str)))}]]]]])]])))
+                                      (ocall "setValue" (stx->stx-str @stx))))}]]]]])]])))
 
 (defn reset-editors! [source set-text editor instances operation
-                      {{:keys [smooth-editing] :as options} :options
+                      {{:keys [smooth-editing show-editors]} :options
                        :keys [fs deps env] :as db}
                       cb & [visr-run-ref]]
-  (let [old @instances]
-    (when @env
-      (try
-        (ocall (:runner @env) :pause)
-        (catch js/Error e)))
-    (doseq [[k v] old]
-      (ocall (:range v) :clear))
-    (reset! instances {})
-    (deps->env+caching
-     db
-     (fn [deps-env]
-       (when (and @(:show-editors options) @editor)
-         (let [prog (indexing-push-back-reader @source)
-               eof (atom nil)
-               {:keys [runner loaded state ns-cache] :as run-state}
-               (if @env
-                 @env
-                 (let [cache (eval-str
-                              ""
-                              (stdlib/reagent-opts
-                               {:env (assoc (:env deps-env)
-                                            (munge "srcloc->atom")
-                                            (fn [x]
-                                              @(get-in @instances [x :update])))
-                                :loaded (:loaded deps-env)
-                                :js-deps (:js-deps deps-env)
-                                :running? visr-run-ref
-                                :smooth-editing @smooth-editing
-                                :fs fs}
-                               db)
-                            #())]
-                   (reset! env cache)
-                   cache))]
-           (try
-             (loop []
-               (let [form (try (read {:eof eof} prog)
-                               (catch js/Error e
-                                 (ex-info (.-message e)
-                                          {:line (oget e "lineNumber")
-                                           :char (oget e "columnNumber")
-                                           :name (oget e "name")
-                                           :file (oget e "fileName")}
-                                          :read-error)))]
-                 (when-not (identical? form eof)
-                   (when (coll? form)
-                     ((fn rec [form]
-                        (let [info (meta form)]
-                          (when (:editor info)
-                            (let [prev (get-in old [{:line (:line info)
-                                                     :column (:column info)}])
-                                  hider (.createElement js/document "span")
-                                  show-visr (atom false)
-                                  show-code (atom false)
-                                  visr-size (atom nil)
-                                  visr-scroll (atom nil)
-                                  code-size (atom nil)
-                                  info (atom info)
-                                  form (atom (second form))
-                                  changed? (atom false)
-                                  start (buffer-position->index
-                                          @source
-                                          (:line @info)
-                                          (:column @info)),
-                                  end (atom (buffer-position->index
-                                             @source
-                                             (:end-line @info)
-                                             (:end-column @info)))
-                                  new-str (fn [info form]
-                                            (let [s (stdlib/write-visr
-                                                     (:editor info) form)
-                                                  ret (str (subs @source 0 start)
-                                                           s
-                                                           (subs @source @end))]
-                                              (reset! end (+ start (count s)))
-                                              ret))
-                                  update (atom nil)
-                                  commit! #(when @changed?
-                                             (set-text (new-str @info @form))
-                                             (reset! changed? false))
-                                  rmark-box (atom nil)]
-                              (d/render
-                               [visr-hider db editor show-visr show-code visr-size
-                                visr-scroll code-size run-state info form changed?
-                                @source commit! update rmark-box]
-                               hider)
-                              (let [r-mark (-> @editor
-                                               (ocall :getDoc)
-                                               (ocall
-                                                :markText
-                                                #js {:line (dec (:line @info)),
-                                                     :ch (dec (:column @info))}
-                                                #js {:line (dec (:end-line @info)),
-                                                     :ch (dec (:end-column @info))}
-                                                #js {:collapsed true
-                                                     :replacedWith hider}))]
-                                (reset! rmark-box r-mark)
-                                (add-watch show-visr ::visr-resize
-                                           (fn [k r o n]
-                                             (when-not (= o n)
-                                               (ocall r-mark :changed))))
-                                (add-watch show-code ::visr-resize
-                                           (fn [k r o n]
-                                             (when-not (= o n)
-                                               (ocall r-mark :changed))))
-                                (swap! instances assoc
-                                       (info->srcloc @info)
-                                       {:range r-mark
-                                        :commit! commit!
-                                        :update update
-                                        :visr hider
-                                        :show-visr show-visr
-                                        :show-code show-code
-                                        :visr-size visr-size
-                                        :visr-scroll visr-scroll
-                                        :code-size code-size
-                                        :info info
-                                        :stx form})
-                                (when (and prev @(:show-visr prev))
-                                  (reset! show-visr true))
-                                (when (and prev @(:show-code prev))
-                                  (reset! show-code true))
-                                (if-let [s (and prev @(:visr-size prev))]
-                                  (reset! visr-size s))
-                                (if-let [s (and prev @(:code-size prev))]
-                                  (reset! code-size s))
-                                (if-let [s (and prev @(:visr-scroll prev))]
-                                  (reset! visr-scroll s)))))
-                          (doseq [e form]
-                            (when (coll? e)
-                              (rec e)))))
-                      form))
-                   (recur))))
-             (cb)
-             (catch ExceptionInfo e
-               (js/console.log e))
-             (catch js/Error e
-               (throw e)))))))))
+  (when (and @show-editors @editor)
+    (let [old-instances (atom @instances)
+          prog (indexing-push-back-reader source)
+          eof (atom nil)]
+      (doseq [[k v] @instances]
+        (ocall @(:mark v) :clear))
+      (reset! instances {})
+      (cb-thread
+       #(deps->env db %)
+       #(eval-str ""
+                  {:runtime (stdlib/reagent-runtime
+                             (assoc-in %2 [:env (munge "visr->atom")]
+                                       (fn [x]
+                                         (get-in @instances [x :stx])))
+                             db)
+                   :running? visr-run-ref
+                   :smooth-editing @smooth-editing
+                   :fs fs}
+                  %)
+       (fn [_ _ runtime]
+         (try
+           (loop []
+             (let [form (try (read {:eof eof} prog)
+                             (catch js/Error e
+                               (ex-info (.-message e)
+                                        {:line (oget e "lineNumber")
+                                         :char (oget e "columnNumber")
+                                         :name (oget e "name")
+                                         :file (oget e "fileName")}
+                                        :read-error)))]
+               (when-not (identical? form eof)
+                 (when (coll? form)
+                   ((fn rec [form]
+                      (let [stxinfo (meta form)]
+                        (when (:editor stxinfo)
+                          (let [[k {:keys [visr stx info mark hidden refs]}]
+                                (some (fn [[k v]] (= @(:stx v) (second form)) [k v])
+                                      @old-instances),
+                                visr (or visr (.createElement js/document "span"))
+                                info (or info (atom stxinfo))
+                                stx (or stx (atom (second form)))
+                                mark (or mark (clojure.core/atom nil))
+                                tag (or k (random-uuid))
+                                hidden (or hidden (atom false))
+                                refs (or refs (atom nil))
+                                start (buffer-position->index
+                                       source
+                                       (:line @info)
+                                       (:column @info)),
+                                end (atom (buffer-position->index
+                                           source
+                                           (:end-line @info)
+                                           (:end-column @info))),
+                                commit! #(let [s (stdlib/write-visr
+                                                  (:editor @info)
+                                                  (stx->stx-str @stx))
+                                               ret (str (subs source 0 start)
+                                                        s
+                                                        (subs source @end))]
+                                           (reset! end (+ start (count s)))
+                                           (set-text ret))]
+                            (if k
+                              (do
+                                (swap! old-instances dissoc k)
+                                (remove-watch info ::commit)
+                                (remove-watch stx ::commit)
+                                (doseq [[k v] @refs]
+                                  (when v
+                                    (ocall v :setState #js {:iframeLoaded false})))
+                                (reset! info stxinfo)
+                                (reset! stx (second form)))
+                              (d/render [visr-hider db runtime tag info stx
+                                         source hidden refs mark]
+                                        visr))
+                            (set! js/window.frefs refs)
+                            (let [r-mark (->
+                                          @editor (ocall :getDoc)
+                                          (ocall
+                                           :markText
+                                           #js {:line (dec (:line @info))
+                                                :ch (dec (:column @info))}
+                                           #js {:line (dec (:end-line @info))
+                                                :ch (dec (:end-column @info))}
+                                           #js {:collapsed true
+                                                :replacedWith visr}))]
+                              ;;(codemirror/on r-mark "hide" #(reset! hidden true))
+                              ;;(codemirror/on r-mark "unhide"
+                              ;;  #(reset! hidden false))
+                              (reset! mark r-mark)
+                              (swap! instances assoc
+                                     tag
+                                     {:mark mark
+                                      :commit! commit!
+                                      :visr visr
+                                      :info info
+                                      :stx stx
+                                      :refs refs
+                                      :hidden hidden})
+                              (add-watch info ::commit
+                                         (fn [k r o n]
+                                           (when-not (= o n)
+                                             (commit!))))
+                              (add-watch stx ::commit
+                                         (fn [k r o n]
+                                           (when-not (= o n)
+                                             (commit!)))))))
+                        (doseq [e form]
+                          (when (coll? e)
+                            (rec e)))))
+                    form))
+                 (recur))))
+           (cb)
+           (catch ExceptionInfo e
+             (js/console.log e))
+           (catch js/Error e
+             (throw e))))))))
+
