@@ -538,11 +538,14 @@
            prog1 "(loop [x 0] (when (< x 5) (println x) (recur (inc x))))"
            prog2 "
 (defn oh-no [i]
-  (when (= (mod i 10000) 0)
+  (when (= (mod i 100000) 0)
     (println \"Oh no!\"))
   (recur (inc i)))
 
-(oh-no 0)"]
+(oh-no 0)"
+           prog3 "
+(defn fac [x] (if (<= x 0) 1 (* x (fac (dec x)))))
+(println (fac 5))"]
        (test-do
         db :check
         :do #(reset! input prog1)
@@ -553,12 +556,19 @@
         :do #(reset! input prog2)
         :set [:input] prog2 :check
         :do #(click-run view)
-        :wait 3000
         :async #((:stop-eval @runner) %)
+        :wait-until not running?
         :do #(do
                (is (seq @output))
                (is (>= (count @output) 1))
                (is (every? (partial = "Oh no!") @output)))
+        :do #(reset! input prog3)
+        :do #(reset! output "")
+        :set [:output] ""
+        :set [:input] prog3 :check
+        :do #(click-run view)
+        :wait-until not running?
+        :set [:output] #queue ["120"] :check
         :done #(done))))))
 
 (deftest multiple-files-eval
@@ -942,11 +952,13 @@
        (test-do
         db :check
         :do #(.click rtl/fireEvent (.getByText view strings/INSERT-VISR))
+        :wait 1000
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/CODE) 0))
         :wait 200
         :do #(-> @editor (.getDoc) (.replaceRange "(" #js {:line 0 :ch 0}))
         :do #(-> @editor (.getDoc) (.replaceRange ")" #js {:line 0 :ch 1}))
+        :wait 1000
         :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/CODE) 0))
@@ -968,6 +980,7 @@
        (test-do
         db :check
         :do #(.click rtl/fireEvent (.getByText view strings/INSERT-VISR))
+        :wait 1000
         :do #(.click rtl/fireEvent (aget (.getAllByLabelText view strings/CODE) 0))
         :wait 300
         :do #(.change rtl/fireEvent

@@ -210,7 +210,7 @@
                         smooth-editing] ; <-Beta, will become only path when stable
                  :or {sandbox true print-fn #() file-name strings/UNTITLED}}
                 cb]
-  (let [internal-ctrls (atom {})
+  (let [internal-ctrls (atom nil)
         loaded (cond
                  (coll? loaded) (atom loaded)
                  (= nil loaded) (atom #{})
@@ -347,9 +347,27 @@
     (when (= (count @stopify-queue) 1)
       (js/setTimeout job 0))
     (reset! running? true)
-    {:pause-eval #(when @internal-ctrls ((:pause-eval @internal-ctrls) %))
-     :resume-eval #(when @internal-ctrls ((:resume-eval @internal-ctrls) %))
-     :stop-eval #(when @internal-ctrls ((:stop-eval @internal-ctrls) %))
+    {:pause-eval #(if @internal-ctrls
+                    ((:pause-eval @internal-ctrls) %)
+                    (add-watch internal-ctrls ::pause
+                               (fn [k r o n]
+                                 (when n
+                                   ((:pause-eval n) %)
+                                   (remove-watch internal-ctrls ::pause)))))
+     :resume-eval #(if @internal-ctrls
+                     ((:resume-eval @internal-ctrls) %)
+                     (add-watch internal-ctrls ::resume
+                                (fn [k r o n]
+                                  (when n
+                                    ((:resume-eval n) %)
+                                    (remove-watch internal-ctrls ::resume)))))
+     :stop-eval #(if @internal-ctrls
+                   ((:stop-eval @internal-ctrls) %)
+                   (add-watch internal-ctrls ::stop
+                              (fn [k r o n]
+                                (when n
+                                  ((:stop-eval n) %)
+                                  (remove-watch internal-ctrls ::stop)))))
      :running? running?
      :runtime runtime}))
 
@@ -466,11 +484,14 @@
                             #(when @fbox
                                (let [doc (oget @fbox :document)]
                                  (when (and scroll-top scroll-left)
-                                   (-> doc (oget :scrollingElement)
-                                       (ocall :scrollTo
-                                              #js {:left scroll-left
-                                                   :top scroll-top
-                                                   :behavior "instant"})))
+                                   (js/setTimeout
+                                    (fn [] ; Takes a moment for useFrame to update
+                                      (-> doc (oget :scrollingElement)
+                                          (ocall :scrollTo
+                                                 #js {:left scroll-left
+                                                      :top scroll-top
+                                                      :behavior "instant"})))
+                                    300))
                                  (when on-scroll
                                    (ocall doc :addEventListener "scroll" on-scroll
                                           #js {:passive true}))))})
