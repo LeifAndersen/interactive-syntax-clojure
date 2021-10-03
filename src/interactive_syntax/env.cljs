@@ -309,7 +309,8 @@
                                             cb))
                                      (catch :default e
                                        (when @internal-running?
-                                         (onYield))
+                                         (onYield)
+                                         (finish-comp))
                                        (throw e))))]
                 (try
                   (swap! state update-in [:cljs.analyzer/namespaces]
@@ -341,7 +342,7 @@
                                           :resume-eval resume-eval
                                           :stop-eval stop-eval})
                   (catch :default e
-                    (when @internal-running? (onYield))
+                    (when @internal-running? (onYield) (finish-comp))
                     (throw e)))))]
     (swap! stopify-queue conj job)
     (when (= (count @stopify-queue) 1)

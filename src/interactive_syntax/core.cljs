@@ -759,7 +759,9 @@
 (defn editor-view [{:keys [menu input output options file-changed
                            current-file fs visr-commit! insert-visr! cursor scroll]
                     :as db}
-                   & [editor-ref visr-run-ref]]
+                   & [{editor-ref :editor
+                       editor-reset-ref :editor-reset
+                       visr-run-ref :visr-run}]]
   (let [edit (atom nil)
         visrs (atom {})
         set-text (fn [txt]
@@ -786,7 +788,9 @@
                (ocall doc :replaceRange stdlib/starter-visr pos)))
     (fn [{:keys [menu input options file-changed current-file cursor scroll cm-ref]
           :as db}
-         & [editor-ref]]
+         & [{editor-ref :editor
+             editor-reset-ref :editor-reset
+             visr-run-ref :visr-run}]]
       @current-file
       @menu
       (when (not= @edit nil)
@@ -798,8 +802,12 @@
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
-                    (env/reset-editors!
-                     @input set-text edit visrs operation db #() visr-run-ref))
+                    (when editor-reset-ref
+                      (reset! editor-reset-ref true))
+                    (env/reset-editors! @input set-text edit visrs operation db
+                                        #(when editor-reset-ref
+                                           (reset! editor-reset-ref false))
+                                        visr-run-ref))
         :onCursor (fn [editor data]
                     (reset! cursor data))
         :onScroll (fn [editor data]
@@ -817,9 +825,14 @@
                           (reset! cm-ref e)
                           (when editor-ref
                             (reset! editor-ref e))
-                          (env/reset-editors!
-                           @input set-text edit visrs nil db #(reset! mounted? true)
-                           visr-run-ref))}])))
+                          (when editor-reset-ref
+                            (reset! editor-reset-ref true))
+                          (env/reset-editors! @input set-text edit visrs nil db
+                                              (fn []
+                                                (reset! mounted? true)
+                                                (when editor-reset-ref
+                                                  (reset! editor-reset-ref false)))
+                                              visr-run-ref))}])))
 
 (defn result-view [{:keys [output options]
                     :as db}
@@ -879,6 +892,7 @@
                   :keys [fs buffers output version menu split]
                   :as db}
                  & [{editor-ref :editor
+                     editor-reset-ref :editor-reset
                      repl-ref :repl
                      visr-run-ref :visr-run
                      :as opts}]]
@@ -925,7 +939,9 @@
                      :on-change #(reset! split (aget % 0))}
        [:> Pane {:initialSize @split
                  :style [:height "100%"]}
-        [editor-view db editor-ref visr-run-ref]]
+        [editor-view db {:editor-reset editor-reset-ref
+                         :editor editor-ref
+                         :visr-run visr-run-ref}]]
        [result-view db repl-ref]]]
      [:div {:style {:flex "1 1 auto"
                     :overflow "auto"
@@ -936,7 +952,9 @@
        [:> Tab {:eventKey "1"
                 :title "Test"}
         [:> SplitPane {:split @orientation}
-         [editor-view db editor-ref visr-run-ref]
+         [editor-view db {:editor-reset editor-reset-ref
+                          :editor editor-ref
+                          :visr-run visr-run-ref}]
          [result-view db repl-ref]]]]])])
 
 ;; -------------------------
