@@ -300,7 +300,6 @@
                          (finish-comp)
                          (cb res runtime))
                     post-load (fn []
-                                (onRun)
                                 (condp = lang
                                   :clj (cljs/eval-str state src file-name
                                                       opts cb)
@@ -317,8 +316,7 @@
                   (ocall runner :run
                          (fn []
                            (if bootstrapped?
-                             (do (onYield)
-                                 (post-load))
+                             (post-load)
                              (cljs/eval-str
                               state stdlib/injectable
                               "core.cljs" bootstrap-opts
@@ -329,7 +327,6 @@
                                 (onRun)
                                 (set! runner.g.visr.core$macros runner.g.visr.core)
                                 (ana/intern-macros 'visr.core)
-                                (onYield)
                                 (post-load)))))
                            onYield #() onRun)
                   (reset! internal-ctrls {:pause-eval pause-eval
