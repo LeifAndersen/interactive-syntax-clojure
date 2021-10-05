@@ -5,6 +5,7 @@
             [cljs.spec.alpha :as s]
             [cognitect.transit :as t]
             [alandipert.storage-atom :as storage :refer [local-storage]]
+            [interactive-syntax.utils :refer [cb-thread cb-loop]]
             [browserfs]))
 
 (def version (str "0.1.9-SNAPSHOT-" (slurp "src/injectable/date.inject")))
@@ -202,6 +203,25 @@
     :cursor nil
     :scroll {}}))
 
+(defn bfs-config [mode]
+  (clj->js {:fs "MountableFileSystem"
+            :options {files-root
+                      (case mode
+                        :local {:fs "IndexedDB"
+                                :options {:storeName "bfs"}}
+                        :persist-test {:fs "IndexedDB"
+                                       :options {:storeName "bfstest"}}
+                        :fallback {:fs "LocalStorage"}
+                        :temp {:fs "InMemory"})
+                      deps-root
+                      (case mode
+                        :local {:fs "IndexedDB"
+                                :options {:storeName "depsfs"}}
+                        :persist-test {:fs "IndexedDB"
+                                       :options {:storeName "depsfstest"}}
+                        :fallback {:fs "LocalStorage"}
+                        :temp {:fs "InMemory"})}}))
+
 (defn default-db
   ([] (default-db :temp))
   ([mode] (default-db mode #()))
@@ -254,27 +274,11 @@
               :cm-ref (clojure.core/atom nil) ; <- really gross, can we remove?
               :scroll (clojure.core/atom nil)
               :cursor (clojure.core/atom nil)}]
-     (browserfs/configure (clj->js {:fs "MountableFileSystem"
-                                    :options
-                                    {files-root
-                                     (case mode
-                                       :local {:fs "IndexedDB"
-                                               :options {:storeName "bfs"}}
-                                       :persist-test {:fs "IndexedDB"
-                                                      :options {:storeName
-                                                                "bfstest"}}
-                                       :temp {:fs "InMemory"})
-                                     deps-root
-                                     (case mode
-                                       :local {:fs "IndexedDB"
-                                               :options {:storeName "depsfs"}}
-                                       :persist-test {:fs "IndexedDB"
-                                                      :options {:storeName
-                                                                "depsfstest"}}
-                                       :temp {:fs "InMemory"})}})
-                          (fn [e]
-                            (when e (throw e))
-                            (cb ret)))
+     (cb-thread
+      #(browserfs/configure (bfs-config mode)
+                            (fn [e] (if e (%) (cb ret))))
+      #(browserfs/configure (bfs-config :fallback)
+                            (fn [e] (if e (throw e) (cb ret)))))
      ret)))
 
 (defn reset-db! [{{:keys [smooth-editing theme]} :options
