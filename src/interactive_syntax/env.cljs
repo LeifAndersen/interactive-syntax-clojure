@@ -300,18 +300,13 @@
                          (finish-comp)
                          (cb res runtime))
                     post-load (fn []
-                                (try (onRun)
-                                     (condp = lang
-                                       :clj (cljs/eval-str state src file-name
-                                                           opts cb)
-                                       :js ((:eval opts) {:source src
-                                                          :name file-name}
-                                            cb))
-                                     (catch :default e
-                                       (when @internal-running?
-                                         (onYield)
-                                         (finish-comp))
-                                       (throw e))))]
+                                (onRun)
+                                (condp = lang
+                                  :clj (cljs/eval-str state src file-name
+                                                      opts cb)
+                                  :js ((:eval opts) {:source src
+                                                     :name file-name}
+                                       cb)))]
                 (try
                   (swap! state update-in [:cljs.analyzer/namespaces]
                          (partial merge state-injections))
@@ -332,8 +327,7 @@
                                 (reset! bootstrapping? false)
                                 (swap! state assoc :js-dependency-index js-deps)
                                 (onRun)
-                                (set! runner.g.visr.core$macros
-                                      runner.g.visr.core)
+                                (set! runner.g.visr.core$macros runner.g.visr.core)
                                 (ana/intern-macros 'visr.core)
                                 (onYield)
                                 (post-load)))))
@@ -342,8 +336,7 @@
                                           :resume-eval resume-eval
                                           :stop-eval stop-eval})
                   (catch :default e
-                    (when @internal-running? (onYield) (finish-comp))
-                    (throw e)))))]
+                    (cb e)))))]
     (swap! stopify-queue conj job)
     (when (= (count @stopify-queue) 1)
       (js/setTimeout job 0))
@@ -400,39 +393,35 @@
 (defn mk-editor [tag {:keys [editor] :as data}
                  stx runtime fs file-src smooth-editing cb & [visr-run-ref]]
   (let [ns (namespace editor)
-        catch-fn (fn [e]
-                   (cb e))
         mk-fn (fn [res]
-                (when (and res (:error res))
-                  (throw res))
-                (eval-str (str "(" (stdlib/visr->render editor)
-                               " (js/visr->atom " (pr-str tag) "))")
-                          {:runtime runtime
-                           :ns ns
-                           :running? visr-run-ref
-                           :smooth-editing @smooth-editing
-                           :fs fs}
-                          cb))]
-    (try
-      (cond
-        ns (ns->string fs {:name ns
-                           :macros false
-                           :path (apply js/path.join (.split ns "."))}
-                       (fn [src]
-                         (let [src (if src (:source src) "")]
-                           (eval-str src
-                                     {:runtime runtime
-                                      :running? visr-run-ref
-                                      :smooth-editing @smooth-editing
-                                      :fs fs}
-                                     mk-fn))))
-        :else (eval-str file-src
-                        {:runtime runtime
-                         :running? visr-run-ref
-                         :smooth-editing @smooth-editing
-                         :fs fs}
-                        mk-fn))
-      (catch :default e (catch-fn e)))))
+                (if (and res (:error res))
+                  (cb res)
+                  (eval-str (str "(" (stdlib/visr->render editor)
+                                 " (js/visr->atom " (pr-str tag) "))")
+                            {:runtime runtime
+                             :ns ns
+                             :running? visr-run-ref
+                             :smooth-editing @smooth-editing
+                             :fs fs}
+                            cb)))]
+    (cond
+      ns (ns->string fs {:name ns
+                         :macros false
+                         :path (apply js/path.join (.split ns "."))}
+                     (fn [src]
+                       (let [src (if src (:source src) "")]
+                         (eval-str src
+                                   {:runtime runtime
+                                    :running? visr-run-ref
+                                    :smooth-editing @smooth-editing
+                                    :fs fs}
+                                   mk-fn))))
+      :else (eval-str file-src
+                      {:runtime runtime
+                       :running? visr-run-ref
+                       :smooth-editing @smooth-editing
+                       :fs fs}
+                      mk-fn))))
 
 (defn dom->reagent [element]
   [(keyword (-> element .-nodeName .toLowerCase))

@@ -136,7 +136,6 @@
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
 
-(comment
 (deftest debug-respected
   (testing "Ensure globals aren't set unless debug mode is enable"
     (let [db (default-db :temp)]
@@ -1015,7 +1014,6 @@
                         (.getAttribute "value"))
                  alt-visr-name))
         :done #(done))))))
-)
 
 (deftest vialid-id
   (testing "Ensure VISrs form stays the same when an invalid id is entered"
@@ -1084,14 +1082,11 @@
         :do #(-> @editor .getDoc (.setValue prog))
         :wait-until not resetting
         :wait 0
-;       :do #(.click rtl/fireEvent
-;                    (aget (.getAllByLabelText view strings/VISUAL) 0))
-;       :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
-;       :done #(done)
-        :do #(js/console.log "done")
-        )))))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
+        :done #(done))))))
 
-(comment
 (deftest continue-to-load-with-save
   (testing "Ensure save works in continue with saving for loading files"
     (async
@@ -1274,6 +1269,7 @@
            (default-db :temp),
            editor (atom nil),
            repl (atom nil),
+           resetting (atom nil),
            lib "
 (ns test.core (:require [reagent.core :refer [cursor]]))
 (defvisr multi-update
@@ -1291,13 +1287,17 @@
 (ns test.use (:require [test.core :include-macros true]))
 ^{:editor test.core/multi-update}(test.core/multi-update+elaborate {:a 42, :b 819}
 )"
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))]
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
        (test-do
         db :check
         :async #(fs.mkdir (.join js/path files-root "test") %)
         :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
         :do #(-> @editor .getDoc (.setValue use))
+        :wait-until not resetting
+        :wait 0
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :wait 1000
@@ -1323,6 +1323,7 @@
            (default-db :temp),
            editor (atom nil),
            repl (atom nil),
+           resetting (atom nil),
            lib "
 (ns test.core
   (:require [react-bootstrap :refer [Button]]))
@@ -1343,13 +1344,17 @@
   (:require [test.core :include-macros true]))
 123
 ^{:editor test.core/Scroller}(test.core/Scroller+elaborate 0)"
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))]
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
        (test-do
         db :check
         :async #(fs.mkdir (.join js/path files-root "test") %)
         :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
         :do #(-> @editor .getDoc (.setValue use))
+        :wait-until not resetting
+        :wait 0
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :wait 1000
@@ -1360,7 +1365,10 @@
                  .-contentDocument
                  .-scrollingElement
                  (.scroll #js {:top 300 :left 0 :behavior "instant"}))
+        :wait 1000
         :do #(-> @editor .getDoc (.setValue use2))
+        :wait-until not resetting
+        :wait 1000
         :do #(is (>= (-> js/document
                          .-body
                          (.getElementsByTagName "iframe")
@@ -1375,7 +1383,6 @@
                         .-scrollTop)
                     300))
         :done #(done))))))
-)
 
 (defn -main [& args]
   (run-tests-async 240000))
