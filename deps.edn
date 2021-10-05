@@ -1,10 +1,12 @@
 {:deps {org.clojure/clojure {:mvn/version "1.10.1"}
         org.clojure/clojurescript
         {:git/url "https://github.com/LeifAndersen/clojurescript"
-         :sha "a35a8e3927a53f69414ed684be5dfb3af27e80d8"}
+         :sha "945aceabad67e4a9203fb0820a97a44dcad8054f"}
         ;; {:local/root "/path/to/clojurescript"} ;<-- For debugging only
         org.clojure/core.match {:mvn/version "1.0.0"}
-        org.clojure/tools.reader {:mvn/version "1.3.3"}
+        org.clojure/tools.reader
+        {:git/url "https://github.com/LeifAndersen/tools.reader"
+         :sha "cf5e69da907e85932aa8ed721eaab63e1a0719bc"}
         reagent/reagent {:mvn/version "1.1.0"
                          :exclusions [cljsjs/react cljsjs/react-dom]}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
