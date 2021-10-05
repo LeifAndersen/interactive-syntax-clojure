@@ -543,7 +543,7 @@
     (fn [{:keys [fs] :as db}
          runtime tag info stx file-src hidden refs mark-box]
       (when (and (not @hidden) @show-visr (= @visr nil))
-        (reset! visr "")
+        (reset! visr [:div])
         (mk-editor tag @info @stx runtime fs file-src
                    (fn [ret]
                      (reset! visr

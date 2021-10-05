@@ -136,6 +136,7 @@
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
 
+(comment
 (deftest debug-respected
   (testing "Ensure globals aren't set unless debug mode is enable"
     (let [db (default-db :temp)]
@@ -1323,6 +1324,7 @@
         :set [:input] new-use
         :check
         :done #(done))))))
+)
 
 (deftest scroll-persists
   (testing "Ensure visrs presentation is kept during updates"
@@ -1367,7 +1369,7 @@
         :wait 0
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
-        :wait 1000
+        :wait 2000
         :do #(-> js/document
                  .-body
                  (.getElementsByTagName "iframe")
@@ -1384,14 +1386,14 @@
                          (.getElementsByTagName "iframe")
                          .-length)
                      1))
-      ;;:do #(is (= (-> js/document
-      ;;                .-body
-      ;;                (.getElementsByTagName "iframe")
-      ;;                (aget 0)
-      ;;                .-contentDocument
-      ;;                .-scrollingElement
-      ;;                .-scrollTop)
-      ;;            300))
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        .-scrollingElement
+                        .-scrollTop)
+                    300))
         :done #(done))))))
 
 (defn -main [& args]
