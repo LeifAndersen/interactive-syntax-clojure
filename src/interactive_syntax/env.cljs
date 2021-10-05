@@ -154,48 +154,43 @@
 (def stopified-cache (atom {}))
 (def stopify-queue (atom #queue []))
 
-(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun smooth-editing]
+(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun
+                 compiled? smooth-editing]
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
-             (cond
-               (and
-                (not (string/ends-with? (str (:name cache)) "$macros"))
-                (contains? @stopified-cache clj-source))
-               (ocall runner :evalCompiled (get @stopified-cache clj-source)
-                      (fn [res]
-                        (when-not (or (= (:type res) "normal")
-                                      (= (:value res) nil))
-                          (println res))
-                        (cb res))),
-               ;; sync v async, currently always sync
-               (not smooth-editing)
-               (let [ast (babylon/parse source)
-                     polyfilled (hof/polyfillHofFromAst ast)
-                     compiled (ocall runner :compileFromAst polyfilled)]
-                 (when-not (string/ends-with? (str (:name cache)) "$macros")
-                   (swap! stopified-cache assoc clj-source compiled))
-                 (ocall runner :evalCompiled compiled
-                        (fn [res]
-                          (when-not (or (= (:type res) "normal")
-                                        (= (:value res) nil))
-                            (println res))
-                          (cb res)))),
-               :else
-               (let [worker (new js/StopifyWorker)]
-                 (onYield)
-                 (set! worker.onmessage
-                       (fn [msg]
-                         (when-not (string/ends-with? (str (:name cache)) "$macros")
-                           (swap! stopified-cache assoc clj-source
-                                  (oget msg :data.prog)))
-                         (onRun)
-                         (ocall runner :evalCompiled (oget msg :data.prog)
+             (let [run (fn [str]
+                         (reset! compiled? true)
+                         (ocall runner :evalCompiled str
                                 (fn [res]
                                   (when-not (or (= (:type res) "normal")
                                                 (= (:value res) nil))
                                     (println res))
-                                  (cb res)))))
-                 (.postMessage worker #js {:prog source}))))
+                                  (cb res))))]
+               (cond
+                 (and
+                  (not (string/ends-with? (str (:name cache)) "$macros"))
+                  (contains? @stopified-cache clj-source))
+                 (run (get @stopified-cache clj-source)),
+                 ;; sync v async, currently always sync
+                 (not smooth-editing)
+                 (let [ast (babylon/parse source)
+                       polyfilled (hof/polyfillHofFromAst ast)
+                       compiled (ocall runner :compileFromAst polyfilled)]
+                   (when-not (string/ends-with? (str (:name cache)) "$macros")
+                     (swap! stopified-cache assoc clj-source compiled))
+                   (run compiled)),
+                 :else
+                 (let [worker (new js/StopifyWorker)]
+                   (onYield)
+                   (set! worker.onmessage
+                         (fn [msg]
+                           (when-not (string/ends-with? (str (:name cache))
+                                                        "$macros")
+                             (swap! stopified-cache assoc clj-source
+                                    (oget msg :data.prog)))
+                           (onRun)
+                           (run (oget msg :data.prog))))
+                   (.postMessage worker #js {:prog source})))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    ;;:verbose true
@@ -216,6 +211,7 @@
                  :else loaded)
         running? (or running? (atom false))
         internal-running? (atom false)
+        compiled? (atom false)
         lang (or lang :clj)
         state (or state (empty-state))
         ns-cache (or ns-cache (atom nil))
@@ -272,9 +268,9 @@
                                 (set! *additional-core* @coop-additional-core)
                                 (set! *compiler* @coop-state)))
                     opts (eval-opts fs runner print-fn sandbox ns onYield onRun
-                                    smooth-editing)
-                    bootstrap-opts (eval-opts fs runner print-fn sandbox nil
-                                              onYield onRun smooth-editing)
+                                    compiled? smooth-editing)
+                    bootstrap-opts (eval-opts fs runner print-fn sandbox nil onYield
+                                              onRun compiled? smooth-editing)
                     pause-eval (fn [cb]
                                  (.pause runner
                                          (fn [ln]
@@ -328,9 +324,32 @@
                                 (ana/intern-macros 'visr.core)
                                 (post-load)))))
                            onYield #() onRun)
-                  (reset! internal-ctrls {:pause-eval pause-eval
-                                          :resume-eval resume-eval
-                                          :stop-eval stop-eval})
+                  (reset!
+                   internal-ctrls
+                   {:pause-eval #(if @compiled?
+                                   (pause-eval %)
+                                   (add-watch
+                                    compiled? ::pause
+                                    (fn [k r o n]
+                                      (when n
+                                        (js/setTimeout (fn [] (pause-eval %)) 0)
+                                        (remove-watch compiled? ::pause)))))
+                    :resume-eval #(if @compiled?
+                                    (resume-eval)
+                                    (add-watch
+                                     compiled? ::resume
+                                     (fn [k r o n]
+                                       (when n
+                                         (js/setTimeout (fn [] (resume-eval)) 0)
+                                         (remove-watch compiled? ::resume)))))
+                    :stop-eval #(if @compiled?
+                                  (stop-eval %)
+                                  (add-watch
+                                   compiled? ::stop
+                                   (fn [k r o n]
+                                     (when n
+                                       (js/setTimeout (fn [](stop-eval %)) 0)
+                                       (remove-watch compiled? ::stop)))))})
                   (catch :default e
                     (cb e)))))]
     (swap! stopify-queue conj job)
