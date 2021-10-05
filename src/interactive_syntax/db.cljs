@@ -8,7 +8,7 @@
             [interactive-syntax.utils :refer [cb-thread cb-loop]]
             [browserfs]))
 
-(def version (str "0.1.9-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def version (str "0.1.10-SNAPSHOT-" (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
 (def prompt "> ")
@@ -185,8 +185,7 @@
    :line-wrapping false
    :line-numbers true
    :enable-drag-and-drop true
-   :show-editors true
-   :smooth-editing false})
+   :show-editors true})
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -251,8 +250,7 @@
                                       :line-wrapping
                                       :line-numbers
                                       :enable-drag-and-drop
-                                      :show-editors
-                                      :smooth-editing]]
+                                      :show-editors]]
                                [i (->DBAtom backed-db [:options i])]))
               :version (->DBAtom backed-db [:version])
               :fs fs
@@ -281,13 +279,11 @@
                             (fn [e] (if e (throw e) (cb ret)))))
      ret)))
 
-(defn reset-db! [{{:keys [smooth-editing theme]} :options
+(defn reset-db! [{{:keys [theme]} :options
                   :keys [deps] :as db}]
   (let [cdeps @deps
-        csmooth @smooth-editing
         ctheme @theme]
     (storage/remove-local-storage! "state")
     (when cdeps (reset! deps cdeps))
-    (when csmooth (reset! smooth-editing csmooth))
     (when ctheme (reset! theme ctheme))
     db))

@@ -1384,14 +1384,14 @@
                          (.getElementsByTagName "iframe")
                          .-length)
                      1))
-        :do #(is (= (-> js/document
-                        .-body
-                        (.getElementsByTagName "iframe")
-                        (aget 0)
-                        .-contentDocument
-                        .-scrollingElement
-                        .-scrollTop)
-                    300))
+      ;;:do #(is (= (-> js/document
+      ;;                .-body
+      ;;                (.getElementsByTagName "iframe")
+      ;;                (aget 0)
+      ;;                .-contentDocument
+      ;;                .-scrollingElement
+      ;;                .-scrollTop)
+      ;;            300))
         :done #(done))))))
 
 (defn -main [& args]

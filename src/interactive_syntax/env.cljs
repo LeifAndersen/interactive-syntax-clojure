@@ -154,8 +154,7 @@
 (def stopified-cache (atom {}))
 (def stopify-queue (atom #queue []))
 
-(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun
-                 compiled? smooth-editing]
+(defn eval-opts [fs runner print-fn sandbox? ns onYield onRun compiled?]
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
              (let [run (fn [str]
@@ -172,7 +171,7 @@
                   (contains? @stopified-cache clj-source))
                  (run (get @stopified-cache clj-source)),
                  ;; sync v async, currently always sync
-                 (not smooth-editing)
+                 (< (count source) 1000)
                  (let [ast (babylon/parse source)
                        polyfilled (hof/polyfillHofFromAst ast)
                        compiled (ocall runner :compileFromAst polyfilled)]
@@ -200,8 +199,7 @@
 (defn eval-str [src
                 {{:keys [env fakegoog loaded state state-injections
                          ns-cache js-deps bootstrapped?]} :runtime
-                 :keys [fs lang file-name print-fn running? sandbox ns
-                        smooth-editing] ; <-Beta, will become only path when stable
+                 :keys [fs lang file-name print-fn running? sandbox ns]
                  :or {sandbox true print-fn #() file-name strings/UNTITLED}}
                 cb]
   (let [internal-ctrls (atom nil)
@@ -268,9 +266,9 @@
                                 (set! *additional-core* @coop-additional-core)
                                 (set! *compiler* @coop-state)))
                     opts (eval-opts fs runner print-fn sandbox ns onYield onRun
-                                    compiled? smooth-editing)
-                    bootstrap-opts (eval-opts fs runner print-fn sandbox nil onYield
-                                              onRun compiled? smooth-editing)
+                                    compiled?)
+                    bootstrap-opts (eval-opts fs runner print-fn sandbox nil
+                                              onYield onRun compiled?)
                     pause-eval (fn [cb]
                                  (.pause runner
                                          (fn [ln]
@@ -380,8 +378,8 @@
      :running? running?
      :runtime runtime}))
 
-(defn eval-buffer [{:keys [input output file-name fs running? runner]
-                    {:keys [smooth-editing]} :options :as db} & [cb]]
+(defn eval-buffer [{:keys [input output file-name fs running? runner] :as db}
+                   & [cb]]
   (deps->env
    db
    (fn [deps-env]
@@ -392,7 +390,6 @@
                         :fs fs
                         :running? running?
                         :file-name file-name
-                        :smooth-editing @smooth-editing
                         :print-fn #(swap! output conj %)}
                        (or cb #(print-res db %)))))))
 
@@ -406,7 +403,7 @@
              (dec line)))))
 
 (defn mk-editor [tag {:keys [editor] :as data}
-                 stx runtime fs file-src smooth-editing cb & [visr-run-ref]]
+                 stx runtime fs file-src cb & [visr-run-ref]]
   (let [ns (namespace editor)
         mk-fn (fn [res]
                 (if (and res (:error res))
@@ -416,7 +413,6 @@
                             {:runtime runtime
                              :ns ns
                              :running? visr-run-ref
-                             :smooth-editing @smooth-editing
                              :fs fs}
                             cb)))]
     (cond
@@ -428,13 +424,11 @@
                          (eval-str src
                                    {:runtime runtime
                                     :running? visr-run-ref
-                                    :smooth-editing @smooth-editing
                                     :fs fs}
                                    mk-fn))))
       :else (eval-str file-src
                       {:runtime runtime
                        :running? visr-run-ref
-                       :smooth-editing @smooth-editing
                        :fs fs}
                       mk-fn))))
 
@@ -546,11 +540,11 @@
                (fn [k r o n]
                  (when-not (= o n)
                    (reset! visr nil))))
-    (fn [{{:keys [smooth-editing]} :options :keys [fs] :as db}
+    (fn [{:keys [fs] :as db}
          runtime tag info stx file-src hidden refs mark-box]
       (when (and (not @hidden) @show-visr (= @visr nil))
         (reset! visr "")
-        (mk-editor tag @info @stx runtime fs file-src smooth-editing
+        (mk-editor tag @info @stx runtime fs file-src
                    (fn [ret]
                      (reset! visr
                              (cond
@@ -653,7 +647,7 @@
                                              (stx->stx-str @stx))))}]]]]])]])))
 
 (defn reset-editors! [source set-text editor instances operation cache
-                      {{:keys [smooth-editing show-editors]} :options
+                      {{:keys [show-editors]} :options
                        :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
   (when (and @show-editors @editor)
@@ -676,7 +670,6 @@
                                               (get-in @instances [x :stx])))
                                   db)
                         :running? visr-run-ref
-                        :smooth-editing @smooth-editing
                         :fs fs}
                        n))))
        (fn [_ _ runtime]
