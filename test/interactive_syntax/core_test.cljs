@@ -136,7 +136,6 @@
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
 
-(comment
 (deftest debug-respected
   (testing "Ensure globals aren't set unless debug mode is enable"
     (let [db (default-db :temp)]
@@ -1324,7 +1323,6 @@
         :set [:input] new-use
         :check
         :done #(done))))))
-)
 
 (deftest scroll-persists
   (testing "Ensure visrs presentation is kept during updates"
