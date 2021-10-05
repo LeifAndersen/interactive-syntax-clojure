@@ -857,8 +857,11 @@
            (default-db :temp),
            editor (atom nil),
            repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))
            old-error js/console.error
            prog "
 (ns test.core
@@ -884,6 +887,8 @@
         :async #(fs.writeFile (.join js/path files-root "test/core.cljs")
                               prog %)
         :do #(-> @editor .getDoc (.setValue use-prog))
+        :wait-until not resetting
+        :wait 0
         :set [:input] use-prog :check
         :wait 1000
         :do #(console.warn "Ignore next error message.")
@@ -927,10 +932,14 @@
            _ (reset! input new-input),
            editor (atom nil),
            repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))]
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
        (test-do
         db :set [:input] new-input :check
+        :wait-until not resetting
         :wait 1000
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
@@ -962,6 +971,7 @@
         :wait 200
         :do #(-> @editor (.getDoc) (.replaceRange "(" #js {:line 0 :ch 0}))
         :do #(-> @editor (.getDoc) (.replaceRange ")" #js {:line 0 :ch 1}))
+        :wait-until not resetting
         :wait 1000
         :do #(is (= (count (.getAllByLabelText view strings/CODE)) 1))
         :do #(.click rtl/fireEvent

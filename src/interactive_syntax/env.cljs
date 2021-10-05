@@ -168,8 +168,7 @@
                           (println res))
                         (cb res))),
                ;; sync v async, currently always sync
-               ;(not smooth-editing)
-               true ; XXX
+               (not smooth-editing)
                (let [ast (babylon/parse source)
                      polyfilled (hof/polyfillHofFromAst ast)
                      compiled (ocall runner :compileFromAst polyfilled)]
@@ -630,11 +629,12 @@
                               (reset! stx (read-string value))))
                 :editorDidMount (fn [e]
                                   (-> e (ocall "getDoc")
-                                      (ocall "setValue" (stx->stx-str @stx))))}]]]]])]])))
+                                      (ocall "setValue"
+                                             (stx->stx-str @stx))))}]]]]])]])))
 
-(defn reset-editors! [source set-text editor instances operation
+(defn reset-editors! [source set-text editor instances operation cache
                       {{:keys [smooth-editing show-editors]} :options
-                       :keys [fs deps env] :as db}
+                       :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
   (when (and @show-editors @editor)
     (let [old-instances (atom @instances)
@@ -644,17 +644,21 @@
         (ocall @(:mark v) :clear))
       (reset! instances {})
       (cb-thread
-       #(deps->env db %)
-       #(eval-str ""
-                  {:runtime (stdlib/reagent-runtime
-                             (assoc-in %2 [:env (munge "visr->atom")]
-                                       (fn [x]
-                                         (get-in @instances [x :stx])))
-                             db)
-                   :running? visr-run-ref
-                   :smooth-editing @smooth-editing
-                   :fs fs}
-                  %)
+       (fn [next]
+         (if-let [c @cache]
+           (n c)
+           (cb-thread
+            #(deps->env db %)
+            #(eval-str ""
+                       {:runtime (stdlib/reagent-runtime
+                                  (assoc-in %2 [:env (munge "visr->atom")]
+                                            (fn [x]
+                                              (get-in @instances [x :stx])))
+                                  db)
+                        :running? visr-run-ref
+                        :smooth-editing @smooth-editing
+                        :fs fs}
+                       n))))
        (fn [_ _ runtime]
          (try
            (loop []

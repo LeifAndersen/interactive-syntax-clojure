@@ -763,6 +763,7 @@
                        editor-reset-ref :editor-reset
                        visr-run-ref :visr-run}]]
   (let [edit (atom nil)
+        cache (atom nil)
         visrs (atom {})
         set-text (fn [txt]
                    (let [c @cursor
@@ -776,6 +777,7 @@
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
+                            (reset! cache nil)
                             (reset! file-changed fc))))]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
@@ -804,7 +806,8 @@
                     (reset! input value)
                     (when editor-reset-ref
                       (reset! editor-reset-ref true))
-                    (env/reset-editors! @input set-text edit visrs operation db
+                    (env/reset-editors! @input set-text edit visrs operation
+                                        cache db
                                         #(when editor-reset-ref
                                            (reset! editor-reset-ref false))
                                         visr-run-ref))
@@ -827,7 +830,8 @@
                             (reset! editor-ref e))
                           (when editor-reset-ref
                             (reset! editor-reset-ref true))
-                          (env/reset-editors! @input set-text edit visrs nil db
+                          (env/reset-editors! @input set-text edit visrs nil
+                                              cache db
                                               (fn []
                                                 (reset! mounted? true)
                                                 (when editor-reset-ref
