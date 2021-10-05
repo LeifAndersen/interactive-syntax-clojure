@@ -1378,7 +1378,7 @@
         :wait 1000
         :do #(-> @editor .getDoc (.setValue use2))
         :wait-until not resetting
-        :wait 1000
+        :wait 2000
         :do #(is (>= (-> js/document
                          .-body
                          (.getElementsByTagName "iframe")

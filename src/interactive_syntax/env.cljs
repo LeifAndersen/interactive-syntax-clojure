@@ -549,6 +549,7 @@
     (fn [{{:keys [smooth-editing]} :options :keys [fs] :as db}
          runtime tag info stx file-src hidden refs mark-box]
       (when (and (not @hidden) @show-visr (= @visr nil))
+        (reset! visr "")
         (mk-editor tag @info @stx runtime fs file-src smooth-editing
                    (fn [ret]
                      (reset! visr
