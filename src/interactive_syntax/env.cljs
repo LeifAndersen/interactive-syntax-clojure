@@ -644,7 +644,7 @@
         (ocall @(:mark v) :clear))
       (reset! instances {})
       (cb-thread
-       (fn [next]
+       (fn [n]
          (if-let [c @cache]
            (n c)
            (cb-thread
