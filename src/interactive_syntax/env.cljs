@@ -229,127 +229,122 @@
                  :ns-cache ns-cache
                  :js-deps js-deps
                  :bootstrapped? true}
-        job (fn []
-              (let [runner (let [new (js/stopify.stopifyLocally "")]
-                             (set! (.-g new) env)
-                             new)
-                    bootstrapping? (atom false)
-                    coop-loaded (atom nil)
-                    coop-additional-core (atom nil)
-                    coop-state (atom nil)
-                    coop-print-fn (atom nil)
-                    coop-sandbox-global (atom nil)
-                    coop-ns-cache (atom nil)
-                    onRun (fn []
-                            (reset! internal-running? true)
-                            (reset! coop-loaded @*loaded*)
-                            (reset! coop-print-fn *print-fn*)
-                            (reset! coop-sandbox-global *sandbox-global*)
-                            (reset! coop-ns-cache NS_CACHE)
-                            (reset! *loaded* @loaded)
-                            (set! NS_CACHE @ns-cache)
-                            (set! *print-fn* print-fn)
-                            (set! *sandbox-global* runner.g)
-                            (when-not @bootstrapping?
-                              (reset! coop-additional-core *additional-core*)
-                              (reset! coop-state *compiler*)
-                              (set! *additional-core* 'visr.core)
-                              (set! *compiler* state)))
-                    onYield (fn []
-                              (reset! internal-running? false)
-                              (swap! loaded into @*loaded*)
-                              (reset! *loaded* @coop-loaded)
-                              (set! NS_CACHE @coop-ns-cache)
-                              (set! *print-fn* @coop-print-fn)
-                              (set! *sandbox-global* @coop-sandbox-global)
-                              (when-not @bootstrapping?
-                                (set! *additional-core* @coop-additional-core)
-                                (set! *compiler* @coop-state)))
-                    opts (eval-opts fs runner print-fn sandbox ns onYield onRun
-                                    compiled?)
-                    bootstrap-opts (eval-opts fs runner print-fn sandbox nil
-                                              onYield onRun compiled?)
-                    pause-eval (fn [cb]
-                                 (.pause runner
-                                         (fn [ln]
-                                           (onYield)
-                                           (cb ln))))
-                    resume-eval (fn []
-                                  (onRun)
-                                  (.resume runner))
-                    finish-comp (fn []
-                                  (reset! internal-running? false)
-                                  (reset! running? false)
-                                  (swap! stopify-queue pop)
-                                  (when-not (empty? @stopify-queue)
-                                    (js/setTimeout (peek @stopify-queue) 0)))
-                    stop-eval (fn [cb]
-                                (pause-eval
-                                 (fn []
-                                   (finish-comp)
-                                   (cb))))
-                    cb (fn [res]
-                         (onYield)
-                         (finish-comp)
-                         (cb res runtime))
-                    post-load (fn []
-                                (condp = lang
-                                  :clj (cljs/eval-str state src file-name
-                                                      opts cb)
-                                  :js ((:eval opts) {:source src
-                                                     :name file-name}
-                                       cb)))]
-                (try
-                  (swap! state update-in [:cljs.analyzer/namespaces]
-                         (partial merge state-injections))
-                  (reset! internal-running? true)
-                  (when-not bootstrapped?
-                    (reset! bootstrapping? true))
-                  (onRun)
-                  (ocall runner :run
-                         (fn []
-                           (if bootstrapped?
-                             (post-load)
-                             (cljs/eval-str
-                              state stdlib/injectable
-                              "core.cljs" bootstrap-opts
-                              (fn [res]
-                                (onYield)
-                                (reset! bootstrapping? false)
-                                (swap! state assoc :js-dependency-index js-deps)
-                                (onRun)
-                                (set! runner.g.visr.core$macros runner.g.visr.core)
-                                (ana/intern-macros 'visr.core)
-                                (post-load)))))
-                           onYield #() onRun)
-                  (reset!
-                   internal-ctrls
-                   {:pause-eval #(if @compiled?
-                                   (pause-eval %)
-                                   (add-watch
-                                    compiled? ::pause
-                                    (fn [k r o n]
-                                      (when n
-                                        (js/setTimeout (fn [] (pause-eval %)) 0)
-                                        (remove-watch compiled? ::pause)))))
-                    :resume-eval #(if @compiled?
-                                    (resume-eval)
-                                    (add-watch
-                                     compiled? ::resume
-                                     (fn [k r o n]
-                                       (when n
-                                         (js/setTimeout (fn [] (resume-eval)) 0)
-                                         (remove-watch compiled? ::resume)))))
-                    :stop-eval #(if @compiled?
-                                  (stop-eval %)
+        job #(let [runner (let [new (js/stopify.stopifyLocally "")]
+                            (set! (.-g new) env)
+                            new)
+                   bootstrapping? (atom false)
+                   coop-loaded (atom nil)
+                   coop-additional-core (atom nil)
+                   coop-state (atom nil)
+                   coop-print-fn (atom nil)
+                   coop-sandbox-global (atom nil)
+                   coop-ns-cache (atom nil)
+                   onRun (fn []
+                           (reset! internal-running? true)
+                           (reset! coop-loaded @*loaded*)
+                           (reset! coop-print-fn *print-fn*)
+                           (reset! coop-sandbox-global *sandbox-global*)
+                           (reset! coop-ns-cache NS_CACHE)
+                           (reset! *loaded* @loaded)
+                           (set! NS_CACHE @ns-cache)
+                           (set! *print-fn* print-fn)
+                           (set! *sandbox-global* runner.g)
+                           (when-not @bootstrapping?
+                             (reset! coop-additional-core *additional-core*)
+                             (reset! coop-state *compiler*)
+                             (set! *additional-core* 'visr.core)
+                             (set! *compiler* state)))
+                   onYield (fn []
+                             (reset! internal-running? false)
+                             (swap! loaded into @*loaded*)
+                             (reset! *loaded* @coop-loaded)
+                             (set! NS_CACHE @coop-ns-cache)
+                             (set! *print-fn* @coop-print-fn)
+                             (set! *sandbox-global* @coop-sandbox-global)
+                             (when-not @bootstrapping?
+                               (set! *additional-core* @coop-additional-core)
+                               (set! *compiler* @coop-state)))
+                   opts (eval-opts fs runner print-fn sandbox ns onYield onRun
+                                   compiled?)
+                   bootstrap-opts (eval-opts fs runner print-fn sandbox nil
+                                             onYield onRun compiled?)
+                   pause-eval #(.pause runner
+                                       (fn [ln]
+                                         (onYield)
+                                         (% ln)))
+                   resume-eval (fn []
+                                 (onRun)
+                                 (.resume runner))
+                   finish-comp (fn []
+                                 (reset! internal-running? false)
+                                 (reset! running? false)
+                                 (swap! stopify-queue pop)
+                                 (when-not (empty? @stopify-queue)
+                                   (js/setTimeout (peek @stopify-queue) 0)))
+                   stop-eval #(pause-eval
+                               (fn []
+                                 (finish-comp)
+                                 (%)))
+                   cb (fn [res]
+                        (onYield)
+                        (finish-comp)
+                        (cb res runtime))
+                   post-load #(condp = lang
+                                :clj (cljs/eval-str state src file-name
+                                                    opts cb)
+                                :js ((:eval opts) {:source src
+                                                   :name file-name}
+                                     cb))]
+               (try
+                 (swap! state update-in [:cljs.analyzer/namespaces]
+                        (partial merge state-injections))
+                 (reset! internal-running? true)
+                 (when-not bootstrapped?
+                   (reset! bootstrapping? true))
+                 (onRun)
+                 (ocall runner :run
+                        #(if bootstrapped?
+                           (post-load)
+                           (cljs/eval-str
+                            state stdlib/injectable
+                            "core.cljs" bootstrap-opts
+                            (fn [res]
+                              (onYield)
+                              (reset! bootstrapping? false)
+                              (swap! state assoc :js-dependency-index js-deps)
+                              (onRun)
+                              (set! runner.g.visr.core$macros runner.g.visr.core)
+                              (ana/intern-macros 'visr.core)
+                              (post-load))))
+                        onYield #() onRun)
+                 (reset!
+                  internal-ctrls
+                  {:pause-eval #(if @compiled?
+                                  (pause-eval %)
                                   (add-watch
-                                   compiled? ::stop
+                                   compiled? ::pause
                                    (fn [k r o n]
                                      (when n
-                                       (js/setTimeout (fn [](stop-eval %)) 0)
-                                       (remove-watch compiled? ::stop)))))})
-                  (catch :default e
-                    (cb e)))))]
+                                       (js/setTimeout (fn [] (pause-eval %)) 0)
+                                       (remove-watch compiled? ::pause)))))
+                   :resume-eval #(if @compiled?
+                                   (resume-eval)
+                                   (add-watch
+                                    compiled? ::resume
+                                    (fn [k r o n]
+                                      (when n
+                                        (js/setTimeout (fn [] (resume-eval)) 0)
+                                        (remove-watch compiled? ::resume)))))
+                   :stop-eval #(if @compiled?
+                                 (stop-eval %)
+                                 (add-watch
+                                  compiled? ::stop
+                                  (fn [k r o n]
+                                    (when n
+                                      (js/setTimeout (fn [](stop-eval %)) 0)
+                                      (remove-watch compiled? ::stop)))))})
+                 (catch :default e
+                   (cb e))))]
     (swap! stopify-queue conj job)
     (when (= (count @stopify-queue) 1)
       (js/setTimeout job 0))
@@ -671,8 +666,11 @@
                                   db)
                         :running? visr-run-ref
                         :fs fs}
-                       n))))
-       (fn [_ _ runtime]
+                       %)
+            (fn [_ _ runtime]
+              (reset! cache runtime)
+              (n runtime)))))
+       (fn [_ runtime]
          (try
            (loop []
              (let [form (try (read {:eof eof} prog)
@@ -713,6 +711,7 @@
                                                         s
                                                         (subs source @end))]
                                            (reset! end (+ start (count s)))
+                                           (reset! cache nil) ;; XXX Why? >.<
                                            (set-text ret))]
                             (if k
                               (do
