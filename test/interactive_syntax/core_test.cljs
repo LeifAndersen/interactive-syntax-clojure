@@ -1385,10 +1385,10 @@
                  .-contentDocument
                  .-scrollingElement
                  (.scroll #js {:top 300 :left 0 :behavior "instant"}))
-        :wait 1000
+        :wait 3000
         :do #(-> @editor .getDoc (.setValue use2))
         :wait-until not resetting
-        :wait 2000
+        :wait 5000
         :do #(is (>= (-> js/document
                          .-body
                          (.getElementsByTagName "iframe")
