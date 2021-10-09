@@ -74,6 +74,7 @@
     (is (= (vals @(:deps this)) (vals @(:deps other)))))
   (let [test-keys (or check-keys [:input
                                   :menu
+                                  :file-changed
                                   :current-file
                                   :current-folder
                                   :file-browser-folder])]
@@ -340,6 +341,7 @@
        :do #(change-file-browser-input "foo.cljs")
        :do #(submit-file-browser-input)
        :set [:menu] [:home]
+       :set [:file-changed] false
        :set [:current-file] "foo.cljs"
        :set [:current-folder] files-root :check
        :do #(is (= (js->clj (.readdirSync fs files-root)) ["foo.cljs"]))
@@ -365,10 +367,10 @@
       (test-do
        db :check
        :do #(-> @editor .getDoc (.setValue "(+ 1 2)"))
+       :set [:file-changed] true
        :set [:input] "(+ 1 2)" :check
        :do #(.click rtl/fireEvent (.getByText view strings/SAVE))
-       :set [:menu] [:home [:save]]
-       :set [:file-changed] true :check
+       :set [:menu] [:home [:save]] :check
        :do #(.click rtl/fireEvent (-> (get-modal)
                                       (.getElementsByClassName "btn-close")
                                       (aget 0)))
@@ -435,6 +437,7 @@
        :do #(change-file-browser-input "bar.cljs")
        :do #(submit-file-browser-input)
        :set [:input] ""
+       :set [:file-changed] false
        :set [:menu] [:home] :check))))
 
 (deftest new-folder-breadcrumbs
@@ -516,6 +519,7 @@
        (test-do
         db :check
         :do #(-> @editor .getDoc (.setValue "(println (+ 1 2))"))
+        :set [:file-changed] true
         :set [:input] "(println (+ 1 2))" :check
         :do #(click-run view)
         :wait-until not running?
@@ -601,6 +605,7 @@
         :async #(fs.mkdir (.join js/path files-root "test") %)
         :async #(fs.writeFile "/files/test/core.cljs" core-prog %)
         :do #(-> @editor .getDoc (.setValue use-prog))
+        :set [:file-changed] true
         :set [:input] use-prog :check
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/RUN)))
         :wait-until not running?
@@ -826,6 +831,7 @@
         :async #(fs.writeFile (.join js/path files-root "test/core.cljs")
                               visr-prog %)
         :do #(-> @editor .getDoc (.setValue use-prog))
+        :set [:file-changed] true
         :set [:input] use-prog :check
         :do #(click-run view)
         :wait-until not running?
@@ -889,6 +895,7 @@
         :do #(-> @editor .getDoc (.setValue use-prog))
         :wait-until not resetting
         :wait 0
+        :set [:file-changed] true
         :set [:input] use-prog :check
         :wait 1000
         :do #(console.warn "Ignore next error message.")
@@ -913,6 +920,7 @@
        (test-do
         db :check
         :do #(-> @editor .getDoc (.setValue "ABCD"))
+        :set [:file-changed] true
         :set [:input] "ABCD" :check
         :do #(do (.focus @editor)
                  (.setCursor @editor #js {:line 0 :ch 2}))
@@ -1171,6 +1179,7 @@
        (test-do
         db :check
         :do #(-> @editor .getDoc (.setValue prog1))
+        :set [:file-changed] true
         :set [:input] prog1
         :do #(click-run view)
         :wait-until not running?
@@ -1320,6 +1329,7 @@
                          (.getElementsByTagName "button")
                          (aget 0)))
         :wait 1000
+        :set [:file-changed] true
         :set [:input] new-use
         :check
         :done #(done))))))
@@ -1455,6 +1465,8 @@
         :async #(fs.mkdir (js/path.join files-root "test") %)
         :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
         :do #(-> @editor .getDoc (.setValue use1))
+        :set [:file-changed] true
+        :set [:input] use1 :check
         :wait-until not resetting
         :wait 0
         :do #(.click rtl/fireEvent
@@ -1482,6 +1494,89 @@
                         .-innerHTML)
                     "World"))
         :set [:input] use2 :check
+        :done #(done))))))
+
+(deftest visr-in-mod-change
+  (testing "Ensure editor updates when its surrounding module changes"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running? deps
+                   file-changed current-file current-folder]
+            :as db}
+           (default-db :temp)
+           lib "
+(ns test.core)
+(defvisr TheEditor
+  (elaborate [this] 42)
+  (render [this] [:button \"Hello\"]))
+(comment ^{:editor test.core/TheEditor} (test.core/TheEditor+elaborate {}))"
+           lib2 "
+(ns test.core)
+(defvisr TheEditor
+  (elaborate [this] 42)
+  (render [this] [:button \"World\"]))
+(comment ^{:editor test.core/TheEditor} (test.core/TheEditor+elaborate {}))"
+
+           editor (atom nil),
+           repl (atom nil),
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir (js/path.join files-root "test") %)
+        :do #(reset! current-folder (js/path.join files-root "test"))
+        :do #(reset! current-file "core.cljs")
+        :set [:current-folder] (js/path.join files-root "test")
+        :set [:current-file] "core.cljs" :check
+        :do #(-> @editor .getDoc (.setValue lib))
+        :set [:file-changed] true
+        :set [:input] lib :check
+        :do #(.click rtl/fireEvent (.getByText view strings/SAVE))
+        :wait-until not resetting
+        :wait 0
+        :set [:file-changed] false :check
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 1000
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        (.getElementsByTagName "button")
+                        (aget 0)
+                        .-innerHTML)
+                    "Hello"))
+        :do #(-> @editor .getDoc (.setValue lib2))
+        :set [:input] lib2
+        :set [:file-changed] true :check
+        :wait-until not resetting
+        :wait 1000
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        (.getElementsByTagName "button")
+                        (aget 0)
+                        .-innerHTML)
+                    "Hello"))
+        :do #(.click rtl/fireEvent (.getByText view strings/SAVE))
+        :set [:file-changed] false :check
+        :wait-until not resetting
+        :wait 1000
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        (.getElementsByTagName "button")
+                        (aget 0)
+                        .-innerHTML)
+                    "World"))
         :done #(done))))))
 
 (defn -main [& args]

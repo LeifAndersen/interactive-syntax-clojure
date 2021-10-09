@@ -648,7 +648,8 @@
   (when (and @show-editors @editor)
     (let [old-instances (atom @instances)
           prog (indexing-push-back-reader source)
-          eof (atom nil)]
+          eof (atom nil)
+          fresh-cache (atom false)]
       (doseq [[k v] @instances]
         (ocall @(:mark v) :clear))
       (reset! instances {})
@@ -669,6 +670,7 @@
                        %)
             (fn [_ _ runtime]
               (reset! cache runtime)
+              (reset! fresh-cache true)
               (n runtime)))))
        (fn [_ runtime]
          (try
@@ -687,7 +689,8 @@
                       (let [stxinfo (meta form)]
                         (when (:editor stxinfo)
                           (let [[k {:keys [visr stx info mark hidden refs]}]
-                                (some (fn [[k v]] (= @(:stx v) (second form)) [k v])
+                                (some (fn [[k v]]
+                                        (when (= @(:stx v) (second form)) [k v]))
                                       @old-instances),
                                 visr (or visr (.createElement js/document "span"))
                                 info (or info (atom stxinfo))
@@ -721,6 +724,8 @@
                                 (doseq [[k v] @refs]
                                   (when v
                                     (ocall v :setState #js {:iframeLoaded false})))
+                                (when @fresh-cache
+                                  (swap! info assoc :visr-internal-refresh true))
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
                               (d/render [visr-hider db runtime tag info stx
