@@ -617,8 +617,8 @@
                 :on-change #(let [value (oget % "target.value")]
                               (when (valid-id? value)
                                 (if @focused?
-                                  (reset! scratch value)
-                                  (swap! info assoc :editor value))))}]]]
+                                  (reset! scratch (symbol value))
+                                  (swap! info assoc :editor (symbol value)))))}]]]
             [:> (oget Form :Group) {:as Row
                                     :style {:margin "0"
                                             :flex "1 1 auto"}}

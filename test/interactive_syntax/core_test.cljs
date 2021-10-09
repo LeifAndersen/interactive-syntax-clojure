@@ -1394,6 +1394,96 @@
                     300))
         :done #(done))))))
 
+(deftest bad-dep
+  (testing "Ensure proper error message when bad dep added"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running? deps]
+            :as db}
+           (default-db :temp),
+           dep-mod "not a valid javascript file",
+           new-deps {1 {:name "bad-module"
+                        :url (env/module->uri dep-mod)}}]
+       (cb-thread
+        #(fs.writeFile (.join js/path deps-root "bad-module") dep-mod %)
+        #(let [editor (atom nil),
+               repl (atom nil),
+               resetting (atom nil),
+               _ (reset! deps new-deps)
+               view (rtl/render (r/as-element [core/home-page db
+                                               {:editor editor
+                                                :editor-reset resetting
+                                                :repl repl}]))]
+           (test-do
+            db :set [:deps] new-deps :check
+            ;; XXX ADD actual test!
+            :done #(done))))))))
+
+(deftest visr-change
+  (testing "Ensure proper updates when visr changed"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running? deps]
+            :as db}
+           (default-db :temp)
+           lib "
+(ns test.core)
+(defvisr Edi1
+  (elaborate [this] 42)
+  (render [this] [:button \"Hello\"]))
+(defvisr Edi2
+  (elaborate [this] 863)
+  (render [this] [:button \"World\"]))"
+           use1 "
+(ns test.use
+  (:require [test.core :include-macros true]))
+^{:editor test.core/Edi1}(test.core/Edi1+elaborate {})"
+           use2 "
+(ns test.use
+  (:require [test.core :include-macros true]))
+^{:editor test.core/Edi2}(test.core/Edi2+elaborate {}
+)"
+           editor (atom nil),
+           repl (atom nil),
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir (js/path.join files-root "test") %)
+        :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
+        :do #(-> @editor .getDoc (.setValue use1))
+        :wait-until not resetting
+        :wait 0
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/CODE) 0))
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 1000
+        :do #(.change rtl/fireEvent
+                      (-> js/document
+                          .-body
+                          (.getElementsByTagName "iframe")
+                          (aget 1)
+                          .-contentDocument
+                          (.querySelector "[aria-label=\"VISr\"]"))
+                      #js {:target #js {:value "test.core/Edi2"}})
+        :wait-until not resetting
+        :wait 1000
+        :do #(is (= (-> js/document
+                        .-body
+                        (.getElementsByTagName "iframe")
+                        (aget 0)
+                        .-contentDocument
+                        (.getElementsByTagName "button")
+                        (aget 0)
+                        .-innerHTML)
+                    "World"))
+        :set [:input] use2 :check
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 240000))
 

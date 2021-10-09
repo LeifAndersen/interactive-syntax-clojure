@@ -107,7 +107,7 @@
         (.catch js/console.log))
    #(let [files (oget %2 :files)]
       (cb-loop (js-keys files)
-               (fn [next name] (merge-file db (obj/get files name) next))
+               #(merge-file db (obj/get files %2) %)
                cb))))
 
 (defn wipe-project! [{:keys [fs input output menu deps deps-env env
@@ -124,18 +124,16 @@
   (reset! file-browser-folder db/files-root)
   (reset! menu [:home])
   (cb-thread
-   (fn [next]
-     (ocall fs :readdir db/files-root
-            (fn [err files]
-              (cb-loop files
-                       #(recursive-rm fs (js/path.join db/files-root %2) %)
-                       next))))
-   (fn []
-     (ocall fs :readdir db/deps-root
-            (fn [err files]
-              (cb-loop files
-                       #(recursive-rm fs (js/path.join db/deps-root %2) %)
-                       cb))))))
+   #(ocall fs :readdir db/files-root
+           (fn [err files]
+             (cb-loop files
+                      #(recursive-rm fs (js/path.join db/files-root %2) %)
+                      %)))
+   #(ocall fs :readdir db/deps-root
+           (fn [err files]
+             (cb-loop files
+                      #(recursive-rm fs (js/path.join db/deps-root %2) %)
+                      cb)))))
 
 ;; -------------------------
 ;; Git
