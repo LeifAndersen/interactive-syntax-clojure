@@ -4,14 +4,29 @@ This is a very early prototype of [Visual and Interactive Syntax][visr] for
 ClojureScript. Feel free to look around, but things will change and others will
 be broken.
 
-## Live Tool (Early Prototype)
+## Live Tool (Prototype)
 
 To run VISr for ClojureScript, you only need a browser. We currently provide an
 early prototype at: 
 
 [visr.pl][visrpl]
 
-A morestable prototype coming soon...
+Proper documentation coming soon. For now, you can create a visr with:
+
+```
+(defvisr VisrName
+  (elaborate [this] 42)
+  (render [this] [:button "hello"]))
+```
+
+Additionally, build in support is provided for:
+
+* [reagent](https://reagent-project.github.io/)
+* [garden](https://github.com/noprompt/garden)
+* [react-bootstrap](https://react-bootstrap.github.io/)
+
+And a list of additional dependencies can be found [on this github page][visrshop]. 
+Proper documentation on how to create new dependencies to come.
 
 ## Build Requirements
 
@@ -71,8 +86,7 @@ With a development build running, open
 clojure -M:package
 ```
 
-Then go get a coffee, or just eat dinner, a production build seems 
-to take a little over 15 minutes.
+Then go get a coffee, a production build seems to take about 5 minutes.
 
 [visr]: https://dl.acm.org/doi/10.1145/3428290
 [nodejs]: https://nodejs.org/en/
@@ -81,3 +95,4 @@ to take a little over 15 minutes.
 [clojure]: https://clojure.org/ 
 [nix]: https://nixos.org/
 [visrpl]: https://visr.pl
+[visrshop]: https://github.com/LeifAndersen/visr-deps/

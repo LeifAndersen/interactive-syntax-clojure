@@ -103,7 +103,7 @@
               (let [m (.split module "")]
                 (.map m #(.charCodeAt % 0))))))
 
-(defn deps->env [{:keys [deps fs] :as db} cb]
+(defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system (new (.-constructor js/System))]
     ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
@@ -111,10 +111,7 @@
          (let [[[key {:keys [name] :as dep}] & rest-deps] deps]
            (cb-thread
             #(ocall fs :readFile (js/path.join deps-root name) %)
-            (fn [next err source]
-              (if err
-                (console.error err)
-                (next source)))
+            #(if %2 (js/console.error %2) (% %3))
             (fn [next source]
               (-> system (ocall :import (module->uri (.toString source)))
                   (.then #(rec (assoc denv (munge name) %)
@@ -123,7 +120,11 @@
                                       {:global-exports {(symbol name)
                                                         (munge name)}})
                                rest-deps))
-                  (.catch #(js/console.error %))))))))
+                  (.catch (fn [err]
+                            (reset! output
+                                    #queue [(str "Cannot load dependency " name ":")
+                                            (str err)])
+                            (cb nil)))))))))
      {} [] {} @deps)))
 
 ;; -------------------------
@@ -378,15 +379,16 @@
   (deps->env
    db
    (fn [deps-env]
-     (reset! stopified-cache {})
-     (reset! runner
-             (eval-str @input
-                       {:runtime (stdlib/reagent-runtime deps-env db)
-                        :fs fs
-                        :running? running?
-                        :file-name file-name
-                        :print-fn #(swap! output conj %)}
-                       (or cb #(print-res db %)))))))
+     (when deps-env
+       (reset! stopified-cache {})
+       (reset! runner
+               (eval-str @input
+                         {:runtime (stdlib/reagent-runtime deps-env db)
+                          :fs fs
+                          :running? running?
+                          :file-name file-name
+                          :print-fn #(swap! output conj %)}
+                         (or cb #(print-res db %))))))))
 
 ;; Converts a (1-index) line and col pair to a (0-indexed) string index.
 (defn buffer-position->index [str line column]
@@ -659,15 +661,17 @@
            (n c)
            (cb-thread
             #(deps->env db %)
-            #(eval-str ""
-                       {:runtime (stdlib/reagent-runtime
-                                  (assoc-in %2 [:env (munge "visr->atom")]
-                                            (fn [x]
-                                              (get-in @instances [x :stx])))
-                                  db)
-                        :running? visr-run-ref
-                        :fs fs}
-                       %)
+            #(if %2
+               (eval-str ""
+                         {:runtime (stdlib/reagent-runtime
+                                    (assoc-in %2 [:env (munge "visr->atom")]
+                                              (fn [x]
+                                                (get-in @instances [x :stx])))
+                                    db)
+                          :running? visr-run-ref
+                          :fs fs}
+                         %)
+               (cb))
             (fn [_ _ runtime]
               (reset! cache runtime)
               (reset! fresh-cache true)

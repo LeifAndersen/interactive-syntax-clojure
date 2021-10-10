@@ -1416,17 +1416,17 @@
                         :url (env/module->uri dep-mod)}}]
        (cb-thread
         #(fs.writeFile (.join js/path deps-root "bad-module") dep-mod %)
-        #(let [editor (atom nil),
-               repl (atom nil),
-               resetting (atom nil),
+        #(let [resetting (atom nil),
                _ (reset! deps new-deps)
                view (rtl/render (r/as-element [core/home-page db
-                                               {:editor editor
-                                                :editor-reset resetting
-                                                :repl repl}]))]
+                                               {:editor-reset resetting}]))]
            (test-do
-            db :set [:deps] new-deps :check
-            ;; XXX ADD actual test!
+            db
+            :set [:deps] new-deps
+            :set [:output] #queue ["Cannot load dependency bad-module:"
+                                   "SyntaxError: Unexpected identifier"]
+            :wait-until not resetting
+            :check
             :done #(done))))))))
 
 (deftest visr-change
