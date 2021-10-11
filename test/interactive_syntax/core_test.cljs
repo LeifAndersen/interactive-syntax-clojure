@@ -1579,6 +1579,43 @@
                     "World"))
         :done #(done))))))
 
+(deftest runtime-error
+  (testing "Ensure printout when runtime error occurs"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running? deps]
+            :as db}
+           (default-db :temp)
+           prog "
+(ns test.core)
+(def x nil)
+(println \"A\")
+(x)
+(println \"B\")
+"
+           res #queue ["A"
+                       (str "#js {:type exception, "
+                            ":value #object[TypeError TypeError: "
+                            "Cannot read properties of null (reading 'call')], "
+                            ":stack #js [Line 4: in (anonymous function)]}")]
+           editor (atom nil),
+           repl (atom nil),
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
+       (test-do
+        db :check
+        :do #(reset! input prog)
+        :set [:input] prog :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 0
+        :set [:output] res :check
+        :done #(done))))))
+
+
 (defn -main [& args]
   (run-tests-async 240000))
 

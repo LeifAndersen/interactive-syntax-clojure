@@ -162,8 +162,8 @@
                          (reset! compiled? true)
                          (ocall runner :evalCompiled str
                                 (fn [res]
-                                  (when-not (or (= (:type res) "normal")
-                                                (= (:value res) nil))
+                                  (when-not (or (= (.-type res) "normal")
+                                                (= (.-value res) nil))
                                     (println res))
                                   (cb res))))]
                (cond
