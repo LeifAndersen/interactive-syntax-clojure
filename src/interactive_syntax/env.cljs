@@ -69,9 +69,9 @@
   (let [req (js/XMLHttpRequest.)
         sanatize-map {"@" "" "/" ""}
         pkg-name (cond (and url (not= url "")) "",
-                       (and version (not= version ""))
-                       (str (string/escape name sanatize-map) "/"
-                            (string/escape version sanatize-map)),
+                       ;;(and version (not= version ""))
+                       ;;(str (string/escape name sanatize-map) "/"
+                       ;;     (string/escape version sanatize-map)),
                        :else (string/escape name sanatize-map))
         url (if (and url (not= url ""))
               url

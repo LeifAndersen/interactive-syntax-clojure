@@ -182,7 +182,6 @@
           [:thead
            [:tr
             [:th strings/NAME]
-            [:th (str strings/VERSION " " strings/OPTIONAL)]
             [:th (str strings/URL " " strings/OPTIONAL)]]]
           [:tbody
            (for [[key package] @new-deps]
@@ -193,9 +192,6 @@
                 [:td [:> (oget Form :Control) {:on-change (on-change :name)
                                                :aria-label strings/NAME
                                                :value (:name package)}]]
-                [:td [:> (oget Form :Control) {:on-change (on-change :version)
-                                               :aria-label strings/VERSION
-                                               :value (:version package)}]]
                 [:td [:> (oget Form :Control) {:on-change (on-change :url)
                                                :aria-label strings/URL
                                                :value (:url package)}]]
