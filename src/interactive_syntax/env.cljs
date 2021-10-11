@@ -104,7 +104,7 @@
                 (.map m #(.charCodeAt % 0))))))
 
 (defn deps->env [{:keys [deps fs output] :as db} cb]
-  (let [system (new (.-constructor js/System))]
+  (let [system js/System];(new (.-constructor js/System))]
     ((fn rec [denv dloaded djs deps]
        (if (empty? deps)
          (cb {:env denv :loaded dloaded :js-deps djs})
