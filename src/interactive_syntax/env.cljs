@@ -46,7 +46,7 @@
 (def ^:private Frame (.-default react-frame-component))
 (def ^:private ReactResizeDetector (.-default react-resize-detector))
 
-(defn print-res [{:keys [output]
+(defn print-cljs-res [{:keys [output]
                   :as db}
                  res]
   (binding [*print-fn* #(swap! output conj %)]
@@ -55,6 +55,16 @@
       (contains? res :value)
       (when (get-in res [:value :value])
         (println (get-in res [:value :value]))))))
+
+(defn print-stopify-res [res]
+  (condp = (oget res :type)
+    "exception"
+    (do (println (str (oget res :value.name) ": " (oget res :value.message)))
+        (doseq [i (oget res :stack)]
+          (println (str "\t* " i)))
+        (println "Runtime Stack:")
+        (println (oget res :value.stack))),
+    (println res)))
 
 (defn valid-id? [id]
   (try
@@ -164,7 +174,7 @@
                                 (fn [res]
                                   (when-not (or (= (.-type res) "normal")
                                                 (= (.-value res) nil))
-                                    (println res))
+                                    (print-stopify-res res))
                                   (cb res))))]
                (cond
                  (and
@@ -388,7 +398,7 @@
                           :running? running?
                           :file-name file-name
                           :print-fn #(swap! output conj %)}
-                         (or cb #(print-res db %))))))))
+                         (or cb #(print-cljs-res db %))))))))
 
 ;; Converts a (1-index) line and col pair to a (0-indexed) string index.
 (defn buffer-position->index [str line column]

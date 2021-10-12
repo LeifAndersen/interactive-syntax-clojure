@@ -68,8 +68,13 @@
 ;;  - output has pure newlines stripped
 (defn is-db= [this other & [check-keys]]
   (when (or (not check-keys) (some #{:output} check-keys))
-    (is (= (filter #(and (not (= % "\n")) (not (= % "<EOF>"))) @(:output this))
-           (filter #(and (not (= % "\n")) (not (= % "<EOF>"))) @(:output other)))))
+    (doseq [[t o] (map list
+                       (filter #(and (not (= % "\n")) (not (= % "<EOF>")))
+                               @(:output this))
+                       (filter #(and (not (= % "\n")) (not (= % "<EOF>")))
+                               @(:output other)))]
+      (when-not (or (= t :ignore) (= o :ignore))
+        (is (= t o)))))
   (when (or (not check-keys) (some #{:deps} check-keys))
     (is (= (vals @(:deps this)) (vals @(:deps other)))))
   (let [test-keys (or check-keys [:input
@@ -1594,10 +1599,10 @@
 (println \"B\")
 "
            res #queue ["A"
-                       (str "#js {:type exception, "
-                            ":value #object[TypeError TypeError: "
-                            "Cannot read properties of null (reading 'call')], "
-                            ":stack #js [Line 4: in (anonymous function)]}")]
+                       "TypeError: Cannot read properties of null (reading 'call')"
+                       "\t* Line 4: in (anonymous function)"
+                       "Runtime Stack:"
+                       :ignore]
            editor (atom nil),
            repl (atom nil),
            resetting (atom nil),
