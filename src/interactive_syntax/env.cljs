@@ -110,8 +110,7 @@
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
        (ocall base64-js :fromByteArray
-              (let [m (.split module "")]
-                (.map m #(.charCodeAt % 0))))))
+              (js/Array.from module))))
 
 (defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system js/System];(new (.-constructor js/System))]
@@ -123,7 +122,7 @@
             #(ocall fs :readFile (js/path.join deps-root name) %)
             #(if %2 (js/console.error %2) (% %3))
             (fn [next source]
-              (-> system (ocall :import (module->uri (.toString source)))
+              (-> system (ocall :import (module->uri source))
                   (.then #(rec (assoc denv (munge name) %)
                                (conj dloaded (symbol name))
                                (assoc djs (str name)
