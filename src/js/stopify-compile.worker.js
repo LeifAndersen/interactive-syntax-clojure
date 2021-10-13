@@ -3,7 +3,7 @@ import {parse} from "@babel/parser";
 import {polyfillHofFromAst} from "@stopify/higher-order-functions";
 self.stopify = stopify;
 
-let runner = stopify.stopifyLocally("");
+let runner = stopify.stopifyLocally("", {newMethod: "direct"});
 runner.run(() => {
     self.onmessage = ({data: {prog}}) => {
         let ast = parse(prog);

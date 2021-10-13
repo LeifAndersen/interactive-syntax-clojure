@@ -785,13 +785,15 @@
         :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/NAME))
                       #js {:target #js {:value "react-hexgrid"}})
         :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/URL))
-                      #js {:target #js {:value (env/module->uri test-dep)}})
+                      #js {:target
+                           #js {:value (env/module->uri test-dep)}})
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/UPDATE)))
         :set [:deps] {1 {:name "react-hexgrid" :version ""
                          :url (env/module->uri test-dep)}}
         :wait 1000
         :do #(reset! input prog1)
         :set [:input] prog1 :check
+        :do #(set! window.mod test-dep)
         :do #(click-run view)
         :wait 1000
         :wait-until not running?
@@ -1619,7 +1621,6 @@
         :wait 0
         :set [:output] res :check
         :done #(done))))))
-
 
 (defn -main [& args]
   (run-tests-async 240000))

@@ -18,6 +18,7 @@
    [cljs.env :refer [*compiler*]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
+   [base64-js]
    [goog.object :as obj]
    [interactive-syntax.utils :refer [cb-thread cb-loop]]
    [interactive-syntax.db :refer [files-root deps-root shop-url]]
@@ -38,7 +39,6 @@
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
                             Table]]
-   [base64-js]
    [react-frame-component :refer [useFrame]]
    [react-switch]))
 
@@ -109,8 +109,8 @@
 
 (defn module->uri [module]
   (str "data:text/javascript;base64,"
-       (ocall base64-js :fromByteArray
-              (js/Array.from module))))
+       (base64-js/fromByteArray
+        (ocall js/Array :from (ocall (new js/TextEncoder) :encode (str module))))))
 
 (defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system js/System];(new (.-constructor js/System))]
@@ -181,9 +181,9 @@
                   (contains? @stopified-cache clj-source))
                  (run (get @stopified-cache clj-source)),
                  ;; sync v async, currently always sync
-                 (< (count source) 1000)
+                 true;(< (count source) 1000)
                  (let [ast (babylon/parse source)
-                       polyfilled (hof/polyfillHofFromAst ast)
+                       polyfilled ast;(hof/polyfillHofFromAst ast)
                        compiled (ocall runner :compileFromAst polyfilled)]
                    (when-not (string/ends-with? (str (:name cache)) "$macros")
                      (swap! stopified-cache assoc clj-source compiled))
@@ -239,9 +239,10 @@
                  :ns-cache ns-cache
                  :js-deps js-deps
                  :bootstrapped? true}
-        job #(let [runner (let [new (js/stopify.stopifyLocally "")]
-                            (set! (.-g new) env)
-                            new)
+        job #(let [runner (let [r (js/stopify.stopifyLocally
+                                   "" #js {:newMethod "direct"})]
+                            (set! (.-g r) env)
+                            r)
                    bootstrapping? (atom false)
                    coop-loaded (atom nil)
                    coop-additional-core (atom nil)

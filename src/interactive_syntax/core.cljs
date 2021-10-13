@@ -33,7 +33,6 @@
    ["codemirror/keymap/sublime"]
    ["codemirror/addon/search/searchcursor"]
    [browserfs]
-   [base64-js]
    [react-split-pane]
    ["react-split-pane/lib/Pane" :as Pane]
    [react-switch]
