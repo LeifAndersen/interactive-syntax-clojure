@@ -68,13 +68,14 @@
 ;;  - output has pure newlines stripped
 (defn is-db= [this other & [check-keys]]
   (when (or (not check-keys) (some #{:output} check-keys))
-    (doseq [[t o] (map list
-                       (filter #(and (not (= % "\n")) (not (= % "<EOF>")))
-                               @(:output this))
-                       (filter #(and (not (= % "\n")) (not (= % "<EOF>")))
-                               @(:output other)))]
-      (when-not (or (= t :ignore) (= o :ignore))
-        (is (= t o)))))
+    (let [this-out (filter #(and (not (= % "\n")) (not (= % "<EOF>")))
+                           @(:output this))
+          other-out (filter #(and (not (= % "\n")) (not (= % "<EOF>")))
+                            @(:output other))]
+      (is (= (count this-out) (count other-out)))
+      (doseq [[t o] (map list this-out other-out)]
+        (when-not (or (= t :ignore) (= o :ignore))
+          (is (= t o))))))
   (when (or (not check-keys) (some #{:deps} check-keys))
     (is (= (vals @(:deps this)) (vals @(:deps other)))))
   (let [test-keys (or check-keys [:input
@@ -756,6 +757,43 @@
         :set [:output] #queue ["false"] :check
         :done #(done))))))
 
+(deftest default-lib-reqs
+  (testing "Ensure can use features of require for default clojure libs"
+    (async
+     done
+     (let [{:keys [fs input output running?] :as db}
+           (default-db :temp),
+           prog "
+(ns test.core
+  (:require [reagent.core :as r :refer [atom]]
+            [reagent.dom :as d]
+            [react-bootstrap :as rb :refer [Button]]))
+(println (nil? reagent.core))
+(println (nil? reagent.dom))
+(println (nil? r))
+(println (nil? d))
+(println (nil? atom))
+(println (= atom reagent.core/atom))
+(println (= atom r/atom))
+(println (nil? react-bootstrap))
+(println (nil? rb))
+(println (nil? Button))",
+           old-error js/console.error,
+           out #queue ["false" "false" "true" "true" "false" "true" "true"
+                       "false" "false" "false"],
+           view (rtl/render (r/as-element [core/home-page db]))]
+       (test-do
+        db :check
+        :do #(reset! input prog)
+        :set [:input] prog :check
+        :do #(set! js/console.error #())
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 0
+        :set [:output] out :check
+        :do #(set! js/console.error old-error)
+        :do #(done))))))
+
 (deftest test-download-dep
   (testing "Test an installed/additional dep"
     (async
@@ -895,7 +933,7 @@
 ^{:editor test.core/Counter}(test.core/Counter+elaborate 443)"]
        (test-do
         db :check
-        :do #(set! js/console.error (fn [] nil))
+        :do #(set! js/console.error #())
         :async #(fs.mkdir (.join js/path files-root "test") %)
         :async #(fs.writeFile (.join js/path files-root "test/core.cljs")
                               prog %)

@@ -60,9 +60,11 @@
 
 (defn state-injection [lib-name lib-publics]
   {lib-name
-   {:name lib-name :defs (into {}
-                               (for [[k v] lib-publics]
-                                 [k {:name (symbol v)}]))}})
+   {:name lib-name
+    :global-exports {}
+    :defs (into {}
+                (for [[k v] lib-publics]
+                  [k {:name (symbol v)}]))}})
 
 (defn sandbox-env []
   {:cljs {:core js/cljs.core
@@ -92,6 +94,7 @@
    :Set js/Set
    :Math js/Math
    :DOMParser js/DOMParser
+   :TextEncoder js/TextEncoder
    :atob js/atob
    :btoa js/btoa
    :parseInt js/parseInt
