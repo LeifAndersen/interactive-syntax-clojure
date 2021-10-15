@@ -99,6 +99,8 @@
    :btoa js/btoa
    :parseInt js/parseInt
    :parseFloat js/parseFloat
+   :URL js/URL
+   :Blob js/Blob
    :encodeURI js/encodeURI
    :encodeURIComponent js/encodeURIComponent
    :decodeURI js/decodeURI

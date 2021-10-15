@@ -18,7 +18,6 @@
    [cljs.env :refer [*compiler*]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
-   [base64-js]
    [goog.object :as obj]
    [interactive-syntax.utils :refer [cb-thread cb-loop]]
    [interactive-syntax.db :refer [files-root deps-root shop-url]]
@@ -108,9 +107,8 @@
    #(when cb (cb %2))))
 
 (defn module->uri [module]
-  (str "data:text/javascript;base64,"
-       (base64-js/fromByteArray
-        (ocall js/Array :from (ocall (new js/TextEncoder) :encode (str module))))))
+  (js/URL.createObjectURL
+   (new js/Blob #js [module] #js {:type "application/javascript"})))
 
 (defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system js/System];(new (.-constructor js/System))]
@@ -121,19 +119,20 @@
            (cb-thread
             #(ocall fs :readFile (js/path.join deps-root name) %)
             #(if %2 (js/console.error %2) (% %3))
-            (fn [next source]
-              (-> system (ocall :import (module->uri source))
-                  (.then #(rec (assoc denv (munge name) %)
-                               (conj dloaded (symbol name))
-                               (assoc djs (str name)
-                                      {:global-exports {(symbol name)
-                                                        (munge name)}})
-                               rest-deps))
-                  (.catch (fn [err]
-                            (reset! output
-                                    #queue [(str "Cannot load dependency " name ":")
-                                            (str err)])
-                            (cb nil)))))))))
+            #(let [url (module->uri %2)]
+               (-> system (ocall :import url)
+                   (.then #(rec (assoc denv (munge name) %)
+                                (conj dloaded (symbol name))
+                                (assoc djs (str name)
+                                       {:global-exports {(symbol name)
+                                                         (munge name)}})
+                                rest-deps))
+                   (.catch (fn [err]
+                             (reset! output #queue
+                                     [(str "Cannot load dependency " name ":")
+                                      (str err)])
+                             (cb nil)))
+                   (.finally #(js/URL.revokeObjectURL url))))))))
      {} [] {} @deps)))
 
 ;; -------------------------
@@ -745,7 +744,6 @@
                               (d/render [visr-hider db runtime tag info stx
                                          source hidden refs mark]
                                         visr))
-                            (set! js/window.frefs refs)
                             (let [r-mark (->
                                           @editor (ocall :getDoc)
                                           (ocall

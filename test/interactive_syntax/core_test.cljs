@@ -167,8 +167,9 @@
             :as db} (default-db :temp)
            ival "hello world"
            oval #queue ["A" "B"]
+           uri (env/module->uri test-dep)
            new-deps {1 {:name "react-hexgrid"
-                        :url (env/module->uri test-dep)}}
+                        :url uri}}
            new-dir (js/path.join db/files-root "A")
            new-file "x"
            fb-dir (js/path.join db/files-root "B")
@@ -225,6 +226,7 @@
                    test-dep))
        :set [:deps] new-deps
        :check
+       :do #(js/URL.revokeObjectURL uri)
        :done #(done))))))
 
 (deftest file-save-laod
@@ -806,6 +808,7 @@
            view (rtl/render (r/as-element [core/home-page db {:editor editor
                                                               :repl repl}]))
            interum "(println (+ 1 2))"
+           uri (env/module->uri test-dep)
            prog1 "
 (ns test.core
   (:require [react-hexgrid :as rh :refer [Hex]]))
@@ -823,11 +826,9 @@
         :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/NAME))
                       #js {:target #js {:value "react-hexgrid"}})
         :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/URL))
-                      #js {:target
-                           #js {:value (env/module->uri test-dep)}})
+                      #js {:target #js {:value uri}})
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/UPDATE)))
-        :set [:deps] {1 {:name "react-hexgrid" :version ""
-                         :url (env/module->uri test-dep)}}
+        :set [:deps] {1 {:name "react-hexgrid" :version "" :url uri}}
         :wait 1000
         :do #(reset! input prog1)
         :set [:input] prog1 :check
@@ -836,6 +837,7 @@
         :wait 1000
         :wait-until not running?
         :set [:output] #queue ["false" "false" "false" "false"] :check
+        :do #(js/URL.revokeObjectURL uri)
         :done #(done))))))
 
 (deftest test-basic-visr
@@ -1457,8 +1459,8 @@
             :as db}
            (default-db :temp),
            dep-mod "not a valid javascript file",
-           new-deps {1 {:name "bad-module"
-                        :url (env/module->uri dep-mod)}}]
+           uri (env/module->uri dep-mod),
+           new-deps {1 {:name "bad-module" :url uri}}]
        (cb-thread
         #(fs.writeFile (.join js/path deps-root "bad-module") dep-mod %)
         #(let [resetting (atom nil),
@@ -1472,6 +1474,7 @@
                                    "SyntaxError: Unexpected identifier"]
             :wait-until not resetting
             :check
+            :do #(js/URL.revokeObjectURL uri)
             :done #(done))))))))
 
 (deftest visr-change
