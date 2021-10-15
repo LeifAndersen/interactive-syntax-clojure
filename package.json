@@ -31,7 +31,6 @@
     "@leifandersen/stopify-tweak": "^0.7.5-2",
     "@stopify/higher-order-functions": "^0.7.3",
     "assert": "^1.5.0",
-    "base64-js": "^1.5.1",
     "bootstrap": "^5.0.2",
     "browserfs": "^1.4.3",
     "chonky": "^2.2.0",
