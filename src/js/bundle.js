@@ -10,6 +10,9 @@ window.path = require('path');
 import 'systemjs';
 import 'systemjs/dist/extras/amd';
 
+window.React = require('react');
+window.ReactDOM = require('react-dom');
+
 // Horrible hack because stopify insists on being in the global namespace.
 window.stopify = require('@leifandersen/stopify-tweak');
 window.stopifyArray = function(array) {
