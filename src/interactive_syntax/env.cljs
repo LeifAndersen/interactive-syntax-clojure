@@ -633,6 +633,14 @@
             :head [:style (css [:.frame-root :.frame-content {:height "100%"}])]}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
+                     :on-focus (fn []
+                                 (reset! scratch {:name (:editor @info)
+                                                  :value (stx->stx-str @stx)})
+                                 (reset! focused? true))
+                     :on-blur (fn []
+                                (swap! info assoc :editor (:name @scratch))
+                                (reset! stx (read-string (:value @scratch)))
+                                (reset! focused? false))
                      :style {:height "100%"
                              :display "flex"
                              :flex-flow "column"}}
@@ -652,16 +660,10 @@
                         :min-height "0"}
                 :aria-label strings/VISR
                 :default-value (str (:editor @info))
-                :on-focus (fn []
-                            (reset! scratch (:editor @info))
-                            (reset! focused? true))
-                :on-blur (fn []
-                           (swap! info assoc :editor @scratch)
-                           (reset! focused? false))
                 :on-change #(let [value (oget % "target.value")]
                               (when (valid-id? value)
                                 (if @focused?
-                                  (reset! scratch (symbol value))
+                                  (swap! scratch assoc :name (symbol value))
                                   (swap! info assoc :editor (symbol value)))))}]]]
             [:> (oget Form :Group) {:as Row
                                     :style {:margin "0"
@@ -669,16 +671,10 @@
              [:> Col {:xs "12"
                       :style {:padding "0"}}
               [:> cm/UnControlled
-               {:options (codemirror-options db)
-                :onFocus (fn []
-                           (reset! scratch (stx->stx-str @stx))
-                           (reset! focused? true))
-                :onBlur (fn []
-                          (reset! stx (read-string @scratch))
-                          (reset! focused? false))
+               {:options (assoc (codemirror-options db) :cursorBlinkRate 0)
                 :onChange (fn [this operation value]
                             (if @focused?
-                              (reset! scratch value)
+                              (swap! scratch assoc :value value)
                               (reset! stx (read-string value))))
                 :editorDidMount (fn [e]
                                   (-> e (ocall "getDoc")
