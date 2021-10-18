@@ -436,21 +436,6 @@
                        :fs fs}
                       mk-fn))))
 
-(defn style-sheet->string [sheet]
-  (string/join "\n" (for [i (-> sheet .-rules)] (-> i .-cssText))))
-
-(defn dom->reagent [element]
-  [(keyword (-> element .-nodeName .toLowerCase))
-   (into {}
-         (for [i (range (-> element .-attributes .-length))]
-           (let [attr (-> element .-attributes (.item i))]
-             [(.-name attr) (.-value attr)])))
-   (let [body (-> element .-innerHTML)
-         sheet (-> element .-sheet)]
-     (if (and (= body "") sheet)
-       (style-sheet->string sheet)
-       body))])
-
 (defn styled-frame [mopts & mbody]
   (let [opts (if (map? mopts)
                (dissoc mopts :on-resize :on-scroll :width :height
