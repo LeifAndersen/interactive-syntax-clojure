@@ -492,14 +492,16 @@
                         :width width
                         :height height}}
          [mutation-observer {:node (.-head js/document)
-                             :callback #(if-let [f @fbox]
-                                          (let [doc (oget f :document)]
-                                            (doseq [i %]
-                                              (doseq [j (.-removedNodes i)]
-                                                (swap! styles disj j))
-                                              (doseq [j (.-addedNodes i)]
-                                                (swap! styles conj j)))))
-                             :config #js {:childList true}}]
+                             :callback #(doseq [i %]
+                                          (doseq [j (.-removedNodes i)]
+                                            (try
+                                              (swap! styles disj j)
+                                              (catch js/Error e
+                                                (js/console.log e))))
+                                          (doseq [j (.-addedNodes i)]
+                                            (swap! styles conj j)))
+                             :config #js {:subtree true
+                                          :childList true}}]
          [:> ReactResizeDetector {:handleWidth true :handleHeight true
                                   :on-resize #(when on-resize
                                                 (apply on-resize %&))}]
