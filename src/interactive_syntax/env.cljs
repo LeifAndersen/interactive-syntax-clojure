@@ -38,11 +38,9 @@
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
                             Table]]
-   [react-frame-component :refer [useFrame]]
    [react-switch]))
 
 (def ^:private template (.-default babel-template))
-(def ^:private Frame (.-default react-frame-component))
 (def ^:private ReactResizeDetector (.-default react-resize-detector))
 
 (defn print-cljs-res [{:keys [output]
@@ -453,88 +451,45 @@
        (style-sheet->string sheet)
        body))])
 
-(defn frame-box [fbox]
-  (reset! fbox (useFrame))
-  [:<>])
-
-(defn mutation-observer [{:keys [callback node config]} & children]
-  (let [observer (clojure.core/atom nil)]
-    (r/create-class
-     {:component-did-mount #(let [o (new js/MutationObserver callback)]
-                              (reset! observer o)
-                              (.observe o node config))
-      :component-will-unmount (fn []
-                                (.disconnect @observer)
-                                (reset! observer nil))
-      :reagent-render (fn [& children] [:<>])})))
-
 (defn styled-frame [mopts & mbody]
-  (let [styles (atom (into #{} (-> js/document .-head (.getElementsByTagName
-                                                       "style"))))]
-    (fn [mopts & mbody]
-      (let [opts (if (map? mopts)
-                   (dissoc mopts :on-resize :on-scroll:width :height
-                           :scroll-top :scroll-left)
-                   {})
-            body (if (map? mopts) mbody (into [mopts] mbody))
-            on-resize (and (map? mopts) (:on-resize mopts))
-            on-scroll (and (map? mopts) (:on-scroll mopts))
-            width (and (map? mopts) (:width mopts))
-            height (and (map? mopts) (:height mopts))
-            scroll-top (and (map? mopts) (:scroll-top mopts))
-            scroll-left (and (map? mopts) (:scroll-left mopts))
-            fbox (atom nil)]
-        [:span {:style {:margin 0
-                        :padding 0
-                        :resize "both"
-                        :overflow "hidden"
-                        :display "flex"
-                        :width width
-                        :height height}}
-         [mutation-observer {:node (.-head js/document)
-                             :callback #(doseq [i %]
-                                          (doseq [j (.-removedNodes i)]
-                                            (try
-                                              (swap! styles disj j)
-                                              (catch js/Error e
-                                                (js/console.log e))))
-                                          (doseq [j (.-addedNodes i)]
-                                            (swap! styles conj j)))
-                             :config #js {:subtree true
-                                          :childList true}}]
-         [:> ReactResizeDetector {:handleWidth true :handleHeight true
-                                  :on-resize #(when on-resize
-                                                (apply on-resize %&))}]
-         (into [:> Frame (conj opts
-                               {:head
-                                (r/as-element
-                                 (into [:<> (:head opts)]
-                                       (for [i @styles]
-                                         (dom->reagent i))))
-                                :style {:flex-grow 1
-                                        :margin 0
-                                        :border 0
-                                        :padding 0
-                                        :width "100%"
-                                        :height "100%"}
-                                :contentDidMount
-                                #(if-let [f @fbox]
-                                   (let [doc (oget f :document)]
-                                     (when (and scroll-top scroll-left)
-                                       (js/setTimeout
-                                        (fn [] ; Takes a bit for useFrame to update
-                                          (-> doc (oget :scrollingElement)
-                                              (ocall :scrollTo
-                                                     #js {:left scroll-left
-                                                          :top scroll-top
-                                                          :behavior "instant"})))
-                                        300))
-                                     (when on-scroll
-                                       (ocall doc :addEventListener
-                                              "scroll" on-scroll
-                                              #js {:passive true}))))})
-                [:f> frame-box fbox]]
-               body)]))))
+  (let [opts (if (map? mopts)
+               (dissoc mopts :on-resize :on-scroll :width :height
+                       :scroll-top :scroll-left)
+               {})
+        body (if (map? mopts) mbody (into [mopts] mbody))
+        on-resize (and (map? mopts) (:on-resize mopts))
+        on-scroll (and (map? mopts) (:on-scroll mopts))
+        scroll-top (and (map? mopts) (:scroll-top mopts))
+        scroll-left (and (map? mopts) (:scroll-left mopts))]
+    (into [:div
+           (assoc opts :style {:margin 0
+                               :padding 0
+                               :border 0
+                               :resize "both"
+                               :overflow "hidden"
+                               :display "inline-block"
+                               :min-width 25
+                               :min-height 25})
+           [:> ReactResizeDetector {:handleWidth true :handleHeight true
+                                    :on-resize #(when on-resize
+                                                  (apply on-resize %&))}]]
+                              ;;:contentDidMount
+                              ;;#(if-let [f @fbox]
+                              ;;   (let [doc (oget f :document)]
+                              ;;     (when (and scroll-top scroll-left)
+                              ;;       (js/setTimeout
+                              ;;        (fn [] ; Takes a bit for useFrame to update
+                              ;;          (-> doc (oget :scrollingElement)
+                              ;;              (ocall :scrollTo
+                              ;;                     #js {:left scroll-left
+                              ;;                          :top scroll-top
+                              ;;                          :behavior "instant"})))
+                              ;;        300))
+                              ;;     (when on-scroll
+                              ;;       (ocall doc :addEventListener
+                              ;;              "scroll" on-scroll
+                              ;;              #js {:passive true}))))
+          body)))
 
 (defn codemirror-options [{:keys [options] :as db}]
   {:mode "clojure"
@@ -608,7 +563,7 @@
         (when (and (not @hidden) @show-visr)
           [err-boundary
            ;;{:ref #(swap! refs assoc :visr-err %)}
-           [styled-frame {:ref #(swap! refs assoc :visr %)
+           [styled-frame {:class "visr-body"
                           :on-scroll
                           (fn [event]
                             (let [se (oget event :target.scrollingElement)]
@@ -628,9 +583,7 @@
                                   (ocall rmb :changed)))}
          [:code "(\u03BB)"]]
         (when (and (not @hidden) @show-code)
-          [styled-frame
-           {:ref #(swap! refs assoc :code %)
-            :head [:style (css [:.frame-root :.frame-content {:height "100%"}])]}
+          [styled-frame {:class "visr-code"}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
                      :on-focus (fn []
@@ -671,7 +624,7 @@
              [:> Col {:xs "12"
                       :style {:padding "0"}}
               [:> cm/UnControlled
-               {:options (assoc (codemirror-options db) :cursorBlinkRate 0)
+               {:options (codemirror-options db)
                 :onChange (fn [this operation value]
                             (if @focused?
                               (swap! scratch assoc :value value)
@@ -763,9 +716,6 @@
                                 (swap! old-instances dissoc k)
                                 (remove-watch info ::commit)
                                 (remove-watch stx ::commit)
-                                (doseq [[k v] @refs]
-                                  (when v
-                                    (ocall v :setState #js {:iframeLoaded false})))
                                 (when @fresh-cache
                                   (swap! info assoc :visr-internal-refresh true))
                                 (reset! info stxinfo)

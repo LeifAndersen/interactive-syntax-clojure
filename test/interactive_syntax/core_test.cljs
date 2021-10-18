@@ -889,9 +889,8 @@
         :do #(.click rtl/fireEvent
                      (-> js/document
                          .-body
-                         (.getElementsByTagName "iframe")
+                         (.getElementsByClassName "visr-body")
                          (aget 0)
-                         .-contentDocument
                          (.getElementsByTagName "button")
                          (aget 0)))
         :wait 1000
@@ -1059,9 +1058,8 @@
         :do #(.change rtl/fireEvent
                      (-> js/document
                          .-body
-                         (.getElementsByTagName "iframe")
+                         (.getElementsByClassName "visr-code")
                          (aget 0)
-                         .-contentDocument
                          (.getElementsByTagName "input")
                          (aget 0))
                      #js {:target #js {:value alt-visr-name}})
@@ -1071,9 +1069,8 @@
         :wait 100
         :do #(is (= (-> js/document
                         .-body
-                        (.getElementsByTagName "iframe")
+                        (.getElementsByClassName "visr-code")
                         (aget 0)
-                        .-contentDocument
                         (.getElementsByTagName "input")
                         (aget 0)
                         (.getAttribute "value"))
@@ -1104,9 +1101,8 @@
         :do #(.change rtl/fireEvent
                      (-> js/document
                          .-body
-                         (.getElementsByTagName "iframe")
+                         (.getElementsByClassName "visr-code")
                          (aget 0)
-                         .-contentDocument
                          (.getElementsByTagName "input")
                          (aget 0))
                      #js {:target #js {:value "not a valid id"}})
@@ -1115,9 +1111,8 @@
         :wait 100
         :do #(is (= (-> js/document
                         .-body
-                        (.getElementsByTagName "iframe")
+                        (.getElementsByClassName "visr-code")
                         (aget 0)
-                        .-contentDocument
                         (.getElementsByTagName "input")
                         (aget 0)
                         (.getAttribute "value"))
@@ -1370,9 +1365,8 @@
         :do #(.click rtl/fireEvent
                      (-> js/document
                          .-body
-                         (.getElementsByTagName "iframe")
+                         (.getElementsByClassName "visr-body")
                          (aget 0)
-                         .-contentDocument
                          (.getElementsByTagName "button")
                          (aget 0)))
         :wait 1000
@@ -1381,6 +1375,7 @@
         :check
         :done #(done))))))
 
+(comment ; TODO, is this test needed any more?
 (deftest scroll-persists
   (testing "Ensure visrs presentation is kept during updates"
     (async
@@ -1429,7 +1424,6 @@
                  .-body
                  (.getElementsByTagName "iframe")
                  (aget 0)
-                 .-contentDocument
                  .-scrollingElement
                  (.scroll #js {:top 300 :left 0 :behavior "instant"}))
         :wait 3000
@@ -1445,11 +1439,10 @@
                         .-body
                         (.getElementsByTagName "iframe")
                         (aget 0)
-                        .-contentDocument
                         .-scrollingElement
                         .-scrollTop)
                     300))
-        :done #(done))))))
+        :done #(done)))))))
 
 (deftest bad-dep
   (testing "Ensure proper error message when bad dep added"
@@ -1525,18 +1518,16 @@
         :do #(.change rtl/fireEvent
                       (-> js/document
                           .-body
-                          (.getElementsByTagName "iframe")
-                          (aget 1)
-                          .-contentDocument
+                          (.getElementsByClassName "visr-code")
+                          (aget 0)
                           (.querySelector "[aria-label=\"VISr\"]"))
                       #js {:target #js {:value "test.core/Edi2"}})
         :wait-until not resetting
         :wait 1000
         :do #(is (= (-> js/document
                         .-body
-                        (.getElementsByTagName "iframe")
+                        (.getElementsByClassName "visr-body")
                         (aget 0)
-                        .-contentDocument
                         (.getElementsByTagName "button")
                         (aget 0)
                         .-innerHTML)
@@ -1591,9 +1582,8 @@
         :wait 1000
         :do #(is (= (-> js/document
                         .-body
-                        (.getElementsByTagName "iframe")
+                        (.getElementsByClassName "visr-body")
                         (aget 0)
-                        .-contentDocument
                         (.getElementsByTagName "button")
                         (aget 0)
                         .-innerHTML)
@@ -1605,9 +1595,8 @@
         :wait 1000
         :do #(is (= (-> js/document
                         .-body
-                        (.getElementsByTagName "iframe")
+                        (.getElementsByClassName "visr-body")
                         (aget 0)
-                        .-contentDocument
                         (.getElementsByTagName "button")
                         (aget 0)
                         .-innerHTML)
@@ -1618,9 +1607,8 @@
         :wait 1000
         :do #(is (= (-> js/document
                         .-body
-                        (.getElementsByTagName "iframe")
+                        (.getElementsByClassName "visr-body")
                         (aget 0)
-                        .-contentDocument
                         (.getElementsByTagName "button")
                         (aget 0)
                         .-innerHTML)
