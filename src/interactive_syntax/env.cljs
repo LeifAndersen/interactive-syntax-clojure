@@ -531,10 +531,10 @@
                                (let [v (:value ret)]
                                  (cond (= (oget v :type) "exception")
                                        [:div {:style {:white-space "pre"}}
-                                        (oget v :value.message)
+                                        ;;(oget v :value.message)
                                         (oget v :value.stack)],
                                        :else (oget v :value))),
-                               :else [:div (str ret)])))))
+                               :else [:div (.-stack ret)])))))
       [:span {:style {:display "inline-block"}}
        [:> ButtonGroup {:aria-label strings/VISR}
         [:> Button {:size "sm"
@@ -619,7 +619,7 @@
                                       (ocall "setValue"
                                              (stx->stx-str @stx))))}]]]]])]])))
 
-(defn reset-editors! [source set-text editor instances operation queue cache
+(defn reset-editors! [source set-text editor instances operation cache queue
                       {{:keys [show-editors]} :options
                        :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
@@ -633,15 +633,15 @@
                (when-not (empty? @queue)
                  (js/setTimeout (peek @queue) 0))
                (cb))]
-      (doseq [[k v] @instances]
-        (ocall @(:mark v) :clear))
-      (reset! instances {})
       (cb-thread
        (fn [n]
          (swap! queue conj n)
          (when (= (count @queue) 1)
            (n)))
        (fn [n]
+         (doseq [[k v] @instances]
+           (ocall @(:mark v) :clear))
+         (reset! instances {})
          (if-let [c @cache]
            (n c)
            (cb-thread

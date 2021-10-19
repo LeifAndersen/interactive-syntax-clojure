@@ -849,8 +849,11 @@
            (default-db :temp),
            editor (atom nil),
            repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :repl repl
+                                            :editor-reset resetting}]))
            visr-prog "
 (ns test.core
   (:require [react-bootstrap :refer [Button]]))
@@ -883,6 +886,8 @@
         :do #(click-run view)
         :wait-until not running?
         :set [:output] #queue ["334"] :check
+        :wait-until not resetting
+        :wait 0
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :wait 1000
@@ -1575,7 +1580,7 @@
         :set [:input] lib :check
         :do #(.click rtl/fireEvent (.getByText view strings/SAVE))
         :wait-until not resetting
-        :wait 0
+        :wait 1000
         :set [:file-changed] false :check
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
@@ -1695,7 +1700,7 @@
         :set [:current-file] "B.cljs"
         :set [:input] buff2 :check
         :wait-until not resetting
-        :wait 0
+        :wait 500
         :do #(is (= (count (.queryAllByLabelText view strings/VISUAL)) 0))
         :done #(done))))))
 
