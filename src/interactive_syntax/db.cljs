@@ -8,7 +8,10 @@
             [interactive-syntax.utils :refer [cb-thread cb-loop]]
             [browserfs]))
 
-(def version (str "0.1.11-SNAPSHOT-" (slurp "src/injectable/date.inject")))
+(def package (t/read (t/reader :json) (slurp "package.json")))
+
+(def version (str (get package "version") "-SNAPSHOT-"
+                  (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
 (def prompt "> ")
