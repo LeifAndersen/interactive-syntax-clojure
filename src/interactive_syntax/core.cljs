@@ -767,7 +767,8 @@
                           (let [fc @file-changed]
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! cache nil)
-                            (reset! file-changed fc))))]
+                            (reset! file-changed fc))))
+        reset-queue (clojure.core/atom #queue [])]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
     (reset! visr-commit!
@@ -796,7 +797,7 @@
                     (when editor-reset-ref
                       (reset! editor-reset-ref true))
                     (env/reset-editors! @input set-text edit visrs operation
-                                        cache db
+                                        cache reset-queue db
                                         #(when editor-reset-ref
                                            (reset! editor-reset-ref false))
                                         visr-run-ref))
@@ -820,7 +821,7 @@
                           (when editor-reset-ref
                             (reset! editor-reset-ref true))
                           (env/reset-editors! @input set-text edit visrs nil
-                                              cache db
+                                              cache reset-queue db
                                               (fn []
                                                 (reset! mounted? true)
                                                 (when editor-reset-ref

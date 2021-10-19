@@ -1651,6 +1651,54 @@
         :set [:output] res :check
         :done #(done))))))
 
+(deftest visrs-reset-on-file-change
+  (testing "Ensure visrs are removed when the file changes"
+    (async
+     done
+     (let [{:keys [fs input output menu runner running? deps
+                   current-file current-folder file-browser-folder]
+            :as db}
+           (default-db :temp),
+           buff1 (str "ASDF^{:editor visr.core/empty-visr}"
+                      "(visr.core/empty-visr+elaborate 42)QWER")
+           buff2 (string/join (for [i (range 200)] (char (+ (mod i 26) 65)))),
+           editor (atom nil),
+           repl (atom nil),
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile (.join js/path files-root "test/B.cljs") buff2 %)
+        :do #(-> @editor .getDoc (.setValue buff1))
+        :wait-until not resetting
+        :wait 0
+        :set [:input] buff1
+        :set [:file-changed] true :check
+        :do #(is (= (count (.getAllByLabelText view strings/VISUAL)) 1))
+        :do #(reset! file-browser-folder (js/path.join files-root "test"))
+        :set [:file-browser-folder] (js/path.join files-root "test")
+        :do #(reset! current-folder (js/path.join files-root "test"))
+        :set [:current-folder] (js/path.join files-root "test")
+        :do #(reset! current-file "A.cljs")
+        :set [:current-file] "A.cljs"
+        :do #(.click rtl/fireEvent (.getByText view strings/SAVE))
+        :set [:file-changed] false :check
+        :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
+        :set [:menu] [:home :load] :check
+        :do #(change-file-browser-input "B.cljs")
+        :do #(submit-file-browser-input)
+        :set [:menu] [:home]
+        :set [:current-file] "B.cljs"
+        :set [:input] buff2 :check
+        :wait-until not resetting
+        :wait 0
+        :do #(is (= (count (.queryAllByLabelText view strings/VISUAL)) 0))
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 240000))
 

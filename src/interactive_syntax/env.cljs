@@ -619,7 +619,7 @@
                                       (ocall "setValue"
                                              (stx->stx-str @stx))))}]]]]])]])))
 
-(defn reset-editors! [source set-text editor instances operation cache
+(defn reset-editors! [source set-text editor instances operation queue cache
                       {{:keys [show-editors]} :options
                        :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
@@ -627,11 +627,20 @@
     (let [old-instances (atom @instances)
           prog (indexing-push-back-reader source)
           eof (atom nil)
-          fresh-cache (atom false)]
+          fresh-cache (atom false)
+          cb (fn []
+               (swap! queue pop)
+               (when-not (empty? @queue)
+                 (js/setTimeout (peek @queue) 0))
+               (cb))]
       (doseq [[k v] @instances]
         (ocall @(:mark v) :clear))
       (reset! instances {})
       (cb-thread
+       (fn [n]
+         (swap! queue conj n)
+         (when (= (count @queue) 1)
+           (n)))
        (fn [n]
          (if-let [c @cache]
            (n c)
