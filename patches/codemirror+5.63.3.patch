@@ -1,0 +1,23 @@
+diff --git a/node_modules/codemirror/mode/clojure/clojure.js b/node_modules/codemirror/mode/clojure/clojure.js
+index 0b9d6ac..b0e4f58 100644
+--- a/node_modules/codemirror/mode/clojure/clojure.js
++++ b/node_modules/codemirror/mode/clojure/clojure.js
+@@ -51,7 +51,8 @@ CodeMirror.defineMode("clojure", function (options) {
+       "create-ns", "create-struct", "cycle", "dec", "dec'", "decimal?",
+       "declare", "dedupe", "default-data-readers", "definline", "definterface",
+       "defmacro", "defmethod", "defmulti", "defn", "defn-", "defonce",
+-      "defprotocol", "defrecord", "defstruct", "deftype", "delay", "delay?",
++      "defprotocol", "defrecord", "defstruct", "deftype", "defvisr",
++      "delay", "delay?",
+       "deliver", "denominator", "deref", "derive", "descendants", "destructure",
+       "disj", "disj!", "dissoc", "dissoc!", "distinct", "distinct?", "doall",
+       "dorun", "doseq", "dosync", "dotimes", "doto", "double", "double-array",
+@@ -141,7 +142,7 @@ CodeMirror.defineMode("clojure", function (options) {
+       "->", "->>", "as->", "binding", "bound-fn", "case", "catch", "comment",
+       "cond", "cond->", "cond->>", "condp", "def", "definterface", "defmethod",
+       "defn", "defmacro", "defprotocol", "defrecord", "defstruct", "deftype",
+-      "do", "doseq", "dotimes", "doto", "extend", "extend-protocol",
++      "defvisr", "do", "doseq", "dotimes", "doto", "extend", "extend-protocol",
+       "extend-type", "fn", "for", "future", "if", "if-let", "if-not", "if-some",
+       "let", "letfn", "locking", "loop", "ns", "proxy", "reify", "struct-map",
+       "some->", "some->>", "try", "when", "when-first", "when-let", "when-not",
