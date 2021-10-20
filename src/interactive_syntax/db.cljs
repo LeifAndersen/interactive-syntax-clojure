@@ -1,4 +1,4 @@
-(ns nteractive-syntax.db
+(ns interactive-syntax.db
   (:require-macros
    [interactive-syntax.slurp :refer [slurp]])
   (:require [reagent.core :as r :refer [atom]]
