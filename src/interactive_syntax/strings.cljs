@@ -66,3 +66,9 @@
 
 (def ERROR-MESSAGE "Action could not be completed.")
 (def RUN-MAIN "Run Main Function")
+
+(def TAB-BEHAVIOR "Tab Behavior")
+(def INSERT-TAB "Insert Tab")
+(def INDENT-LINE "Indent Line")
+
+(def AUTO-INDENT "Auto Indent")

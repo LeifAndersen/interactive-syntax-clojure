@@ -566,12 +566,13 @@
 (defn options-dialog [{{:keys [show-editors
                                orientation
                                keymap
+                               tab-behavior
                                font-size
                                theme
                                run-functions]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
-             ;;:size "lg"
+             :size "lg"
              :on-hide #(swap! menu pop)}
    [:> (oget Modal :Header) {:close-button true}
     [:h3 strings/OPTIONS-MENU]]
@@ -593,10 +594,17 @@
       [:> (oget Form :Label) {:column true}
        [:h4 (str strings/KEYMAP ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/KEYMAP}
-               ;;[option-button keymap false "Default"]
+               [option-button keymap false "Default"]
                [option-button keymap "vim" "Vim"]
                [option-button keymap "emacs" "Emacs"]
                [option-button keymap "sublime" "Sublime"]]]]
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
+       [:h4 (str strings/TAB-BEHAVIOR ":")]]
+      [:> Col [:> ButtonGroup {:aria-label strings/KEYMAP}
+               [option-button tab-behavior "tab" strings/INSERT-TAB]
+               [option-button tab-behavior "indent" strings/INDENT-LINE]
+               [option-button tab-behavior "auto" strings/AUTO-INDENT]]]]
      [:> (oget Form :Group) {:as Row}
       [:> (oget Form :Label) {:column true}
        [:h4 (str strings/FONT-SIZE ":")]]

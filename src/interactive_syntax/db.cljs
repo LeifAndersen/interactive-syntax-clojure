@@ -1,4 +1,4 @@
-(ns interactive-syntax.db
+(ns nteractive-syntax.db
   (:require-macros
    [interactive-syntax.slurp :refer [slurp]])
   (:require [reagent.core :as r :refer [atom]]
@@ -102,6 +102,9 @@
                       :emacs (partial = "emacs")
                       :vim (partial = "vim")
                       :default (partial = false)))
+(s/def ::tab-behavior (s/or :tab (partial = "tab")
+                            :insert (partial = "insert")
+                            :auto (partial = "auto")))
 (s/def ::font-size nat-int?)
 (s/def ::theme string?)
 (s/def ::line-wrapping boolean?)
@@ -187,6 +190,7 @@
   ([mode]
    {:orientation "horizontal"
     :keymap "sublime"
+    :tab-behavior "auto"
     :font-size 12
     :theme "material"
     :line-wrapping false
@@ -255,6 +259,7 @@
          ret {:options (into {}
                              (for [i [:orientation
                                       :keymap
+                                      :tab-behavior
                                       :font-size
                                       :theme
                                       :line-wrapping

@@ -490,6 +490,11 @@
 (defn codemirror-options [{:keys [options] :as db}]
   {:mode "clojure"
    :keyMap @(:keymap options)
+   :extraKeys {"Tab" (condp = @(:tab-behavior options)
+                       "indent" "indentMore"
+                       "auto" "indentAuto"
+                       "tab" "insertTab"
+                       "defaultTab")}
    :theme @(:theme options)
    :matchBrackets true
    :showCursorWhenSelecting true
