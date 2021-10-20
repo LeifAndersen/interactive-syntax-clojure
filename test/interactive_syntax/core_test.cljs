@@ -75,7 +75,10 @@
       (is (= (count this-out) (count other-out)))
       (doseq [[t o] (map list this-out other-out)]
         (when-not (or (= t :ignore) (= o :ignore))
-          (is (= t o))))))
+          (cond
+            (regexp? o) (is (re-matches o t))
+            (regexp? t) (is (re-matches t o))
+            :else (is (= t o)))))))
   (when (or (not check-keys) (some #{:deps} check-keys))
     (is (= (vals @(:deps this)) (vals @(:deps other)))))
   (let [test-keys (or check-keys [:input
@@ -312,10 +315,10 @@
            prog "
 (ns bob.core
   (:require [bill.core :as bill]))"
-           err-msg (str "#error {:message No such namespace: bill.core, "
-                        "could not locate bill/core.cljs, bill/core.cljc, "
-                        "or JavaScript source providing \"bill.core\", "
-                        ":data {:tag :cljs/analysis-error}}")]
+           err-msg (re-pattern
+                    (str "(?s)Error: No such namespace: bill\\.core, "
+                         "could not locate bill/core\\.cljs, bill/core\\.cljc, "
+                         "or JavaScript source providing \"bill\\.core\".*"))]
        (test-do
         db :check
         :do #(-> @editor .getDoc (.setValue "(ns bob.core)"))

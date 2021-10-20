@@ -43,25 +43,24 @@
 (def ^:private template (.-default babel-template))
 (def ^:private ReactResizeDetector (.-default react-resize-detector))
 
-(defn print-cljs-res [{:keys [output]
+(defn print-res [{:keys [output]
                   :as db}
                  res]
   (binding [*print-fn* #(swap! output conj %)]
     (cond
-      (contains? res :error) (println (:error res))
+      (contains? res :error)
+      (println (oget (:error res) :stack))
       (contains? res :value)
-      (when (get-in res [:value :value])
-        (println (get-in res [:value :value]))))))
-
-(defn print-stopify-res [res]
-  (condp = (oget res :type)
-    "exception"
-    (do (println (str (oget res :value.name) ": " (oget res :value.message)))
-        (doseq [i (oget res :stack)]
-          (println (str "\t* " i)))
-        (println "Runtime Stack:")
-        (println (oget res :value.stack))),
-    (println res)))
+      (let [v (:value res)]
+        (condp = (oget v :type)
+          "exception"
+          (do (println (str (oget v :value.name) ": " (oget v :value.message)))
+              (doseq [i (oget v :stack)]
+                (println (str "\t* " i)))
+              (println "Runtime Stack:")
+              (println (oget v :value.stack))),
+          (if-some [v (oget v :value)]
+            (println v)))))))
 
 (defn valid-id? [id]
   (try
@@ -168,9 +167,6 @@
                          (reset! compiled? true)
                          (ocall runner :evalCompiled str
                                 (fn [res]
-                                  (when-not (or (= (.-type res) "normal")
-                                                (= (.-value res) nil))
-                                    (print-stopify-res res))
                                   (cb res))))]
                (cond
                  (and
@@ -398,7 +394,7 @@
                         %)))
    (fn [n res rtm]
      (let [ns (:ns res)]
-       (print-cljs-res db res)
+       (print-res db res)
        (cb-loop @run-functions
                 #(when (get-in @(:state rtm)
                                [:cljs.analyzer/namespaces ns :defs (symbol %2)])
