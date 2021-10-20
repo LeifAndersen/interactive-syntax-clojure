@@ -567,7 +567,8 @@
                                orientation
                                keymap
                                font-size
-                               theme]} :options
+                               theme
+                               run-functions]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
              ;;:size "lg"
@@ -616,7 +617,13 @@
        [:h4 (str strings/THEME ":")]]
       [:> Col [:> ButtonGroup {:aria-label strings/THEME}
                [option-button theme "neat" strings/LIGHT]
-               [option-button theme "material" strings/DARK]]]]]]
+               [option-button theme "material" strings/DARK]]]]
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
+       [:h4 (str strings/RUN-MAIN ":")]]
+      [:> Col [:> Switch {:checked (= @run-functions ["main"])
+                          :on-change #(reset! run-functions
+                                              (if % ["main"] []))}]]]]]
    [:> (oget Modal :Footer)
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}
@@ -662,9 +669,9 @@
         export-project #(fs/export-to-zip db (fn [res] (saveAs res "project.zip")))
         do-insert-visr #(when @insert-visr!
                           (@insert-visr!))
-        run+pause #(let []
-                     (reset! output #queue [])
-                     (env/eval-buffer db))]
+        run+pause (fn []
+                    (reset! output #queue [])
+                    (env/eval-buffer db))]
     [:div
      [:div {:class-name "d-block d-md-none"}
       [:> Row {:class-name "align-items-center flex-nowrap"

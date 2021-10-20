@@ -381,21 +381,33 @@
      :running? running?
      :runtime runtime}))
 
-(defn eval-buffer [{:keys [input output file-name fs running? runner] :as db}
+(defn eval-buffer [{{:keys [run-functions]} :options
+                    :keys [input output file-name fs running? runner] :as db}
                    & [cb]]
-  (deps->env
-   db
-   (fn [deps-env]
-     (when deps-env
-       (reset! stopified-cache {})
-       (reset! runner
-               (eval-str @input
-                         {:runtime (stdlib/reagent-runtime deps-env db)
+  (cb-thread
+   #(deps->env db %)
+   #(when %2
+      (reset! stopified-cache {})
+      (reset! runner
+              (eval-str @input
+                        {:runtime (stdlib/reagent-runtime %2 db)
+                         :fs fs
+                         :running? running?
+                         :file-name file-name
+                         :print-fn #(swap! output conj %)}
+                        %)))
+   (fn [n res rtm]
+     (print-cljs-res db res)
+     (cb-loop @run-functions
+              #(eval-str (str "(" %2 ")")
+                         {:runtime rtm
                           :fs fs
-                          :running? running?
                           :file-name file-name
+                          :ns (:ns res)
                           :print-fn #(swap! output conj %)}
-                         (or cb #(print-cljs-res db %))))))))
+                         %)
+              #(n res)))
+   #(when cb (cb %2))))
 
 ;; Converts a (1-index) line and col pair to a (0-indexed) string index.
 (defn buffer-position->index [str line column]

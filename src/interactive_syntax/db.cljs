@@ -108,12 +108,14 @@
 (s/def ::line-numbers boolean?)
 (s/def ::enable-drag-and-drop boolean?)
 (s/def ::show-editors boolean?)
+(s/def ::run-functions (s/* string?))
 (s/def ::options (s/keys :req-un [::font-size
                                   ::theme
                                   ::line-wrapping
                                   ::line-numbers
                                   ::enable-drag-and-drop
-                                  ::show-editors]))
+                                  ::show-editors
+                                  ::run-functions]))
 
 (s/def ::name string?)
 (s/def ::version string?)
@@ -188,7 +190,8 @@
    :line-wrapping false
    :line-numbers true
    :enable-drag-and-drop true
-   :show-editors true})
+   :show-editors true
+   :run-functions ["main"]})
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -253,7 +256,8 @@
                                       :line-wrapping
                                       :line-numbers
                                       :enable-drag-and-drop
-                                      :show-editors]]
+                                      :show-editors
+                                      :run-functions]]
                                [i (->DBAtom backed-db [:options i])]))
               :version (->DBAtom backed-db [:version])
               :fs fs

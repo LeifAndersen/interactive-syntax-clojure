@@ -1704,6 +1704,36 @@
         :do #(is (= (count (.queryAllByLabelText view strings/VISUAL)) 0))
         :done #(done))))))
 
+(deftest test-main-functions
+  (testing "Ensure default called functions match run-functions"
+    (async
+     done
+     (let [{{:keys [run-functions] :as options} :options :keys [input output running?] :as db}
+           (default-db :temp),
+           buff "
+(ns test.core)
+(defn- main []
+  (println \"Called Main\"))
+(println \"Outer Body\")"
+           view (rtl/render (r/as-element [core/home-page db]))]
+       (test-do
+        db :check
+        :do #(reset! run-functions ["main"])
+        :set [:options :run-functions] ["main"]
+        :do #(reset! input buff)
+        :set [:input] buff :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] #queue ["Outer Body" "Called Main"] :check
+        :set [:options :run-functions] []
+        :do #(reset! run-functions [])
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] #queue ["Outer Body"] :check
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 240000))
 

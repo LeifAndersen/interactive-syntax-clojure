@@ -65,3 +65,4 @@
 (def CONFIRM-WIPE "Confirm Wipe")
 
 (def ERROR-MESSAGE "Action could not be completed.")
+(def RUN-MAIN "Run Main Function")
