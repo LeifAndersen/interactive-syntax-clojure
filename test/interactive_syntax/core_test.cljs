@@ -1708,7 +1708,7 @@
   (testing "Ensure default called functions match run-functions"
     (async
      done
-     (let [{{:keys [run-functions] :as options} :options :keys [input output running?] :as db}
+     (let [{{:keys [run-functions]} :options :keys [input output running?] :as db}
            (default-db :temp),
            buff "
 (ns test.core)
@@ -1726,6 +1726,36 @@
         :wait-until not running?
         :wait 1000
         :set [:output] #queue ["Outer Body" "Called Main"] :check
+        :set [:options :run-functions] []
+        :do #(reset! run-functions [])
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] #queue ["Outer Body"] :check
+        :done #(done))))))
+
+(deftest test-correct-main-missing
+  (testing "Ensure main isn't called when it does not exist"
+    (async
+     done
+     (let [{{:keys [run-functions]} :options :keys [input output running?] :as db}
+           (default-db :temp),
+           buff "
+(ns test.core)
+(defn- not-main []
+  (println \"Shouldn't get called...\"))
+(println \"Outer Body\")"
+           view (rtl/render (r/as-element [core/home-page db]))]
+       (test-do
+        db :check
+        :do #(reset! run-functions ["main"])
+        :set [:options :run-functions] ["main"]
+        :do #(reset! input buff)
+        :set [:input] buff :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] #queue ["Outer Body"] :check
         :set [:options :run-functions] []
         :do #(reset! run-functions [])
         :do #(click-run view)

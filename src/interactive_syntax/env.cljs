@@ -397,16 +397,19 @@
                          :print-fn #(swap! output conj %)}
                         %)))
    (fn [n res rtm]
-     (print-cljs-res db res)
-     (cb-loop @run-functions
-              #(eval-str (str "(" %2 ")")
-                         {:runtime rtm
-                          :fs fs
-                          :file-name file-name
-                          :ns (:ns res)
-                          :print-fn #(swap! output conj %)}
-                         %)
-              #(n res)))
+     (let [ns (:ns res)]
+       (print-cljs-res db res)
+       (cb-loop @run-functions
+                #(when (get-in @(:state rtm)
+                               [:cljs.analyzer/namespaces ns :defs (symbol %2)])
+                   (eval-str (str "(" %2 ")")
+                             {:runtime rtm
+                              :fs fs
+                              :file-name file-name
+                              :ns ns
+                              :print-fn #(swap! output conj %)}
+                             %))
+                #(n res))))
    #(when cb (cb %2))))
 
 ;; Converts a (1-index) line and col pair to a (0-indexed) string index.

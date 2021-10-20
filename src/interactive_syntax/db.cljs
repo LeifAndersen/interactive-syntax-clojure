@@ -182,16 +182,20 @@
 ;; -------------------------
 ;; Default Database Setup
 
-(def default-options
-  {:orientation "horizontal"
-   :keymap "sublime"
-   :font-size 12
-   :theme "material"
-   :line-wrapping false
-   :line-numbers true
-   :enable-drag-and-drop true
-   :show-editors true
-   :run-functions ["main"]})
+(defn default-options
+  ([] (default-options :temp))
+  ([mode]
+   {:orientation "horizontal"
+    :keymap "sublime"
+    :font-size 12
+    :theme "material"
+    :line-wrapping false
+    :line-numbers true
+    :enable-drag-and-drop true
+    :show-editors true
+    :run-functions (case mode
+                     :local ["main"]
+                     [])}))
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -233,7 +237,7 @@
   ([mode cb]
    (let [fs (browserfs/BFSRequire "fs")
          base {:version version
-               :options default-options
+               :options (default-options mode)
                :current 0
                :folder files-root
                :buffers [(default-buffer mode)]
