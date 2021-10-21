@@ -76,3 +76,6 @@
 (def AUTOCOMPLETE "Autocomplete")
 (def CONTINUOUSLY "Continuously")
 (def CTRL-SPACE "Ctrl+Space")
+
+(def INSERT-CLOSE-PARENTHESES "Insert Close Parentheses")
+

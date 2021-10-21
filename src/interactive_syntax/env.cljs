@@ -378,7 +378,7 @@
      :runtime runtime}))
 
 (defn eval-buffer [{{:keys [run-functions]} :options
-                    :keys [input output file-name fs running? runner] :as db}
+                    :keys [input output ns file-name fs running? runner] :as db}
                    & [cb]]
   (cb-thread
    #(deps->env db %)
@@ -393,18 +393,21 @@
                          :print-fn #(swap! output conj %)}
                         %)))
    (fn [n res rtm]
-     (let [ns (:ns res)]
+     (let [new-ns (:ns res)]
        (print-res db res)
+       (reset! ns new-ns)
        (cb-loop @run-functions
                 #(when (get-in @(:state rtm)
-                               [:cljs.analyzer/namespaces ns :defs (symbol %2)])
+                               [:cljs.analyzer/namespaces new-ns :defs (symbol %2)])
                    (eval-str (str "(" %2 ")")
                              {:runtime rtm
                               :fs fs
                               :file-name file-name
-                              :ns ns
+                              :ns new-ns
                               :print-fn #(swap! output conj %)}
-                             %))
+                             (fn [r]
+                               (print-res db r)
+                               (%))))
                 #(n res))))
    #(when cb (cb %2))))
 
@@ -499,6 +502,7 @@
    :theme @(:theme options)
    :matchBrackets true
    :showCursorWhenSelecting true
+   :autoCloseBrackets true
    :lineWrapping @(:line-wrapping options)
    :lineNumbers @(:line-numbers options)})
 

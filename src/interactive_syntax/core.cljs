@@ -33,6 +33,7 @@
    ["codemirror/addon/search/searchcursor"]
    ["codemirror/addon/hint/show-hint"]
    ["codemirror/addon/hint/anyword-hint"]
+   ["codemirror/addon/edit/closebrackets"]
    ["codemirror/mode/clojure/clojure"]
    [browserfs]
    [react-split-pane]
@@ -572,6 +573,7 @@
                                font-size
                                theme
                                autocomplete
+                               insert-close
                                run-functions]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
@@ -635,6 +637,11 @@
       [:> Col [:> ButtonGroup {:aria-label strings/AUTOCOMPLETE}
                [option-button autocomplete "auto" strings/CONTINUOUSLY]
                [option-button autocomplete "manual" strings/CTRL-SPACE]]]]
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
+       [:h4 (str strings/INSERT-CLOSE-PARENTHESES ":")]]
+      [:> Col [:> Switch {:checked @insert-close
+                          :on-change #(reset! insert-close %)}]]]
      [:> (oget Form :Group) {:as Row}
       [:> (oget Form :Label) {:column true}
        [:h4 (str strings/RUN-MAIN ":")]]
@@ -833,7 +840,7 @@
                    ;;(js/console.log (oget e :keyCode))
                    (when (and (= "auto" @(:autocomplete options))
                               (not (-> this .-state .-completionActive))
-                              (not (contains? #{8 9 13 16 18 27 37 38 39 40}
+                              (not (contains? #{8 9 13 16 18 27 37 38 39 40 48 221}
                                               (oget e :keyCode))))
                      (ocall codemirror/commands :autocomplete this nil
                             #js {:completeSingle false})))
@@ -930,10 +937,14 @@
         #(let [pos (ocall % :getCursor)
                base (ocall codemirror/hint :fromList %
                            #js {:words (oget codemirror/hintWords :clojure)})
-               from (if base (oget base :from) pos)
-               to (if base (oget base :to) pos)
-               base (if base (oget base :list) #js [])
                near (ocall codemirror/hint :anyword %)
+               from (cond base (oget base :from)
+                          near (oget near :from)
+                          :else pos)
+               to (cond base (oget base :to)
+                        near (oget near :to)
+                        :else pos)
+               base (if base (oget base :list) #js [])
                near (if near (oget near :list) #js [])]
            #js {:from from :to to
                 :list (.concat near base)}))

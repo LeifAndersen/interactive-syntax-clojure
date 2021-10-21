@@ -113,6 +113,7 @@
 (s/def ::show-editors boolean?)
 (s/def ::run-functions (s/* string?))
 (s/def ::autocomplete string?)
+(s/def ::insert-close boolean?)
 (s/def ::options (s/keys :req-un [::font-size
                                   ::theme
                                   ::line-wrapping
@@ -120,7 +121,8 @@
                                   ::enable-drag-and-drop
                                   ::show-editors
                                   ::run-functions
-                                  ::autocomplete]))
+                                  ::autocomplete
+                                  ::insert-close]))
 
 (s/def ::name string?)
 (s/def ::version string?)
@@ -206,7 +208,8 @@
     :run-functions (case mode
                      :local ["main"]
                      [])
-    :autocomplete "auto"}))
+    :autocomplete "auto"
+    :insert-close true}))
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -274,7 +277,8 @@
                                       :enable-drag-and-drop
                                       :show-editors
                                       :run-functions
-                                      :autocomplete]]
+                                      :autocomplete
+                                      :insert-close]]
                                [i (->DBAtom backed-db [:options i])]))
               :version (->DBAtom backed-db [:version])
               :fs fs
@@ -284,6 +288,8 @@
               :menu (->DBAtom backed-db [:menu])
               :input (->DBAtom backed-db [:current :input])
               :output (atom "") ;;(->DBAtom backed-db [:current :output])
+              :ns (->DBAtom backed-db [:current :ns])
+              :repl (atom [])
               :current-folder (->DBAtom backed-db [:current :folder])
               :current-file (->DBAtom backed-db [:current :file])
               :file-browser-folder (->DBAtom backed-db [:folder])
