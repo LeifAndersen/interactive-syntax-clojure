@@ -504,7 +504,9 @@
    :showCursorWhenSelecting true
    :autoCloseBrackets true
    :lineWrapping @(:line-wrapping options)
-   :lineNumbers @(:line-numbers options)})
+   :lineNumbers @(:line-numbers options)
+   :foldGutter true,
+   :gutters #js ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]})
 
 ;; Based on: https://lilac.town/writing/modern-react-in-cljs-error-boundaries/
 (defn err-boundary [& children]

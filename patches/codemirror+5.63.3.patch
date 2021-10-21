@@ -1,5 +1,32 @@
+diff --git a/node_modules/codemirror/addon/fold/brace-fold.js b/node_modules/codemirror/addon/fold/brace-fold.js
+index 79a331c..7f1f73c 100644
+--- a/node_modules/codemirror/addon/fold/brace-fold.js
++++ b/node_modules/codemirror/addon/fold/brace-fold.js
+@@ -31,14 +31,18 @@ CodeMirror.registerHelper("fold", "brace", function(cm, start) {
+     }
+   }
+ 
+-  var startBrace = findOpening("{"), startBracket = findOpening("[")
++  var startBrace = findOpening("{") || Infinity
++  var startBracket = findOpening("[") || Infinity
++  var startParen = findOpening("(") || Infinity
+   var startToken, endToken, startCh
+-  if (startBrace != null && (startBracket == null || startBracket > startBrace)) {
++  if (startBrace == Infinity && startBracket == Infinity && startParen == Infinity) {
++    return
++  } else if (Math.min(startBrace, startBracket, startParen) == startBrace) {
+     startCh = startBrace; startToken = "{"; endToken = "}"
+-  } else if (startBracket != null) {
++  } else if (Math.min(startBrace, startBracket, startParen) == startBracket) {
+     startCh = startBracket; startToken = "["; endToken = "]"
+   } else {
+-    return
++    startCh = startParen; startToken = "("; endToken = ")"
+   }
+ 
+   var count = 1, lastLine = cm.lastLine(), end, endCh;
 diff --git a/node_modules/codemirror/mode/clojure/clojure.js b/node_modules/codemirror/mode/clojure/clojure.js
-index 0b9d6ac..b0e4f58 100644
+index 0b9d6ac..eccf9ed 100644
 --- a/node_modules/codemirror/mode/clojure/clojure.js
 +++ b/node_modules/codemirror/mode/clojure/clojure.js
 @@ -51,7 +51,8 @@ CodeMirror.defineMode("clojure", function (options) {
@@ -21,3 +48,13 @@ index 0b9d6ac..b0e4f58 100644
        "extend-type", "fn", "for", "future", "if", "if-let", "if-not", "if-some",
        "let", "letfn", "locking", "loop", "ns", "proxy", "reify", "struct-map",
        "some->", "some->>", "try", "when", "when-first", "when-let", "when-not",
+@@ -281,7 +282,8 @@ CodeMirror.defineMode("clojure", function (options) {
+     },
+ 
+     closeBrackets: {pairs: "()[]{}\"\""},
+-    lineComment: ";;"
++    lineComment: ";;",
++    fold: "brace"
+   };
+ });
+ 
