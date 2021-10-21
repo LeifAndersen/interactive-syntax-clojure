@@ -112,13 +112,15 @@
 (s/def ::enable-drag-and-drop boolean?)
 (s/def ::show-editors boolean?)
 (s/def ::run-functions (s/* string?))
+(s/def ::autocomplete string?)
 (s/def ::options (s/keys :req-un [::font-size
                                   ::theme
                                   ::line-wrapping
                                   ::line-numbers
                                   ::enable-drag-and-drop
                                   ::show-editors
-                                  ::run-functions]))
+                                  ::run-functions
+                                  ::autocomplete]))
 
 (s/def ::name string?)
 (s/def ::version string?)
@@ -141,12 +143,16 @@
 (s/def ::file (s/nilable string?))
 (s/def ::changed? boolean?)
 (s/def ::split string?)
+(s/def ::ns any?)
+(s/def ::repl any?)
 (s/def ::buffer (s/keys :req-un [::input
                                  ::output
                                  ::folder
                                  ::file
                                  ::changed?
-                                 ::split]))
+                                 ::split
+                                 ::ns
+                                 ::repl]))
 
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
@@ -199,7 +205,8 @@
     :show-editors true
     :run-functions (case mode
                      :local ["main"]
-                     [])}))
+                     [])
+    :autocomplete "auto"}))
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -266,7 +273,8 @@
                                       :line-numbers
                                       :enable-drag-and-drop
                                       :show-editors
-                                      :run-functions]]
+                                      :run-functions
+                                      :autocomplete]]
                                [i (->DBAtom backed-db [:options i])]))
               :version (->DBAtom backed-db [:version])
               :fs fs

@@ -72,3 +72,7 @@
 (def INDENT-LINE "Indent Line")
 
 (def AUTO-INDENT "Auto Indent")
+
+(def AUTOCOMPLETE "Autocomplete")
+(def CONTINUOUSLY "Continuously")
+(def CTRL-SPACE "Ctrl+Space")

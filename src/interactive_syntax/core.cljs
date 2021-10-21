@@ -571,6 +571,7 @@
                                tab-behavior
                                font-size
                                theme
+                               autocomplete
                                run-functions]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
@@ -628,6 +629,12 @@
       [:> Col [:> ButtonGroup {:aria-label strings/THEME}
                [option-button theme "neat" strings/LIGHT]
                [option-button theme "material" strings/DARK]]]]
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
+       [:h4 (str strings/AUTOCOMPLETE ":")]]
+      [:> Col [:> ButtonGroup {:aria-label strings/AUTOCOMPLETE}
+               [option-button autocomplete "auto" strings/CONTINUOUSLY]
+               [option-button autocomplete "manual" strings/CTRL-SPACE]]]]
      [:> (oget Form :Group) {:as Row}
       [:> (oget Form :Label) {:column true}
        [:h4 (str strings/RUN-MAIN ":")]]
@@ -824,7 +831,8 @@
                     (reset! scroll {:x (oget data :left) :y (oget data :top)}))
         :onKeyUp (fn [this e]
                    ;;(js/console.log (oget e :keyCode))
-                   (when (and (not (-> this .-state .-completionActive))
+                   (when (and (= "auto" @(:autocomplete options))
+                              (not (-> this .-state .-completionActive))
                               (not (contains? #{8 9 13 16 18 27 37 38 39 40}
                                               (oget e :keyCode))))
                      (ocall codemirror/commands :autocomplete this nil
