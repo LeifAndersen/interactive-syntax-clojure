@@ -1,6 +1,6 @@
 {
   "name": "interactive-syntax",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LeifAndersen/interactive-syntax-clojure.git"

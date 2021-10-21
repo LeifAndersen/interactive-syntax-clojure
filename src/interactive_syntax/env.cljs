@@ -494,7 +494,8 @@
                        "indent" "indentMore"
                        "auto" "indentAuto"
                        "tab" "insertTab"
-                       "defaultTab")}
+                       "defaultTab")
+               "Ctrl-Space" "autocomplete"}
    :theme @(:theme options)
    :matchBrackets true
    :showCursorWhenSelecting true

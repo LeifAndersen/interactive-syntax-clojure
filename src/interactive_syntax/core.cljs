@@ -27,11 +27,13 @@
    [codemirror]
    [file-saver :refer [saveAs]]
    ["@leifandersen/react-codemirror2" :as cm]
-   ["codemirror/mode/clojure/clojure"]
    ["codemirror/keymap/vim"]
    ["codemirror/keymap/emacs"]
    ["codemirror/keymap/sublime"]
    ["codemirror/addon/search/searchcursor"]
+   ["codemirror/addon/hint/show-hint"]
+   ["codemirror/addon/hint/anyword-hint"]
+   ["codemirror/mode/clojure/clojure"]
    [browserfs]
    [react-split-pane]
    ["react-split-pane/lib/Pane" :as Pane]
@@ -820,6 +822,13 @@
                     (reset! cursor data))
         :onScroll (fn [editor data]
                     (reset! scroll {:x (oget data :left) :y (oget data :top)}))
+        :onKeyUp (fn [this e]
+                   ;;(js/console.log (oget e :keyCode))
+                   (when (and (not (-> this .-state .-completionActive))
+                              (not (contains? #{8 9 13 16 18 27 37 38 39 40}
+                                              (oget e :keyCode))))
+                     (ocall codemirror/commands :autocomplete this nil
+                            #js {:completeSingle false})))
         :onKeyDown (fn [this e]
                      (when (and (= (oget e :key) "r") (oget e :ctrlKey))
                        (.preventDefault e)
@@ -908,6 +917,18 @@
   (chonky/setChonkyDefaults
    #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
   (set! codemirror/commands.save #(save-file db))
+  (set! js/window.CodeMirror codemirror)
+  (set! codemirror/hint.clojure
+        #(let [pos (ocall % :getCursor)
+               base (ocall codemirror/hint :fromList %
+                           #js {:words (oget codemirror/hintWords :clojure)})
+               from (if base (oget base :from) pos)
+               to (if base (oget base :to) pos)
+               base (if base (oget base :list) #js [])
+               near (ocall codemirror/hint :anyword %)
+               near (if near (oget near :list) #js [])]
+           #js {:from from :to to
+                :list (.concat near base)}))
   (when-not (= @version db/version)
     (db/reset-db! db)
     (when-not (= (peek @menu) :splash)
