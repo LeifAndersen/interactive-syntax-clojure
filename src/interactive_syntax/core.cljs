@@ -934,82 +934,83 @@
                      repl-ref :repl
                      visr-run-ref :visr-run
                      :as opts}]]
-  (chonky/setChonkyDefaults
-   #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
-  (set! codemirror/commands.save #(save-file db))
-  (set! js/window.CodeMirror codemirror)
-  (set! codemirror/hint.clojure
-        #(let [pos (ocall % :getCursor)
-               base (ocall codemirror/hint :fromList %
-                           #js {:words (oget codemirror/hintWords :clojure)})
-               near (ocall codemirror/hint :anyword %)
-               from (cond base (oget base :from)
-                          near (oget near :from)
+  (let [search (js/URLSearchParams. js/window.location.search)]
+    (chonky/setChonkyDefaults
+     #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
+    (set! codemirror/commands.jsave #(save-file db))
+    (set! js/window.CodeMirror codemirror)
+    (set! codemirror/hint.clojure
+          #(let [pos (ocall % :getCursor)
+                 base (ocall codemirror/hint :fromList %
+                             #js {:words (oget codemirror/hintWords :clojure)})
+                 near (ocall codemirror/hint :anyword %)
+                 from (cond base (oget base :from)
+                            near (oget near :from)
+                            :else pos)
+                 to (cond base (oget base :to)
+                          near (oget near :to)
                           :else pos)
-               to (cond base (oget base :to)
-                        near (oget near :to)
-                        :else pos)
-               base (if base (oget base :list) #js [])
-               near (if near (oget near :list) #js [])]
-           #js {:from from :to to
-                :list (.concat near base)}))
-  (when-not (= @version db/version)
-    (db/reset-db! db)
-    (when-not (= (peek @menu) :splash)
-      (swap! menu conj :splash))
-    (reset! version db/version))
-  [:main {:role "main"
-          :style {:height "100%"
-                  :display "flex"
-                  :flex-flow "column"}}
-   [:> GlobalHotKeys
-    {:keyMap {:save-file "ctrl+s"
-              :run-program "ctrl+r"}
-     :handlers {:save-file (fn [v]
-                             (.preventDefault v)
-                             (save-file db))
-                :run-program (fn [v]
-                               (.preventDefault v)
-                               (reset! output #queue [])
-                               (env/eval-buffer db))}}]
-   [splash-dialog db]
-   [new-file-action db]
-   [save-dialog db opts]
-   [load-dialog db opts]
-   [import-dialog db]
-   [confirm-wipe-dialog db]
-   [options-dialog db]
-   [confirm-save-dialog db]
-   [new-folder-dialog db]
-   [deps-dialog db]
-   [hold-dialog db]
-   [error-dialog db]
-   [:div {:style {:flex "0 1 auto"}}
-    [button-row db]]
-   (if (= (count @buffers) 1)
-     [:div {:style {:flex "1 1 auto"
-                    :overflow "auto"}}
-      [:> SplitPane {:split @orientation
-                     :on-change #(reset! split (aget % 0))}
-       [:> Pane {:initialSize @split
-                 :style [:height "100%"]}
-        [editor-view db {:editor-reset editor-reset-ref
-                         :editor editor-ref
-                         :visr-run visr-run-ref}]]
-       [result-view db repl-ref]]]
-     [:div {:style {:flex "1 1 auto"
-                    :overflow "auto"
-                    :height "100%"
+                 base (if base (oget base :list) #js [])
+                 near (if near (oget near :list) #js [])]
+             #js {:from from :to to
+                  :list (.concat near base)}))
+    (when-not (= @version db/version)
+      (db/reset-db! db)
+      (when-not (or (.get search "hide-splash") (= (peek @menu) :splash))
+        (swap! menu conj :splash))
+      (reset! version db/version))
+    [:main {:role "main"
+            :style {:height "100%"
                     :display "flex"
                     :flex-flow "column"}}
-      [:> Tabs {:defaultActiveKey "1"}
-       [:> Tab {:eventKey "1"
-                :title "Test"}
-        [:> SplitPane {:split @orientation}
-         [editor-view db {:editor-reset editor-reset-ref
-                          :editor editor-ref
-                          :visr-run visr-run-ref}]
-         [result-view db repl-ref]]]]])])
+     [:> GlobalHotKeys
+      {:keyMap {:save-file "ctrl+s"
+                :run-program "ctrl+r"}
+       :handlers {:save-file (fn [v]
+                               (.preventDefault v)
+                               (save-file db))
+                  :run-program (fn [v]
+                                 (.preventDefault v)
+                                 (reset! output #queue [])
+                                 (env/eval-buffer db))}}]
+     [splash-dialog db]
+     [new-file-action db]
+     [save-dialog db opts]
+     [load-dialog db opts]
+     [import-dialog db]
+     [confirm-wipe-dialog db]
+     [options-dialog db]
+     [confirm-save-dialog db]
+     [new-folder-dialog db]
+     [deps-dialog db]
+     [hold-dialog db]
+     [error-dialog db]
+     [:div {:style {:flex "0 1 auto"}}
+      [button-row db]]
+     (if (= (count @buffers) 1)
+       [:div {:style {:flex "1 1 auto"
+                      :overflow "auto"}}
+        [:> SplitPane {:split @orientation
+                       :on-change #(reset! split (aget % 0))}
+         [:> Pane {:initialSize @split
+                   :style [:height "100%"]}
+          [editor-view db {:editor-reset editor-reset-ref
+                           :editor editor-ref
+                           :visr-run visr-run-ref}]]
+         [result-view db repl-ref]]]
+       [:div {:style {:flex "1 1 auto"
+                      :overflow "auto"
+                      :height "100%"
+                      :display "flex"
+                      :flex-flow "column"}}
+        [:> Tabs {:defaultActiveKey "1"}
+         [:> Tab {:eventKey "1"
+                  :title "Test"}
+          [:> SplitPane {:split @orientation}
+           [editor-view db {:editor-reset editor-reset-ref
+                            :editor editor-ref
+                            :visr-run visr-run-ref}]
+           [result-view db repl-ref]]]]])]))
 
 ;; -------------------------
 ;; Initialize app
@@ -1036,7 +1037,8 @@
          (set! js/window.git isomorphic-git)
          (set! js/window.db db)
          (set! js/window.fs fs)
-         (set! js/window.isohttp isohttp))
+         (set! js/window.isohttp isohttp)
+         (set! js/window.captureState #(fs/capture-state! db %)))
        (when (= (peek @menu) :hold)
          (swap! menu pop))
        (d/render

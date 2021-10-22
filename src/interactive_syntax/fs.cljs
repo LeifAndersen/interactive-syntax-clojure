@@ -154,10 +154,10 @@
 ;; -------------------------
 ;; (For creating embedding states, currently unused)
 
-(defn capture-state! [db]
+(defn capture-state! [db name]
   (cb-thread
    #(export-to-zip db %)
    #(-> %2 .arrayBuffer (.then %))
    #(saveAs (js/Blob. #js [(t/write (t/writer :json) {:zip (js/Uint8Array. %2)
                                                       :db @(:backing db)})])
-            "state.visr")))
+            (or name "state.visr"))))

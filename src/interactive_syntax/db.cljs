@@ -285,6 +285,7 @@
               :fs fs
               :runner (atom nil)
               :backing backed-db
+              :mode mode
               :buffers (->DBAtom backed-db [:buffers])
               :menu (->DBAtom backed-db [:menu])
               :input (->DBAtom backed-db [:current :input])
@@ -311,10 +312,10 @@
      ret)))
 
 (defn reset-db! [{{:keys [theme]} :options
-                  :keys [deps] :as db}]
+                  :keys [mode deps] :as db}]
   (let [cdeps @deps
         ctheme @theme]
-    (storage/remove-local-storage! "state")
+    (when (= mode :local) (storage/remove-local-storage! "state"))
     (when cdeps (reset! deps cdeps))
     (when ctheme (reset! theme ctheme))
     db))
