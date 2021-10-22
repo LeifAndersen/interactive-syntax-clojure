@@ -95,11 +95,14 @@
    :Math js/Math
    :DOMParser js/DOMParser
    :TextEncoder js/TextEncoder
+   :Location js/Location
+   :XMLHttpRequest js/XMLHttpRequest
    :atob js/atob
    :btoa js/btoa
    :parseInt js/parseInt
    :parseFloat js/parseFloat
    :URL js/URL
+   :URLSearchParams js/URLSearchParams
    :Blob js/Blob
    :encodeURI js/encodeURI
    :encodeURIComponent js/encodeURIComponent

@@ -7,6 +7,8 @@
    [goog.object :as obj]
    [cljs.pprint :refer [pprint]]
    [cljs.reader :refer [read-string]]
+   [file-saver :refer [saveAs]]
+   [cognitect.transit :as t]
    [isomorphic-git]
    ["isomorphic-git/http/web" :as isohttp]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
@@ -148,3 +150,14 @@
                     :url (str "https://cors.isomorphic-git.org/" url)})
         (.then (fn [v] (cb v)))
         (.catch (fn [e] (cb e))))))
+
+;; -------------------------
+;; (For creating embedding states, currently unused)
+
+(defn capture-state! [db]
+  (cb-thread
+   #(export-to-zip db %)
+   #(-> %2 .arrayBuffer (.then %))
+   #(saveAs (js/Blob. #js [(t/write (t/writer :json) {:zip (js/Uint8Array. %2)
+                                                      :db @(:backing db)})])
+            "state.visr")))

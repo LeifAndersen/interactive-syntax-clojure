@@ -1,6 +1,7 @@
 # 0.1.13
 
 * Add autocomplete
+* Can get reference to state from URL.
 
 
 # 0.1.12

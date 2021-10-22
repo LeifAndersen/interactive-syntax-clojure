@@ -249,18 +249,19 @@
   ([] (default-db :temp))
   ([mode] (default-db mode #()))
   ([mode cb]
+   (default-db mode cb {:version version
+                        :options (default-options mode)
+                        :current 0
+                        :folder files-root
+                        :buffers [(default-buffer mode)]
+                        :fs {}
+                        :deps {}
+                        :menu (case mode
+                                :local [:home :splash]
+                                :persist-test [:home]
+                                :temp [:home])}))
+  ([mode cb base]
    (let [fs (browserfs/BFSRequire "fs")
-         base {:version version
-               :options (default-options mode)
-               :current 0
-               :folder files-root
-               :buffers [(default-buffer mode)]
-               :fs {}
-               :deps {}
-               :menu (case mode
-                       :local [:home :splash]
-                       :persist-test [:home]
-                       :temp [:home])}
          db (atom base)
          backed-db (case mode
                      :local (local-storage db "state")

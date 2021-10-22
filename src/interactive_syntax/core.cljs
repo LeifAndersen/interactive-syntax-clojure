@@ -9,13 +9,14 @@
    [cljs.core.match :refer [match]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
-   [interactive-syntax.db :as db :refer [files-root]]
+   [interactive-syntax.db :as db :refer [files-root default-db]]
    [interactive-syntax.utils :as utils :refer [cb-thread cb-loop]]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.env :as env]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.fs :as fs :refer [recursive-rm filepath->id
                                           file-description]]
+   [cognitect.transit :as t]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
@@ -1014,19 +1015,33 @@
 ;; Initialize app
 
 (defn mount-root [& [{:keys [debug]}]]
-  (cb-thread
-   #(db/default-db :local %)
-   (fn [next {:keys [fs menu] :as db}]
-     (when debug
-       (set! js/window.git isomorphic-git)
-       (set! js/window.db db)
-       (set! js/window.fs fs)
-       (set! js/window.isohttp isohttp))
-     (when (= (peek @menu) :hold)
-       (swap! menu pop))
-     (d/render
-      [home-page db]
-      (.getElementById js/document "app")))))
+  (let [search (js/URLSearchParams. js/window.location.search)
+        url (.get search "get-state-from")]
+    (cb-thread
+     #(if url
+        (let [req (js/XMLHttpRequest.)]
+          (.addEventListener req "load" %)
+          (.open req "GET" url)
+          (.send req))
+        (%))
+     #(if url
+        (let [{:keys [zip db]}
+              (t/read (t/reader :json) (-> %2 .-target .-responseText))]
+          (cb-thread
+           #(default-db :temp % db)
+           (fn [n db] (fs/import-from-zip db zip (fn [] (% db))))))
+        (default-db :local %))
+     (fn [next {:keys [fs menu] :as db} & [zip]]
+       (when debug
+         (set! js/window.git isomorphic-git)
+         (set! js/window.db db)
+         (set! js/window.fs fs)
+         (set! js/window.isohttp isohttp))
+       (when (= (peek @menu) :hold)
+         (swap! menu pop))
+       (d/render
+        [home-page db]
+        (.getElementById js/document "app"))))))
 
 (defn init! [& [opts]]
   (mount-root opts))
