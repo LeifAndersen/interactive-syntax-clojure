@@ -1085,7 +1085,7 @@
                  alt-visr-name))
         :done #(done))))))
 
-(deftest vialid-id
+(deftest valid-id
   (testing "Ensure VISrs form stays the same when an invalid id is entered"
     (async
      done
@@ -1346,16 +1346,18 @@
   (render [this]
    (let [a (cursor this [:a])
          b (cursor this [:b])]
-    [:button {:onClick (fn [] (when-not @a (reset! a 42))
-                              (when-not @b (reset! b 819)))}
+    [:button {:onClick (fn [] (reset! a 42)
+                              (reset! b 819))}
       \"Setup\"])))"
            use "
 (ns test.use (:require [test.core :include-macros true]))
-^{:editor test.core/multi-update}(test.core/multi-update+elaborate {})"
+^{:editor test.core/multi-update}(test.core/multi-update+elaborate {})
+(+ 1 2)"
            new-use "
 (ns test.use (:require [test.core :include-macros true]))
 ^{:editor test.core/multi-update}(test.core/multi-update+elaborate {:a 42, :b 819}
-)"
+)
+(+ 1 2)"
            view (rtl/render (r/as-element [core/home-page db
                                            {:editor editor
                                             :editor-reset resetting

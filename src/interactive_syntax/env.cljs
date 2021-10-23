@@ -715,17 +715,16 @@
                                        source
                                        (:line @info)
                                        (:column @info)),
-                                end (atom (buffer-position->index
-                                           source
-                                           (:end-line @info)
-                                           (:end-column @info))),
+                                end (buffer-position->index
+                                     source
+                                     (:end-line @info)
+                                     (:end-column @info)),
                                 commit! #(let [s (stdlib/write-visr
                                                   (:editor @info)
                                                   (stx->stx-str @stx))
                                                ret (str (subs source 0 start)
                                                         s
-                                                        (subs source @end))]
-                                           (reset! end (+ start (count s)))
+                                                        (subs source end))]
                                            (reset! cache nil) ;; XXX Why? >.<
                                            (set-text ret))]
                             (if k
