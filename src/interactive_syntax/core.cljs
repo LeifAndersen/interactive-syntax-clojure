@@ -937,7 +937,7 @@
   (let [search (js/URLSearchParams. js/window.location.search)]
     (chonky/setChonkyDefaults
      #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
-    (set! codemirror/commands.jsave #(save-file db))
+    (set! codemirror/commands.save #(save-file db))
     (set! js/window.CodeMirror codemirror)
     (set! codemirror/hint.clojure
           #(let [pos (ocall % :getCursor)
