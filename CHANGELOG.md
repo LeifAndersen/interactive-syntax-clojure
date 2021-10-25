@@ -2,6 +2,7 @@
 
 * Add autocomplete
 * Can get reference to state from URL.
+* Fix bug causing visrs to not update their srcloc correctly.
 
 
 # 0.1.12

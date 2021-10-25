@@ -1369,6 +1369,8 @@
         :do #(-> @editor .getDoc (.setValue use))
         :wait-until not resetting
         :wait 0
+        :set [:file-changed] true
+        :set [:input] use :check
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :wait 1000
@@ -1383,6 +1385,59 @@
         :set [:file-changed] true
         :set [:input] new-use
         :check
+        :done #(done))))))
+
+(deftest test-deep-update
+  (testing "Ensure edits work in nested data structures"
+    (async
+     done
+     (let [{:keys [input fs] :as db} (default-db :temp)
+           lib "
+(ns test.core)
+(defvisr DeepUp
+  (elaborate [this] 42)
+  (render [this]
+    (when-not (:a @this) (swap! this assoc :a {}))
+    [:button {:on-click #(swap! this assoc-in [:a :key] 42)}
+     \"HELLO!\"]))"
+           use1 "
+(ns test.use
+ (:require [test.core :include-macros true]))
+^{:editor test.core/DeepUp}(test.core/DeepUp+elaborate {})
+(+ 1 2)"
+           use2 "
+(ns test.use
+ (:require [test.core :include-macros true]))
+^{:editor test.core/DeepUp}(test.core/DeepUp+elaborate {:a {:key 42}}
+)
+(+ 1 2)"
+           editor (atom nil),
+           resetting (atom nil),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting}]))]
+       (test-do
+        db :check
+        :async #(fs.mkdir (.join js/path files-root "test") %)
+        :async #(fs.writeFile (js/path.join files-root "test/core.cljs") lib %)
+        :do #(-> @editor .getDoc (.setValue use1))
+        :wait-until not resetting
+        :wait 0
+        :set [:file-changed] true
+        :set [:input] use1 :check
+        :do #(.click rtl/fireEvent
+                     (aget (.getAllByLabelText view strings/VISUAL) 0))
+        :wait 1000
+        :do #(.click rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByClassName "visr-body")
+                         (aget 0)
+                         (.getElementsByTagName "button")
+                         (aget 0)))
+        :wait 1000
+        :set [:file-changed] true
+        :set [:input] use2 :check
         :done #(done))))))
 
 (comment ; TODO, is this test needed any more?

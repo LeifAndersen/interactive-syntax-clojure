@@ -713,19 +713,18 @@
                                 refs (or refs (atom nil))
                                 start (buffer-position->index
                                        source
-                                       (:line @info)
-                                       (:column @info)),
+                                       (:line stxinfo)
+                                       (:column stxinfo)),
                                 end (buffer-position->index
                                      source
-                                     (:end-line @info)
-                                     (:end-column @info)),
+                                     (:end-line stxinfo)
+                                     (:end-column stxinfo)),
                                 commit! #(let [s (stdlib/write-visr
                                                   (:editor @info)
                                                   (stx->stx-str @stx))
                                                ret (str (subs source 0 start)
                                                         s
                                                         (subs source end))]
-                                           (reset! cache nil) ;; XXX Why? >.<
                                            (set-text ret))]
                             (if k
                               (do
