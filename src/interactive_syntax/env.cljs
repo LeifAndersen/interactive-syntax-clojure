@@ -19,6 +19,7 @@
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
+   [ajax.core :refer [GET POST PUT]]
    [interactive-syntax.utils :refer [cb-thread cb-loop]]
    [interactive-syntax.db :refer [files-root deps-root shop-url]]
    [interactive-syntax.stdlib :as stdlib]
@@ -72,8 +73,7 @@
 
 ;; Should do some other validation probably...
 (defn get-pkg [{:keys [url name version]} cb]
-  (let [req (js/XMLHttpRequest.)
-        sanatize-map {"@" "" "/" ""}
+  (let [sanatize-map {"@" "" "/" ""}
         pkg-name (cond (and url (not= url "")) "",
                        ;;(and version (not= version ""))
                        ;;(str (string/escape name sanatize-map) "/"
@@ -82,9 +82,7 @@
         url (if (and url (not= url ""))
               url
               (str shop-url pkg-name ".js"))]
-    (ocall req "addEventListener" "load" #(cb (oget % "target.responseText")))
-    (ocall req "open" "GET" url)
-    (ocall req "send")))
+    (GET url {:handler cb})))
 
 (defn setup-deps [{:keys [deps fs] :as db} force-update & [cb]]
   (cb-thread

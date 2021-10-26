@@ -17,6 +17,7 @@
    [interactive-syntax.fs :as fs :refer [recursive-rm filepath->id
                                           file-description]]
    [cognitect.transit :as t]
+   [ajax.core :refer [GET POST PUT]]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
@@ -1020,14 +1021,10 @@
         url (.get search "get-state-from")]
     (cb-thread
      #(if url
-        (let [req (js/XMLHttpRequest.)]
-          (.addEventListener req "load" %)
-          (.open req "GET" url)
-          (.send req))
+        (GET url {:handler %})
         (%))
      #(if url
-        (let [{:keys [zip db]}
-              (t/read (t/reader :json) (-> %2 .-target .-responseText))]
+        (let [{:keys [zip db]} (t/read (t/reader :json) %2)]
           (cb-thread
            #(default-db :temp % db)
            (fn [n db] (fs/import-from-zip db zip (fn [] (% db))))))
