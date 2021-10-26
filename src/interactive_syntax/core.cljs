@@ -256,12 +256,12 @@
 ;; -------------------------
 ;; File Dialogs
 
+
 (defn save-buffer [{:keys [fs menu current-folder current-file input
                            file-changed visr-commit! cm-ref scroll cursor]
                     :as db}
                    & [cb]]
-  (let [c @cursor
-        s @scroll]
+  (let [c @cursor s @scroll]
     (swap! menu conj :hold)
     (when @visr-commit!
       (@visr-commit!))
@@ -1018,7 +1018,10 @@
 
 (defn mount-root [& [{:keys [debug]}]]
   (let [search (js/URLSearchParams. js/window.location.search)
-        url (.get search "get-state-from")]
+        url (.get search "get-state-from")
+        id (or (.get search "send-state-id") (random-uuid))
+        send-state-url (.get search "send-state-to")
+        msg-counter (atom 1)]
     (cb-thread
      #(if url
         (GET url {:handler %})
@@ -1029,7 +1032,10 @@
            #(default-db :temp % db)
            (fn [n db] (fs/import-from-zip db zip (fn [] (% db))))))
         (default-db :local %))
-     (fn [next {:keys [fs menu] :as db} & [zip]]
+     #(if send-state-url
+        (fs/state->serializable %2 (fn [res] (% %2 res)))
+        (% %2))
+     (fn [next {:keys [fs menu backing] :as db} & [serialized-state]]
        (when debug
          (set! js/window.git isomorphic-git)
          (set! js/window.db db)
@@ -1038,9 +1044,18 @@
          (set! js/window.captureState #(fs/capture-state! db %)))
        (when (= (peek @menu) :hold)
          (swap! menu pop))
-       (d/render
-        [home-page db]
-        (.getElementById js/document "app"))))))
+       (when send-state-url
+         (POST send-state-url {:params {:id id
+                                        :number 0
+                                        :msg serialized-state}})
+         (add-watch backing ::state-changed
+                    (fn [k r o n]
+                      (when-not (= o n)
+                        (POST send-state-url {:params {:id id
+                                                       :number @msg-counter
+                                                       :msg n}})
+                        (swap! msg-counter inc)))))
+       (d/render [home-page db] (.getElementById js/document "app"))))))
 
 (defn init! [& [opts]]
   (mount-root opts))
