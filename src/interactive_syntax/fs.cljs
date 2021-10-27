@@ -158,9 +158,9 @@
   (cb-thread
    #(export-to-zip db %)
    #(-> %2 .arrayBuffer (.then %))
-   #(cb {:zip (js/Uint8Array. %2) :db @(:backing db)})))
+   #(cb (t/write (t/writer :json) {:zip (js/Uint8Array. %2) :db @(:backing db)}))))
 
 (defn capture-state! [db name]
   (cb-thread
    #(state->serializable db %)
-   #(saveAs (js/Blob. #js [(t/write (t/writer :json) %2)]) (or name "state.visr"))))
+   #(saveAs (js/Blob. #js [%2]) (or name "state.visr"))))
