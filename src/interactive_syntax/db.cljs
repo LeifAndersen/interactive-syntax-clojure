@@ -114,6 +114,7 @@
 (s/def ::run-functions (s/* string?))
 (s/def ::autocomplete string?)
 (s/def ::insert-close boolean?)
+(s/def ::visr-defaults (s/coll-of {:show-visr :show-code}))
 (s/def ::options (s/keys :req-un [::font-size
                                   ::theme
                                   ::line-wrapping
@@ -122,7 +123,8 @@
                                   ::show-editors
                                   ::run-functions
                                   ::autocomplete
-                                  ::insert-close]))
+                                  ::insert-close
+                                  ::visr-defaults]))
 
 (s/def ::name string?)
 (s/def ::version string?)
@@ -209,7 +211,8 @@
                      :local ["main"]
                      [])
     :autocomplete "auto"
-    :insert-close true}))
+    :insert-close true
+    :visr-defaults {}}))
 
 (defn default-buffer
   ([] (default-buffer :temp))
@@ -279,7 +282,8 @@
                                       :show-editors
                                       :run-functions
                                       :autocomplete
-                                      :insert-close]]
+                                      :insert-close
+                                      :visr-defaults]]
                                [i (->DBAtom backed-db [:options i])]))
               :version (->DBAtom backed-db [:version])
               :fs fs

@@ -525,9 +525,10 @@
   (binding [cljs.pprint/*print-right-margin* 40]
     (with-out-str (pprint stx))))
 
-(defn visr-hider [db runtime tag info stx file-src hidden refs mark-box]
-  (let [show-visr (atom false)
-        show-code (atom false)
+(defn visr-hider [{{:keys [visr-defaults]} :options :as db}
+                  runtime tag info stx file-src refs mark-box]
+  (let [show-visr (atom (contains? visr-defaults :show-visr))
+        show-code (atom (contains? visr-defaults :show-code))
         visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)
@@ -541,8 +542,8 @@
                  (when-not (= o n)
                    (reset! visr nil))))
     (fn [{:keys [fs] :as db}
-         runtime tag info stx file-src hidden refs mark-box]
-      (when (and (not @hidden) @show-visr (= @visr nil))
+         runtime tag info stx file-src refs mark-box]
+      (when (and @show-visr (= @visr nil))
         (reset! visr [:div])
         (mk-editor tag @info @stx runtime fs file-src
                    (fn [ret]
@@ -566,7 +567,7 @@
                                 (if-let [rmb @mark-box]
                                   (ocall rmb :changed)))}
          "\uD83D\uDC41"]
-        (when (and (not @hidden) @show-visr)
+        (when @show-visr
           [err-boundary
            ;;{:ref #(swap! refs assoc :visr-err %)}
            [styled-frame {:class "visr-body"
@@ -588,7 +589,7 @@
                                 (if-let [rmb @mark-box]
                                   (ocall rmb :changed)))}
          [:code "(\u03BB)"]]
-        (when (and (not @hidden) @show-code)
+        (when @show-code
           [styled-frame {:class "visr-code"}
            [:> Form {:onSubmit #(do (.preventDefault %)
                                     (.stopPropagation %))
@@ -641,7 +642,7 @@
                                              (stx->stx-str @stx))))}]]]]])]])))
 
 (defn reset-editors! [source set-text editor instances operation cache queue
-                      {{:keys [show-editors]} :options
+                      {{:keys [show-editors visr-default]} :options
                        :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
   (when (and @show-editors @editor)
@@ -698,7 +699,7 @@
                    ((fn rec [form]
                       (let [stxinfo (meta form)]
                         (when (:editor stxinfo)
-                          (let [[k {:keys [visr stx info mark hidden refs]}]
+                          (let [[k {:keys [visr stx info mark refs]}]
                                 (some (fn [[k v]]
                                         (when (= @(:stx v) (second form)) [k v]))
                                       @old-instances),
@@ -707,7 +708,6 @@
                                 stx (or stx (atom (second form)))
                                 mark (or mark (clojure.core/atom nil))
                                 tag (or k (random-uuid))
-                                hidden (or hidden (atom false))
                                 refs (or refs (atom nil))
                                 start (buffer-position->index
                                        source
@@ -734,7 +734,7 @@
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
                               (d/render [visr-hider db runtime tag info stx
-                                         source hidden refs mark]
+                                         source refs mark]
                                         visr))
                             (let [r-mark (->
                                           @editor (ocall :getDoc)
@@ -746,9 +746,6 @@
                                                 :ch (dec (:end-column @info))}
                                            #js {:collapsed true
                                                 :replacedWith visr}))]
-                              ;;(codemirror/on r-mark "hide" #(reset! hidden true))
-                              ;;(codemirror/on r-mark "unhide"
-                              ;;  #(reset! hidden false))
                               (reset! mark r-mark)
                               (swap! instances assoc
                                      tag
@@ -757,8 +754,7 @@
                                       :visr visr
                                       :info info
                                       :stx stx
-                                      :refs refs
-                                      :hidden hidden})
+                                      :refs refs})
                               (add-watch info ::commit
                                          (fn [k r o n]
                                            (when-not (= o n)
