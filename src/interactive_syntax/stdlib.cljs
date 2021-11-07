@@ -29,6 +29,8 @@
                             Table]]
    [react-split-pane]
    [react-switch]
+   [codemirror]
+   ["@leifandersen/react-codemirror2" :as cm]
    [garden.core :as garden :refer [css]]
    [garden.color]
    [garden.compiler]
@@ -133,12 +135,15 @@
   {:env {:react react
          :react_dom react-dom
          :react_bootstrap react-bootstrap
+         :codemirror codemirror
+         :react_codemirror2 cm
          :react_split_pane react-split-pane
          :react_switch react-switch}
-   :loaded #{'react 'react-dom 'react-bootstrap 'react-split-pane 'react-switch}
+   :loaded #{'react 'react-dom 'react-bootstrap 'codemirror 'react-codemirror2
+             'react-split-pane 'react-switch}
    :js-deps (into {}
-                  (for [k '[react react-dom react-bootstrap
-                            react-split-pane react-switch]]
+                  (for [k '[react react-dom react-bootstrap codemirror
+                            react-codemirror2 react-split-pane react-switch]]
                     [(str k) {:global-exports {k (munge k)}}]))})
 
 (defn reagent-runtime [base db]
