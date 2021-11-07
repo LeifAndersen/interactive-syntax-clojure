@@ -4,7 +4,21 @@
    [interactive-syntax.slurp :refer [slurp]])
   (:require
    [cljs.core :as core]
+   [cljs.analyzer]
+   [cljs.compiler]
+   [cljs.env]
+   [cljs.js]
+   [cljs.pprint]
+   [cljs.reader]
+   [cljs.source-map]
+   [cljs.spec.alpha]
+   [cljs.stacktrace]
+   [cljs.tagged-literals]
+   [cljs.test]
+   [clojure.walk]
+   [clojure.string]
    [clojure.set :refer [union]]
+   [clojure.data]
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
    [react]
@@ -69,19 +83,23 @@
 (defn sandbox-env []
   {:cljs {:core js/cljs.core
           :core$macros js/cljs.core$macros
-          :analyzer js/cljs.analyzer
-          :compiler js/cljs.compiler
-          :env js/cljs.env
-          :js js/cljs.js
-          :pprint js/cljs.pprint
-          :reader js/cljs.reader
-          :source_map js/cljs.source_map
-          :spec js/cljs.spec
-          :stacktrace js/cljs.stacktrace
-          :tagged_literals js/cljs.tagged_literals
-          :test js/cljs.test
-          :tools js/cljs.tools
+          :analyzer cljs.analyzer
+          :compiler cljs.compiler
+          :env cljs.env
+          :js cljs.js
+          :pprint cljs.pprint
+          :reader cljs.reader
+          :source_map cljs.source-map
+          :spec cljs.spec
+          :stacktrace cljs.stacktrace
+          :tagged_literals cljs.tagged-literals
+          :test cljs.test
+          :tools cljs.tools
           :user {}}
+   :clojure {:walk clojure.walk
+             :string clojure.string
+             :set clojure.set
+             :data clojure.data}
    :console js/console
    :navigator js/navigator
    :document js/document
@@ -147,12 +165,29 @@
                      :units garden.units
                      :util garden.util}})
      :loaded (union (:loaded base) (:loaded builtins)
-                    #{'visr.private 'reagent.core 'reagent.dom
+                    #{'cljs.analyzer 'cljs.compiler 'cljs.env 'cljs.js 'cljs.pprint
+                      'cljs.reader 'cljs.source-map 'cljs.spec.alpha
+                      'cljs.stacktrace 'cljs.tagged-literals 'cljs.test
+                      'clojure.walk 'clojure.string 'clojure.set 'clojure.data
+                      'visr.private 'reagent.core 'reagent.dom
                       'garden.core 'garden.color 'garden.compiler
                       'garden.compression 'garden.selectors 'garden.types
                       'garden.units 'garden.util})
      :state-injections
-     (merge (state-injection 'reagent.dom (ns-publics 'reagent.dom))
+     (merge (state-injection 'cljs.analyer (ns-publics 'cljs.analyer))
+            (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))
+            (state-injection 'cljs.env (ns-publics 'cljs.env))
+            (state-injection 'cljs.js (ns-publics 'cljs.js))
+            (state-injection 'cljs.pprint (ns-publics 'cljs.pprint))
+            (state-injection 'cljs.stacktrace (ns-publics 'cljs.stacktrace))
+            (state-injection 'cljs.tagged-literals
+                             (ns-publics 'cljs.tagged-literals))
+            (state-injection 'cljs.test (ns-publics 'cljs.test))
+            (state-injection 'clojure.walk (ns-publics 'clojure.walk))
+            (state-injection 'clojure.string (ns-publics 'clojure.string))
+            (state-injection 'clojure.set (ns-publics 'clojure.set))
+            (state-injection 'clojure.data (ns-publics 'clojure.data))
+            (state-injection 'reagent.dom (ns-publics 'reagent.dom))
             (state-injection 'reagent.core (ns-publics 'reagent.core))
             (state-injection 'garden.core (ns-publics 'garden.core))
             (state-injection 'garden.color (ns-publics 'garden.color))
