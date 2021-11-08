@@ -190,6 +190,7 @@
             (state-injection 'cljs.js (ns-publics 'cljs.js))
             (state-injection 'cljs.pprint (ns-publics 'cljs.pprint))
             (state-injection 'cljs.stacktrace (ns-publics 'cljs.stacktrace))
+            (state-injection 'cljs.reader (ns-publics 'cljs.reader))
             (state-injection 'cljs.tagged-literals
                              (ns-publics 'cljs.tagged-literals))
             (state-injection 'cljs.test (ns-publics 'cljs.test))
