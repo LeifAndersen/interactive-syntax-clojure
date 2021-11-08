@@ -1,6 +1,7 @@
 # 0.1.14
 
 * Add codemirror (and react-codemirror2) to list of available packages.
+* Add cljs.tools.reader into default provided libs.
 
 # 0.1.13
 

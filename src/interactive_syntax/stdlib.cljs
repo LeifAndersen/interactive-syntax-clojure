@@ -12,9 +12,12 @@
    [cljs.reader]
    [cljs.source-map]
    [cljs.spec.alpha]
+   [cljs.spec.gen.alpha]
+   [cljs.spec.test.alpha]
    [cljs.stacktrace]
    [cljs.tagged-literals]
    [cljs.test]
+   [cljs.tools.reader]
    [clojure.walk]
    [clojure.string]
    [clojure.set :refer [union]]
@@ -92,11 +95,13 @@
           :pprint cljs.pprint
           :reader cljs.reader
           :source_map cljs.source-map
-          :spec cljs.spec
+          :spec {:alpha cljs.spec.alpha
+                 :gen {:alpha cljs.spec.gen.alpha}
+                 :test {:alpha cljs.spec.test.alpha}}
           :stacktrace cljs.stacktrace
           :tagged_literals cljs.tagged-literals
           :test cljs.test
-          :tools cljs.tools
+          :tools {:reader cljs.tools.reader}
           :user {}}
    :clojure {:walk clojure.walk
              :string clojure.string
@@ -172,12 +177,12 @@
      :loaded (union (:loaded base) (:loaded builtins)
                     #{'cljs.analyzer 'cljs.compiler 'cljs.env 'cljs.js 'cljs.pprint
                       'cljs.reader 'cljs.source-map 'cljs.spec.alpha
-                      'cljs.stacktrace 'cljs.tagged-literals 'cljs.test
+                      'cljs.spec.gen.alpha 'cljs.spec.test.alpha 'cljs.stacktrace
+                      'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
                       'clojure.walk 'clojure.string 'clojure.set 'clojure.data
-                      'visr.private 'reagent.core 'reagent.dom
-                      'garden.core 'garden.color 'garden.compiler
-                      'garden.compression 'garden.selectors 'garden.types
-                      'garden.units 'garden.util})
+                      'visr.private 'reagent.core 'reagent.dom 'garden.core
+                      'garden.color 'garden.compiler 'garden.compression
+                      'garden.selectors 'garden.types 'garden.units 'garden.util})
      :state-injections
      (merge (state-injection 'cljs.analyer (ns-publics 'cljs.analyer))
             (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))
@@ -188,6 +193,11 @@
             (state-injection 'cljs.tagged-literals
                              (ns-publics 'cljs.tagged-literals))
             (state-injection 'cljs.test (ns-publics 'cljs.test))
+            (state-injection 'cljs.spec.alpha (ns-publics 'cljs.spec.alpha))
+            (state-injection 'cljs.spec.gen.alpha (ns-publics 'cljs.spec.gen.alpha))
+            (state-injection 'cljs.spec.test.alpha
+                             (ns-publics 'cljs.splec.test.alpha))
+            (state-injection 'cljs.tools.reader (ns-publics 'cljs.tools.reader))
             (state-injection 'clojure.walk (ns-publics 'clojure.walk))
             (state-injection 'clojure.string (ns-publics 'clojure.string))
             (state-injection 'clojure.set (ns-publics 'clojure.set))
