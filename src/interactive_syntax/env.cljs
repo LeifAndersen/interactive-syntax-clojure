@@ -424,8 +424,8 @@
         mk-fn (fn [res]
                 (if (and res (:error res))
                   (cb res)
-                  (eval-str (str "(" (stdlib/visr->render editor)
-                                 " (js/visr->atom " (pr-str tag) "))")
+                  (eval-str (str "[" (stdlib/visr->render editor)
+                                 " (js/visr->atom " (pr-str tag) ")]")
                             {:runtime runtime
                              :ns ns
                              :running? visr-run-ref
