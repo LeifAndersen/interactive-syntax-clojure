@@ -2,6 +2,7 @@
 
 * Add codemirror (and react-codemirror2) to list of available packages.
 * Add cljs.tools.reader into default provided libs.
+* ViSr renderers now update when their (purely internal) reagent state changes.
 
 # 0.1.13
 

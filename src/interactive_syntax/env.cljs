@@ -673,7 +673,8 @@
                          {:runtime (stdlib/reagent-runtime
                                     (assoc-in %2 [:env (munge "visr->atom")]
                                               (fn [x]
-                                                (get-in @instances [x :stx])))
+                                                (or (get-in @instances [x :stx])
+                                                    (atom nil))))
                                     db)
                           :running? visr-run-ref
                           :fs fs}
