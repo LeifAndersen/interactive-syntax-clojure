@@ -112,7 +112,7 @@
          (cb {:env denv :loaded dloaded :js-deps djs})
          (let [[[key {:keys [name] :as dep}] & rest-deps] deps]
            (cb-thread
-            #(ocall fs :readFile (js/path.join deps-root name) %)
+            #(ocall fs :readFile (js/path.join deps-root name) (.-default %))
             #(if %2 (js/console.error %2) (% %3))
             #(let [url (module->uri %2)]
                (-> system (ocall :import url)

@@ -1,3 +1,7 @@
+# 0.1.15
+
+* BREAKING CHANGE: Only one call to default is now required.
+
 # 0.1.14
 
 * Add codemirror (and react-codemirror2) to list of available packages.
