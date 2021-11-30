@@ -34,6 +34,8 @@
    [react-switch]
    [codemirror]
    ["@leifandersen/react-codemirror2" :as cm]
+   [goog.object]
+   [oops.core]
    [garden.core :as garden :refer [css]]
    [garden.color]
    [garden.compiler]
@@ -166,6 +168,8 @@
                     :css css}}
             :reagent {:core reagent.core
                       :dom reagent.dom}
+            :goog {:opject goog.object}
+            :oops {:core oops.core}
             :garden {:core garden.core
                      :color garden.color
                      :compiler garden.compiler
@@ -180,9 +184,10 @@
                       'cljs.spec.gen.alpha 'cljs.spec.test.alpha 'cljs.stacktrace
                       'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
                       'clojure.walk 'clojure.string 'clojure.set 'clojure.data
-                      'visr.private 'reagent.core 'reagent.dom 'garden.core
-                      'garden.color 'garden.compiler 'garden.compression
-                      'garden.selectors 'garden.types 'garden.units 'garden.util})
+                      'visr.private 'reagent.core 'reagent.dom 'goog.object
+                      'oops.core 'garden.core 'garden.color 'garden.compiler
+                      'garden.compression 'garden.selectors 'garden.types
+                      'garden.units 'garden.util})
      :state-injections
      (merge (state-injection 'cljs.analyer (ns-publics 'cljs.analyer))
             (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))
@@ -205,6 +210,8 @@
             (state-injection 'clojure.data (ns-publics 'clojure.data))
             (state-injection 'reagent.dom (ns-publics 'reagent.dom))
             (state-injection 'reagent.core (ns-publics 'reagent.core))
+            (state-injection 'goog.object (ns-publics 'goog.object))
+            (state-injection 'oops.core (ns-publics 'oops.core))
             (state-injection 'garden.core (ns-publics 'garden.core))
             (state-injection 'garden.color (ns-publics 'garden.color))
             (state-injection 'garden.compiler (ns-publics 'garden.compiler))

@@ -220,7 +220,7 @@
                        :else (stdlib/sandbox-env)))
         _ (when fakegoog
             (set! env.global env)
-            (set! env.goog #js {})
+            (when-not env.goog (set! env.goog #js {}))
             (set! env.goog.require (partial fakegoog/req env))
             (set! env.goog.provide (partial fakegoog/prov env))
             (set! env.goog.global env))

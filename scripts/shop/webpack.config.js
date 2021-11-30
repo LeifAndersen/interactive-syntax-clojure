@@ -26,5 +26,16 @@ module.exports = {
                 test: /\.(woff|woff2|eot|ttf|otf)$/,
                 use: ['file-loader'],
             },
-        ]}
+        ]},
+    resolve: {
+        fallback: {
+            assert: require.resolve("assert"),
+            buffer: require.resolve("buffer"),
+            crypto: require.resolve("crypto-browserify"),
+            os: require.resolve("os-browserify/browser"),
+            path: require.resolve("path-browserify"),
+            stream: require.resolve("stream-browserify"),
+            zlib: require.resolve("browserify-zlib"),
+        }
+    }
 };

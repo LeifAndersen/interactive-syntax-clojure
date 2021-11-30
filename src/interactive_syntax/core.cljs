@@ -782,7 +782,7 @@
           (if @running? strings/PAUSE strings/RUN)]
          [:> Button {:variant "danger"} strings/STOP]]]]]]))
 
-(defn editor-view [{:keys [menu input output options file-changed
+(defn editor-view [{:keys [menu input output options backing file-changed
                            current-file fs visr-commit! insert-visr! cursor scroll]
                     :as db}
                    & [{editor-ref :editor
@@ -1021,21 +1021,24 @@
         url (.get search "get-state-from")
         id (or (.get search "send-state-id") (random-uuid))
         send-state-url (.get search "send-state-to")
+        embedded? (.get search "embedded")
         msg-counter (atom 1)]
     (cb-thread
      #(if url
         (GET url {:handler %})
         (%))
-     #(if url
-        (let [{:keys [zip db]} (t/read (t/reader :json) %2)]
-          (cb-thread
-           #(default-db :temp % db)
-           (fn [n db] (fs/import-from-zip db zip (fn [] (% db))))))
-        (default-db :local %))
+     #(cond url
+            (let [{:keys [zip db]} (t/read (t/reader :json) %2)]
+              (cb-thread
+               #(default-db :temp % db)
+               (fn [n db] (fs/import-from-zip db zip (fn [] (% db)))))),
+            embedded? (default-db :temp %),
+            :else (default-db :local %))
      #(if send-state-url
         (fs/state->serializable %2 (fn [res] (% %2 res)))
         (% %2))
-     (fn [next {:keys [fs menu backing] :as db} & [serialized-state]]
+     (fn [next {:keys [fs menu backing file-changed]
+                :as db} & [serialized-state]]
        (when debug
          (set! js/window.git isomorphic-git)
          (set! js/window.db db)
@@ -1044,6 +1047,7 @@
          (set! js/window.captureState #(fs/capture-state! db %)))
        (when (= (peek @menu) :hold)
          (swap! menu pop))
+
        (when send-state-url
          (POST send-state-url {:params {:id id
                                         :number 0
@@ -1055,6 +1059,49 @@
                                                        :number @msg-counter
                                                        :msg n}})
                         (swap! msg-counter inc)))))
+       (when embedded?
+         (let [resetting? (atom false)
+               send-full #(cb-thread
+                           #(fs/state->serializable db %)
+                           #(-> js/window .-top
+                                (.postMessage #js {:action "state" :id embedded?
+                                                   :data %2} "*")))
+               send-patch
+               #(-> js/window .-top
+                    (.postMessage #js {:action "patch"
+                                       :id embedded?
+                                       :data (t/write (t/writer :json) @backing)}
+                                  "*"))]
+           (add-watch file-changed ::embedded-state-changed
+                      (fn [k r o n]
+                           (when-not (or @resetting? (= o n))
+                             (send-full))))
+           (add-watch backing ::embedded-state-changed
+                      (fn [k r o n]
+                        (when-not (or @resetting? (= o n))
+                          (send-patch))))
+           (send-full)
+           (.addEventListener
+            js/window "message"
+            #(condp = (-> % .-data .-action)
+               "set-state"
+               (let [{:keys [zip] new-backing :db} (t/read (t/reader :json)
+                                                           (-> % .-data .-data))]
+                 (reset! resetting? true)
+                 (cb-thread
+                  #(fs/wipe-project! db %)
+                  #(fs/import-from-zip db zip %)
+                  (fn []
+                    (reset! backing new-backing)
+                    (reset! resetting? false))))
+               "set-patch"
+               (let [new-backing (t/read (t/reader :json) (-> % .-data .-data))]
+                 (reset! resetting? true)
+                 (reset! backing new-backing)
+                 (let [old @menu]
+                   (reset! menu [:home :force-update])
+                   (reset! menu old)))
+               nil))))
        (d/render [home-page db] (.getElementById js/document "app"))))))
 
 (defn init! [& [opts]]
