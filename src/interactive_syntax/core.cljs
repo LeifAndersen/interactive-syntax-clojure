@@ -1022,6 +1022,7 @@
         id (or (.get search "send-state-id") (random-uuid))
         send-state-url (.get search "send-state-to")
         embedded? (.get search "embedded")
+        fullscreen? (.get search "fullscreen")
         msg-counter (atom 1)]
     (cb-thread
      #(if url
@@ -1104,7 +1105,9 @@
                "run-buffer"
                (env/eval-buffer db)
                nil))))
-       (d/render [home-page db] (.getElementById js/document "app"))))))
+       (if fullscreen?
+         (d/render [editor-view db] (.getElementById js/document "app"))
+         (d/render [home-page db] (.getElementById js/document "app")))))))
 
 (defn init! [& [opts]]
   (mount-root opts))
