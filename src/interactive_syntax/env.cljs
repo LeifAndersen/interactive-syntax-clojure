@@ -523,9 +523,7 @@
 
 (defn visr-hider [{{:keys [visr-defaults]} :options :as db}
                   runtime tag info stx file-src refs mark-box]
-  (let [show-visr (atom (contains? visr-defaults :show-visr))
-        show-code (atom (contains? visr-defaults :show-code))
-        visr-scroll (atom nil)
+  (let [visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)
         scratch (atom nil)]
@@ -539,103 +537,109 @@
                    (reset! visr nil))))
     (fn [{:keys [fs] :as db}
          runtime tag info stx file-src refs mark-box]
-      (when (and @show-visr (= @visr nil))
-        (reset! visr [:div])
-        (mk-editor tag @info @stx runtime fs file-src
-                   (fn [ret]
-                     (reset! visr
-                             (cond
-                               (:value ret)
-                               (let [v (:value ret)]
-                                 (cond (= (oget v :type) "exception")
-                                       [:div {:style {:white-space "pre"}}
-                                        ;;(oget v :value.message)
-                                        (oget v :value.stack)],
-                                       :else (oget v :value))),
-                               :else [:div (.-stack ret)])))))
-      [:span {:style {:display "inline-block"}}
-       [:> ButtonGroup {:aria-label strings/VISR}
-        [:> Button {:size "sm"
-                    :aria-label strings/VISUAL
-                    :style {:padding 0 :font-size "1.2em"}
-                    :on-click (fn []
-                                (swap! show-visr not)
-                                (if-let [rmb @mark-box]
-                                  (ocall rmb :changed)))}
-         "\uD83D\uDC41"]
-        (when @show-visr
-          [err-boundary
-           ;;{:ref #(swap! refs assoc :visr-err %)}
-           [styled-frame {:class "visr-body"
-                          :on-scroll
-                          (fn [event]
-                            (let [se (oget event :target.scrollingElement)]
-                              (reset! visr-scroll
-                                      {:scroll-left (oget se :scrollLeft)
-                                       :scroll-top (oget se :scrollTop)})))
-                          :scroll-top (:scroll-top @visr-scroll)
-                          :scroll-left (:scroll-left @visr-scroll)}
-            @visr]])
-        [:> Button {:size "sm"
-                    :aria-label strings/CODE
-                    :style {:padding 0 :font-size "0.8em"}
-                    :variant "secondary"
-                    :on-click (fn []
-                                (swap! show-code not)
-                                (if-let [rmb @mark-box]
-                                  (ocall rmb :changed)))}
-         [:code "(\u03BB)"]]
-        (when @show-code
-          [styled-frame {:class "visr-code"}
-           [:> Form {:onSubmit #(do (.preventDefault %)
-                                    (.stopPropagation %))
-                     :on-focus (fn []
-                                 (reset! scratch {:name (:editor @info)
-                                                  :value (stx->stx-str @stx)})
-                                 (reset! focused? true))
-                     :on-blur (fn []
-                                (swap! info assoc :editor (:name @scratch))
-                                (reset! stx (read-string (:value @scratch)))
-                                (reset! focused? false))
-                     :style {:height "100%"
-                             :display "flex"
-                             :flex-flow "column"}}
-            [:> (oget Form :Group) {:as Row
-                                    :style {:margin "0"
-                                            :flex "0 1 auto"}}
-             [:> Col {:xs "1"
-                      :style {:padding "0"}}
-              [:> (oget Form :Label) {:column true
-                                      :style {:padding "0"}}
-               (str strings/VISR ":")]]
-             [:> Col {:xs "11"
-                      :style {:padding-right "0"}}
-              [:> (oget Form :Control)
-               {:size "sm"
-                :style {:padding "0"
-                        :min-height "0"}
-                :aria-label strings/VISR
-                :default-value (str (:editor @info))
-                :on-change #(let [value (oget % "target.value")]
-                              (when (valid-id? value)
-                                (if @focused?
-                                  (swap! scratch assoc :name (symbol value))
-                                  (swap! info assoc :editor (symbol value)))))}]]]
-            [:> (oget Form :Group) {:as Row
-                                    :style {:margin "0"
-                                            :flex "1 1 auto"}}
-             [:> Col {:xs "12"
-                      :style {:padding "0"}}
-              [:> cm/UnControlled
-               {:options (codemirror-options db)
-                :onChange (fn [this operation value]
-                            (if @focused?
-                              (swap! scratch assoc :value value)
-                              (reset! stx (read-string value))))
-                :editorDidMount (fn [e]
-                                  (-> e (ocall "getDoc")
-                                      (ocall "setValue"
-                                             (stx->stx-str @stx))))}]]]]])]])))
+      (let [show-visr (r/cursor info [:show-visr])
+            show-code (r/cursor info [:show-text])]
+        (when-not (contains? @info :show-visr)
+          (reset! show-visr (contains? visr-defaults :show-visr)))
+        (when-not (contains? @info :show-text)
+          (reset! show-code (contains? visr-defaults :show-code)))
+        (when (and @show-visr (= @visr nil))
+          (reset! visr [:div])
+          (mk-editor tag @info @stx runtime fs file-src
+                     (fn [ret]
+                       (reset! visr
+                               (cond
+                                 (:value ret)
+                                 (let [v (:value ret)]
+                                   (cond (= (oget v :type) "exception")
+                                         [:div {:style {:white-space "pre"}}
+                                          ;;(oget v :value.message)
+                                          (oget v :value.stack)],
+                                         :else (oget v :value))),
+                                 :else [:div (.-stack ret)])))))
+        [:span {:style {:display "inline-block"}}
+         [:> ButtonGroup {:aria-label strings/VISR}
+          [:> Button {:size "sm"
+                      :aria-label strings/VISUAL
+                      :style {:padding 0 :font-size "1.2em"}
+                      :on-click (fn []
+                                  (swap! show-visr not)
+                                  (if-let [rmb @mark-box]
+                                    (ocall rmb :changed)))}
+           "\uD83D\uDC41"]
+          (when @show-visr
+            [err-boundary
+             ;;{:ref #(swap! refs assoc :visr-err %)}
+             [styled-frame {:class "visr-body"
+                            :on-scroll
+                            (fn [event]
+                              (let [se (oget event :target.scrollingElement)]
+                                (reset! visr-scroll
+                                        {:scroll-left (oget se :scrollLeft)
+                                         :scroll-top (oget se :scrollTop)})))
+                            :scroll-top (:scroll-top @visr-scroll)
+                            :scroll-left (:scroll-left @visr-scroll)}
+              @visr]])
+          [:> Button {:size "sm"
+                      :aria-label strings/CODE
+                      :style {:padding 0 :font-size "0.8em"}
+                      :variant "secondary"
+                      :on-click (fn []
+                                  (swap! show-code not)
+                                  (if-let [rmb @mark-box]
+                                    (ocall rmb :changed)))}
+           [:code "(\u03BB)"]]
+          (when @show-code
+            [styled-frame {:class "visr-code"}
+             [:> Form {:onSubmit #(do (.preventDefault %)
+                                      (.stopPropagation %))
+                       :on-focus (fn []
+                                   (reset! scratch {:name (:editor @info)
+                                                    :value (stx->stx-str @stx)})
+                                   (reset! focused? true))
+                       :on-blur (fn []
+                                  (swap! info assoc :editor (:name @scratch))
+                                  (reset! stx (read-string (:value @scratch)))
+                                  (reset! focused? false))
+                       :style {:height "100%"
+                               :display "flex"
+                               :flex-flow "column"}}
+              [:> (oget Form :Group) {:as Row
+                                      :style {:margin "0"
+                                              :flex "0 1 auto"}}
+               [:> Col {:xs "1"
+                        :style {:padding "0"}}
+                [:> (oget Form :Label) {:column true
+                                        :style {:padding "0"}}
+                 (str strings/VISR ":")]]
+               [:> Col {:xs "11"
+                        :style {:padding-right "0"}}
+                [:> (oget Form :Control)
+                 {:size "sm"
+                  :style {:padding "0"
+                          :min-height "0"}
+                  :aria-label strings/VISR
+                  :default-value (str (:editor @info))
+                  :on-change #(let [value (oget % "target.value")]
+                                (when (valid-id? value)
+                                  (if @focused?
+                                    (swap! scratch assoc :name (symbol value))
+                                    (swap! info assoc :editor (symbol value)))))}]]]
+              [:> (oget Form :Group) {:as Row
+                                      :style {:margin "0"
+                                              :flex "1 1 auto"}}
+               [:> Col {:xs "12"
+                        :style {:padding "0"}}
+                [:> cm/UnControlled
+                 {:options (codemirror-options db)
+                  :onChange (fn [this operation value]
+                              (if @focused?
+                                (swap! scratch assoc :value value)
+                                (reset! stx (read-string value))))
+                  :editorDidMount (fn [e]
+                                    (-> e (ocall "getDoc")
+                                        (ocall "setValue"
+                                               (stx->stx-str @stx))))}]]]]])]]))))
 
 (defn reset-editors! [source set-text editor instances operation cache queue
                       {{:keys [show-editors visr-default]} :options
@@ -716,7 +720,8 @@
                                      (:end-column stxinfo)),
                                 commit! #(let [s (stdlib/write-visr
                                                   (:editor @info)
-                                                  (stx->stx-str @stx))
+                                                  (stx->stx-str @stx)
+                                                  @info)
                                                ret (str (subs source 0 start)
                                                         s
                                                         (subs source end))]

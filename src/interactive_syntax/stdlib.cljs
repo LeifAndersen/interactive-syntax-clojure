@@ -225,8 +225,11 @@
             (state-injection 'garden.util (ns-publics 'garden.util)))
      :js-deps (merge (:js-deps base) (:js-deps builtins))}))
 
-(defn write-visr [visr state]
-  (str "^{:editor " visr "}(" (visr->elaborate visr) " " (str state) ")"))
+(defn write-visr [visr state & [{:keys [show-visr show-text]}]]
+  (let [show-visr (or show-visr false)
+        show-text (or show-text false)]
+    (str "^{:editor " visr " :show-visr " show-visr " :show-text " show-text
+         "}(" (visr->elaborate visr) " " (str state) ")")))
 
 (def empty-visr (write-visr "visr.core/empty-visr" "{}"))
 

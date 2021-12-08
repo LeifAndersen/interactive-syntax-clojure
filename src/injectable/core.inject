@@ -15,4 +15,4 @@
          (defmacro ~name+elaborate
            ~elaborate))))
 (defn empty-visr+render [this] [:div (:message @this)])
-(defmacro empty-visr+elaborate [this] {})
+(defmacro empty-visr+elaborate [this] (:message this))

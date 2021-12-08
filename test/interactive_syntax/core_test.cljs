@@ -876,7 +876,7 @@
 (ns test.use
   (:require-macros [test.core])
   (:require [test.core]))
-(println (+ ^{:editor test.core/Counter}(test.core/Counter+elaborate 330
+(println (+ ^{:editor test.core/Counter :show-visr true :show-text false}(test.core/Counter+elaborate 330
 ) 5))"]
        (test-do
         db :check
@@ -991,6 +991,10 @@
             :as db}
            (default-db :temp),
            new-input (str "A" stdlib/empty-visr "B"),
+           open-input (str "A"
+                           (stdlib/write-visr "visr.core/empty-visr" "{}\n"
+                                              {:show-visr true :show-text false})
+                           "B")
            _ (reset! input new-input),
            editor (atom nil),
            repl (atom nil),
@@ -1006,6 +1010,8 @@
         :do #(.click rtl/fireEvent
                      (aget (.getAllByLabelText view strings/VISUAL) 0))
         :wait 100
+        :set [:input] open-input
+        :set [:file-changed] true
         :check
         :done #(done))))))
 
@@ -1355,7 +1361,7 @@
 (+ 1 2)"
            new-use "
 (ns test.use (:require [test.core :include-macros true]))
-^{:editor test.core/multi-update}(test.core/multi-update+elaborate {:a 42, :b 819}
+^{:editor test.core/multi-update :show-visr true :show-text false}(test.core/multi-update+elaborate {:a 42, :b 819}
 )
 (+ 1 2)"
            view (rtl/render (r/as-element [core/home-page db
@@ -1408,7 +1414,7 @@
            use2 "
 (ns test.use
  (:require [test.core :include-macros true]))
-^{:editor test.core/DeepUp}(test.core/DeepUp+elaborate {:a {:key 42}}
+^{:editor test.core/DeepUp :show-visr true :show-text false}(test.core/DeepUp+elaborate {:a {:key 42}}
 )
 (+ 1 2)"
            editor (atom nil),
@@ -1557,7 +1563,7 @@
            use2 "
 (ns test.use
   (:require [test.core :include-macros true]))
-^{:editor test.core/Edi2}(test.core/Edi2+elaborate {}
+^{:editor test.core/Edi2 :show-visr true :show-text true}(test.core/Edi2+elaborate {}
 )"
            editor (atom nil),
            repl (atom nil),
@@ -1613,13 +1619,13 @@
 (defvisr TheEditor
   (elaborate [this] 42)
   (render [this] [:button \"Hello\"]))
-(comment ^{:editor test.core/TheEditor} (test.core/TheEditor+elaborate {}))"
+(comment ^{:editor test.core/TheEditor :show-visr false :show-text false} (test.core/TheEditor+elaborate {}))"
            lib2 "
 (ns test.core)
 (defvisr TheEditor
   (elaborate [this] 42)
   (render [this] [:button \"World\"]))
-(comment ^{:editor test.core/TheEditor} (test.core/TheEditor+elaborate {}))"
+(comment ^{:editor test.core/TheEditor :show-visr true :show-text false} (test.core/TheEditor+elaborate {}))"
 
            editor (atom nil),
            repl (atom nil),
@@ -1724,8 +1730,8 @@
                    current-file current-folder file-browser-folder]
             :as db}
            (default-db :temp),
-           buff1 (str "ASDF^{:editor visr.core/empty-visr}"
-                      "(visr.core/empty-visr+elaborate 42)QWER")
+           buff1 (str "ASDF^{:editor visr.core/empty-visr :show-visr false "
+                      ":show-text false}(visr.core/empty-visr+elaborate 42)QWER")
            buff2 (string/join (for [i (range 200)] (char (+ (mod i 26) 65)))),
            editor (atom nil),
            repl (atom nil),
