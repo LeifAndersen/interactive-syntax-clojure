@@ -15,7 +15,7 @@
             [interactive-syntax.fs :as fs]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
-            [interactive-syntax.utils :refer [cb-thread cb-loop]]
+            [interactive-syntax.utils :as utils :refer [cb-thread cb-loop]]
             [interactive-syntax.env :as env]
             [interactive-syntax.stdlib :as stdlib]))
 
@@ -170,7 +170,7 @@
             :as db} (default-db :temp)
            ival "hello world"
            oval #queue ["A" "B"]
-           uri (env/module->uri test-dep)
+           uri (utils/module->uri test-dep)
            new-deps {1 {:name "react-hexgrid"
                         :url uri}}
            new-dir (js/path.join db/files-root "A")
@@ -811,7 +811,7 @@
            view (rtl/render (r/as-element [core/home-page db {:editor editor
                                                               :repl repl}]))
            interum "(println (+ 1 2))"
-           uri (env/module->uri test-dep)
+           uri (utils/module->uri test-dep)
            prog1 "
 (ns test.core
   (:require [react-hexgrid :as rh :refer [Hex]]))
@@ -1517,7 +1517,7 @@
             :as db}
            (default-db :temp),
            dep-mod "not a valid javascript file",
-           uri (env/module->uri dep-mod),
+           uri (utils/module->uri dep-mod),
            new-deps {1 {:name "bad-module" :url uri}}]
        (cb-thread
         #(fs.writeFile (.join js/path deps-root "bad-module") dep-mod %)
