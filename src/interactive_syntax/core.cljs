@@ -1101,6 +1101,8 @@
                  (let [old @menu]
                    (reset! menu [:home :force-update])
                    (reset! menu old)))
+               "run-buffer"
+               (env/eval-buffer db)
                nil))))
        (d/render [home-page db] (.getElementById js/document "app"))))))
 
