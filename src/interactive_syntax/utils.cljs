@@ -1,5 +1,9 @@
 (ns interactive-syntax.utils)
 
+(defn module->uri [module]
+  (js/URL.createObjectURL
+   (new js/Blob #js [module] #js {:type "application/javascript"})))
+
 (defn cb-thread [& funcs]
   ((fn rec [funcs ret]
      (if (empty? funcs)

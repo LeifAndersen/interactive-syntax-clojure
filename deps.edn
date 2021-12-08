@@ -20,5 +20,6 @@
            :test {:main-opts ["-m" "figwheel.main"
                               "--compile-opts" "test.cljs.edn"
                               "--main" "interactive-syntax.core-test"]}
-           :package {:main-opts ["-m" "figwheel.main" "--build-once" "prod"]}}
+           :package {:main-opts ["-m" "figwheel.main" "--build-once" "prod"]}
+           :runner {:main-opts ["-m" "figwheel.main" "--build-once" "runner"]}}
  :paths ["src" "test" "target" "resources" "env"]}

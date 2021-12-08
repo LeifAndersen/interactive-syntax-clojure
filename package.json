@@ -10,7 +10,7 @@
   "bugs": {
     "url": "https://github.com/LeifAndersen/interactive-syntax-clojure/issues"
   },
-  "homepage": "https://github.com/LeifAndersen/interactive-syntax-clojure#readme",
+  "homepage": "https://visr.pl",
   "devDependencies": {
     "@testing-library/react": "^11.2.2",
     "@testing-library/user-event": "^13.1.9",

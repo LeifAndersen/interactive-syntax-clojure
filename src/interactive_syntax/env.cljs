@@ -20,7 +20,7 @@
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
    [ajax.core :refer [GET POST PUT]]
-   [interactive-syntax.utils :refer [cb-thread cb-loop]]
+   [interactive-syntax.utils :refer [cb-thread cb-loop module->uri]]
    [interactive-syntax.db :refer [files-root deps-root shop-url]]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
@@ -100,10 +100,6 @@
                     (next)))))
              %)
    #(when cb (cb %2))))
-
-(defn module->uri [module]
-  (js/URL.createObjectURL
-   (new js/Blob #js [module] #js {:type "application/javascript"})))
 
 (defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system js/System];(new (.-constructor js/System))]

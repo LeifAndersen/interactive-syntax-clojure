@@ -1,0 +1,15 @@
+^{:auto-bundle :webpack
+  :clean-outputs true}
+{:main interactive-syntax.runner
+ ;;:deps-command "npm"
+ :bundle-cmd
+ {:none ["npx" "webpack" "--config" "./runner/webpack.config.js"
+         "--mode=development" "./src/js/runner-bundle.js" :output-to
+         "--output-path" "./runner/dist" "--output-filename" "index.js"]
+  :default ["npx" "webpack" "--config" "./runner/webpack.config.js"
+            "--mode=production" "./src/js/runner-bundle.js" :output-to
+            "--output-path" "./runner/dist" "--output-filename" "index.js"]}
+ ;;:stable-names true
+ ;;:pseudo-names true
+ ;;:pretty-print true
+ :optimizations :simple}

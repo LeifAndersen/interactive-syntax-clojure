@@ -30,6 +30,7 @@
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
                             Table]]
+   [jszip]
    [react-split-pane]
    [react-switch]
    [codemirror]
@@ -142,6 +143,7 @@
   {:env {:react react
          :react_dom react-dom
          :react_bootstrap react-bootstrap
+         :jszip jszip
          :codemirror codemirror
          :react_codemirror2 cm
          :react_split_pane react-split-pane
@@ -149,7 +151,7 @@
    :loaded #{'react 'react-dom 'react-bootstrap 'codemirror 'react-codemirror2
              'react-split-pane 'react-switch}
    :js-deps (into {}
-                  (for [k '[react react-dom react-bootstrap codemirror
+                  (for [k '[react react-dom react-bootstrap jszip codemirror
                             react-codemirror2 react-split-pane react-switch]]
                     [(str k) {:global-exports {k (munge k)}}]))})
 
