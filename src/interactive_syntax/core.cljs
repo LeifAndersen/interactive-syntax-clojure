@@ -1094,6 +1094,9 @@
                   #(fs/import-from-zip db zip %)
                   (fn []
                     (reset! backing new-backing)
+                    (let [old @menu]
+                      (reset! menu [:home :force-update])
+                      (reset! menu old))
                     (reset! resetting? false))))
                "set-patch"
                (let [new-backing (t/read (t/reader :json) (-> % .-data .-data))]
