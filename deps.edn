@@ -21,5 +21,6 @@
                               "--compile-opts" "test.cljs.edn"
                               "--main" "interactive-syntax.core-test"]}
            :package {:main-opts ["-m" "figwheel.main" "--build-once" "prod"]}
+           :lib {:main-opts ["-m" "figwheel.main" "--build-once" "lib"]}
            :runner {:main-opts ["-m" "figwheel.main" "--build-once" "runner"]}}
  :paths ["src" "test" "target" "resources" "env"]}
