@@ -511,10 +511,10 @@
      {:display-name "ErrBoundary"
       :component-did-catch (fn [err info]
                              (reset! err-state [err info]))
-      :getDerivedStateFromError (fn [error]
-                                      (js/console.log error)
-                                      [:div {:style {:white-space "pre"}}
-                                       (pr-str error)])
+      ;;:getDerivedStateFromError (fn [error]
+      ;;                                (js/console.log error)
+      ;;                                [:div {:style {:white-space "pre"}}
+      ;;                                 (pr-str error)])
       :reagent-render (fn [& children]
                         (if (nil? @err-state)
                           (into [:<>] children)

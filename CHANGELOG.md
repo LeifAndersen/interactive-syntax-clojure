@@ -1,6 +1,9 @@
 # 0.1.15
 
 * BREAKING CHANGE: Only one call to default is now required.
+* Make scripts for generating VISrShop.
+* Macros in cljs.test now usable.
+* Highly experimental support for runtime-only environment.
 
 # 0.1.14
 
