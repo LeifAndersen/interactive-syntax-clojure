@@ -139,12 +139,14 @@
           file-path
           (fn [err data]
             (if err
-              (rec (rest extensions))
+              (if-let [file (get stdlib/shadow-fs
+                                 (str path "." (first extensions)))]
+                (cb {:lang (if (= (first extensions) "js") :js :clj)
+                     :source file
+                     :file file-path})
+                (rec (rest extensions)))
               (let [source (.toString data)]
-                (cb {:lang (if (= (first extensions)
-                                  "js")
-                             :js
-                             :clj)
+                (cb {:lang (if (= (first extensions) "js") :js :clj)
                      :source source
                      :file file-path}))))))))
    (if macros
@@ -509,10 +511,16 @@
      {:display-name "ErrBoundary"
       :component-did-catch (fn [err info]
                              (reset! err-state [err info]))
+      :getDerivedStateFromError (fn [error]
+                                      (js/console.log error)
+                                      [:div {:style {:white-space "pre"}}
+                                       (pr-str error)])
       :reagent-render (fn [& children]
                         (if (nil? @err-state)
                           (into [:<>] children)
-                          (let [[_ info] @err-state]
+                          (let [[err info] @err-state]
+                            (js/console.log err)
+                            (js/console.error info)
                             [styled-frame ;;{:ref ref}
                              [:div {:style {:white-space "pre"}}
                               (pr-str info)]])))})))

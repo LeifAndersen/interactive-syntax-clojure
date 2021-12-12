@@ -1,5 +1,8 @@
 #lang sml
 
+iink-js:
+{package: "iink-js" path: "./node_modules/iink-js/dist/iink.min.js"}
+
 highlightjs:
 {package: "highlight.js" path: "./node_modules/highlight.js/lib/index.js"}
 
@@ -14,6 +17,9 @@ mathjs:
 
 marked:
 {package: "marked" path: "./node_modules/marked/marked.min.js"}
+
+pepjs:
+{package: "pepjs" path: "./node_modules/pepjs/dist/pep.js"}
 
 react-canvas-core:
 {package: "@projectstorm/react-diagrams"

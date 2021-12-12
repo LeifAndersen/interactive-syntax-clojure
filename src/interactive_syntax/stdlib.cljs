@@ -5,6 +5,7 @@
   (:require
    [cljs.core :as core]
    [cljs.analyzer]
+   [cljs.analyzer.api]
    [cljs.compiler]
    [cljs.env]
    [cljs.js]
@@ -16,7 +17,7 @@
    [cljs.spec.test.alpha]
    [cljs.stacktrace]
    [cljs.tagged-literals]
-   [cljs.test]
+   [cljs.test :include-macros true]
    [cljs.tools.reader]
    [clojure.walk]
    [clojure.string]
@@ -181,7 +182,8 @@
                      :units garden.units
                      :util garden.util}})
      :loaded (union (:loaded base) (:loaded builtins)
-                    #{'cljs.analyzer 'cljs.compiler 'cljs.env 'cljs.js 'cljs.pprint
+                    #{'cljs.analyzer 'cljs.analyzer.api
+                      'cljs.compiler 'cljs.env 'cljs.js 'cljs.pprint
                       'cljs.reader 'cljs.source-map 'cljs.spec.alpha
                       'cljs.spec.gen.alpha 'cljs.spec.test.alpha 'cljs.stacktrace
                       'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
@@ -191,7 +193,8 @@
                       'garden.compression 'garden.selectors 'garden.types
                       'garden.units 'garden.util})
      :state-injections
-     (merge (state-injection 'cljs.analyer (ns-publics 'cljs.analyer))
+     (merge (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
+            (state-injection 'cljs.analyzer.api (ns-publics 'cljs.analyzer.api))
             (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))
             (state-injection 'cljs.env (ns-publics 'cljs.env))
             (state-injection 'cljs.js (ns-publics 'cljs.js))
@@ -230,6 +233,11 @@
         show-text (or show-text false)]
     (str "^{:editor " visr " :show-visr " show-visr " :show-text " show-text
          "}(" (visr->elaborate visr) " " (str state) ")")))
+
+(def shadow-fs
+  {"clojure/template.clj" (slurp "src/injectable/shadowfs/clojure/template.clj")
+   "cljs/test.cljc" (slurp "src/injectable/shadowfs/cljs/test.cljc")
+   "cljs/test.cljs" (slurp "src/injectable/shadowfs/cljs/test.cljs")})
 
 (def empty-visr (write-visr "visr.core/empty-visr" "{}"))
 
