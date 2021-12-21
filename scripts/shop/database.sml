@@ -18,6 +18,9 @@ mathjs:
 marked:
 {package: "marked" path: "./node_modules/marked/marked.min.js"}
 
+openpgp:
+{package: "openpgp" path: "./node_modules/openpgp/dist/openpgp.min.js"}
+
 pepjs:
 {package: "pepjs" path: "./node_modules/pepjs/dist/pep.js"}
 

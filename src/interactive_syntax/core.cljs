@@ -1022,7 +1022,9 @@
         id (or (.get search "send-state-id") (random-uuid))
         send-state-url (.get search "send-state-to")
         embedded? (.get search "embedded")
+        send-rate (.get search "send-rate")
         fullscreen? (.get search "fullscreen")
+        last-send (atom (js/Date.now))
         msg-counter (atom 1)]
     (cb-thread
      #(if url
@@ -1076,11 +1078,19 @@
            (add-watch file-changed ::embedded-state-changed
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
-                             (send-full))))
+                             (when (> (- (js/Date.now) @last-send) (or send-rate 0))
+                               (js/console.log "sending full")
+                               (js/console.log (js/Date.now))
+                               (send-full)
+                               (reset! last-send (js/Date.now))))))
            (add-watch backing ::embedded-state-changed
                       (fn [k r o n]
                         (when-not (or @resetting? (= o n))
-                          (send-patch))))
+                          (when (> (- (js/Date.now) @last-send) (or send-rate 0))
+                            (js/console.log "sending patch")
+                            (js/console.log (js/Date.now))
+                            (send-patch)
+                            (reset! last-send (js/Date.now))))))
            (send-full)
            (.addEventListener
             js/window "message"
@@ -1104,7 +1114,8 @@
                  (reset! backing new-backing)
                  (let [old @menu]
                    (reset! menu [:home :force-update])
-                   (reset! menu old)))
+                   (reset! menu old))
+                 (reset! resetting? false))
                "run-buffer"
                (env/eval-buffer db)
                nil))))
