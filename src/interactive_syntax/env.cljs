@@ -170,7 +170,7 @@
                   (contains? @stopified-cache clj-source))
                  (run (get @stopified-cache clj-source)),
                  ;; sync v async, currently always sync
-                 true;(< (count source) 1000)
+                 (< (count source) 1000)
                  (let [ast (babylon/parse source)
                        polyfilled ast;(hof/polyfillHofFromAst ast)
                        compiled (ocall runner :compileFromAst polyfilled)]

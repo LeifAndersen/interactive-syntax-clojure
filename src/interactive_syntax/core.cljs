@@ -1078,9 +1078,8 @@
            (add-watch file-changed ::embedded-state-changed
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
-                             (when (> (- (js/Date.now) @last-send) (or send-rate 0))
-                               (send-full)
-                               (reset! last-send (js/Date.now))))))
+                             (send-full)
+                             (reset! last-send (js/Date.now)))))
            (add-watch backing ::embedded-state-changed
                       (fn [k r o n]
                         (when-not (or @resetting? (= o n))
