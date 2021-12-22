@@ -1079,16 +1079,12 @@
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
                              (when (> (- (js/Date.now) @last-send) (or send-rate 0))
-                               (js/console.log "sending full")
-                               (js/console.log (js/Date.now))
                                (send-full)
                                (reset! last-send (js/Date.now))))))
            (add-watch backing ::embedded-state-changed
                       (fn [k r o n]
                         (when-not (or @resetting? (= o n))
                           (when (> (- (js/Date.now) @last-send) (or send-rate 0))
-                            (js/console.log "sending patch")
-                            (js/console.log (js/Date.now))
                             (send-patch)
                             (reset! last-send (js/Date.now))))))
            (send-full)
