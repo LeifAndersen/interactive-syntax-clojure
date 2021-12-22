@@ -808,6 +808,12 @@
         reset-queue (clojure.core/atom #queue [])]
     (add-watch current-file ::editor-view watch-updater)
     (add-watch menu ::editor-view watch-updater)
+    (add-watch edit ::set-font
+               (fn [k r o n]
+                 (when (not= n nil)
+                   (oset! (ocall n :getWrapperElement) :style.fontSize
+                          (str @(:font-size options) "px"))
+                   (ocall n :refresh))))
     (reset! visr-commit!
             (doseq [[k v] @visrs]
               ((:commit! v))))
@@ -822,10 +828,6 @@
              visr-run-ref :visr-run}]]
       @current-file
       @menu
-      (when (not= @edit nil)
-        (oset! (ocall @edit :getWrapperElement) :style.fontSize
-               (str @(:font-size options) "px"))
-        (ocall @edit :refresh))
       [:> cm/UnControlled
        {:options (env/codemirror-options db)
         :onChange (fn [this operation value]
@@ -900,14 +902,16 @@
                             (-> @edit (ocall "getDoc")
                                 (ocall "addLineWidget" (max 0 (dec line)) element)))
                      (recur (inc line) rest)))))))]
+    (add-watch edit ::set-font
+               (fn [k r o n]
+                 (when (not= n nil)
+                   (oset! (ocall n :getWrapperElement) :style.fontSize
+                          (str @(:font-size options) "px"))
+                   (ocall n :refresh))))
     (add-watch output ::result-view watch-updater)
     (fn [{:keys [output options]
         :as db}
        & [repl-ref]]
-      (when (not= @edit nil)
-        (oset! (ocall @edit "getWrapperElement") "style.fontSize"
-               (str @(:font-size options) "px"))
-        (ocall @edit "refresh"))
       [:> cm/UnControlled
        {:value (string/join "\n" (filter string? @output))
         :options (conj (env/codemirror-options db)

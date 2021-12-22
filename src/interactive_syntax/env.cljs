@@ -534,7 +534,7 @@
   (let [visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)
-        scratch (atom nil)]
+        scratch (clojure.core/atom nil)]
     (add-watch info ::reset-visr
                (fn [k r o n]
                  (when-not (= o n)
@@ -607,7 +607,10 @@
                                    (reset! focused? true))
                        :on-blur (fn []
                                   (swap! info assoc :editor (:name @scratch))
-                                  (reset! stx (read-string (:value @scratch)))
+                                  (reset! stx
+                                          (let [v (:value @scratch)]
+                                            (try (read-string v)
+                                                 (catch js/Error e {:value v}))))
                                   (reset! focused? false))
                        :style {:height "100%"
                                :display "flex"
@@ -643,7 +646,9 @@
                   :onChange (fn [this operation value]
                               (if @focused?
                                 (swap! scratch assoc :value value)
-                                (reset! stx (read-string value))))
+                                (reset! stx
+                                        (try (read-string value)
+                                             (catch js/Error e {:value value})))))
                   :editorDidMount (fn [e]
                                     (-> e (ocall "getDoc")
                                         (ocall "setValue"
