@@ -101,6 +101,7 @@
                       (when @file
                         (swap! menu pop)
                         (swap! menu conj :hold)
+                        (reset! show-confirm? false)
                         (-> (ocall (aget (oget @file :target.files) 0) :arrayBuffer)
                             (.then
                              (fn [r]
@@ -782,7 +783,7 @@
           (if @running? strings/PAUSE strings/RUN)]
          [:> Button {:variant "danger"} strings/STOP]]]]]]))
 
-(defn editor-view [{:keys [menu input output options backing file-changed
+(defn editor-view [{:keys [menu input output options backing file-changed deps
                            current-file fs visr-commit! insert-visr! cursor scroll]
                     :as db}
                    & [{editor-ref :editor
@@ -814,6 +815,19 @@
                    (oset! (ocall n :getWrapperElement) :style.fontSize
                           (str @(:font-size options) "px"))
                    (ocall n :refresh))))
+    (add-watch deps ::new-deps
+               (fn [k r o n]
+                 (reset! cache nil)
+                 (doseq [[k v] @visrs]
+                   (ocall @(:mark v) :clear))
+                 (reset! visrs {})
+                 (when editor-reset-ref
+                   (reset! editor-reset-ref true))
+                 (env/reset-editors! @input set-text edit visrs nil
+                                     cache reset-queue db
+                                     #(when editor-reset-ref
+                                        (reset! editor-reset-ref false))
+                                     visr-run-ref)))
     (reset! visr-commit!
             (doseq [[k v] @visrs]
               ((:commit! v))))
