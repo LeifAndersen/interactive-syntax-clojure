@@ -172,7 +172,7 @@
                  ;; sync v async, currently always sync
                  (< (count source) 1000)
                  (let [ast (babylon/parse source)
-                       polyfilled ast;(hof/polyfillHofFromAst ast)
+                       polyfilled (hof/polyfillHofFromAst ast)
                        compiled (ocall runner :compileFromAst polyfilled)]
                    (when-not (string/ends-with? (str (:name cache)) "$macros")
                      (swap! stopified-cache assoc clj-source compiled))

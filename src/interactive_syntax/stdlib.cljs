@@ -150,8 +150,8 @@
          :react_codemirror2 cm
          :react_split_pane react-split-pane
          :react_switch react-switch}
-   :loaded #{'react 'react-dom 'react-bootstrap 'codemirror 'react-codemirror2
-             'react-split-pane 'react-switch}
+   :loaded #{'cljs.core 'react 'react-dom 'react-bootstrap
+             'codemirror 'react-codemirror2 'react-split-pane 'react-switch}
    :js-deps (into {}
                   (for [k '[react react-dom react-bootstrap jszip codemirror
                             react-codemirror2 react-split-pane react-switch]]
