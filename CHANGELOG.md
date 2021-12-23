@@ -1,3 +1,7 @@
+# 0.1.16
+
+* Add optional edit-time only field to render.
+
 # 0.1.15
 
 * BREAKING CHANGE: Only one call to default is now required.

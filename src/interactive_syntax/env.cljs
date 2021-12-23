@@ -423,7 +423,8 @@
                 (if (and res (:error res))
                   (cb res)
                   (eval-str (str "[" (stdlib/visr->render editor)
-                                 " (js/visr->atom " (pr-str tag) ")]")
+                                 " (js/visr->atom " (pr-str tag)
+                                 ")(js/visr->atom-info " (pr-str tag)")]")
                             {:runtime runtime
                              :ns ns
                              :running? visr-run-ref
@@ -684,10 +685,16 @@
             #(if %2
                (eval-str ""
                          {:runtime (stdlib/reagent-runtime
-                                    (assoc-in %2 [:env (munge "visr->atom")]
-                                              (fn [x]
-                                                (or (get-in @instances [x :stx])
-                                                    (atom nil))))
+                                    (-> %2
+                                        (assoc-in [:env (munge "visr->atom")]
+                                                  (fn [x]
+                                                    (or (get-in @instances [x :stx])
+                                                        (atom nil))))
+                                        (assoc-in [:env (munge "visr->atom-info")]
+                                                  (fn [x]
+                                                    (or (get-in @instances
+                                                                [x :info])
+                                                        (atom nil)))))
                                     db)
                           :running? visr-run-ref
                           :fs fs}

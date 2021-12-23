@@ -130,6 +130,7 @@
    :btoa js/btoa
    :parseInt js/parseInt
    :parseFloat js/parseFloat
+   :isNaN js/isNaN
    :URL js/URL
    :URLSearchParams js/URLSearchParams
    :Blob js/Blob
