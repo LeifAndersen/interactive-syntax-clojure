@@ -817,17 +817,18 @@
                    (ocall n :refresh))))
     (add-watch deps ::new-deps
                (fn [k r o n]
-                 (reset! cache nil)
-                 (doseq [[k v] @visrs]
-                   (ocall @(:mark v) :clear))
-                 (reset! visrs {})
-                 (when editor-reset-ref
-                   (reset! editor-reset-ref true))
-                 (env/reset-editors! @input set-text edit visrs nil
-                                     cache reset-queue db
-                                     #(when editor-reset-ref
-                                        (reset! editor-reset-ref false))
-                                     visr-run-ref)))
+                 (when-not (= o n)
+                   (reset! cache nil)
+                   (doseq [[k v] @visrs]
+                     (ocall @(:mark v) :clear))
+                   (reset! visrs {})
+                   (when editor-reset-ref
+                     (reset! editor-reset-ref true))
+                   (env/reset-editors! @input set-text edit visrs nil
+                                       cache reset-queue db
+                                       #(when editor-reset-ref
+                                          (reset! editor-reset-ref false))
+                                       visr-run-ref))))
     (reset! visr-commit!
             (doseq [[k v] @visrs]
               ((:commit! v))))
