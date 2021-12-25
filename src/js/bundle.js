@@ -18,7 +18,8 @@ window.ReactDOM = require('react-dom');
 // Horrible hack because stopify insists on being in the global namespace.
 window.stopify = require('@leifandersen/stopify-tweak');
 window.stopifyArray = function(array) {
-    return require('@stopify/higher-order-functions/dist/ts/simpleHofPolyfill.lazy')
+    return require(
+        '@stopify/higher-order-functions/dist/ts/mozillaHofPolyfill.lazy')
         .stopifyArray(array);
 };
 
