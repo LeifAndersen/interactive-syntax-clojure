@@ -232,6 +232,35 @@
        :do #(js/URL.revokeObjectURL uri)
        :done #(done))))))
 
+(deftest custom-file-actions
+  (testing "Test custom file actions"
+    (async
+     done
+     (let [{:keys [fs] :as db} (default-db :temp)]
+       (test-do
+        db
+        :async #(fs.writeFile (js/path.join files-root "A") "payload" %)
+        :async #(fs/copy-path fs (js/path.join files-root "A")
+                              (js/path.join files-root "B")
+                              %)
+        :do #(is (= (str (fs.readFileSync (js/path.join files-root "B")))
+                    "payload"))
+        :async #(fs.mkdir (js/path.join files-root "dA") %)
+        :async #(fs.writeFile (js/path.join files-root "dA/A") "pay1" %)
+        :async #(fs.writeFile (js/path.join files-root "dA/B") "pay2" %)
+        :async #(fs.mkdir (js/path.join files-root "dA/sub") %)
+        :async #(fs.writeFile (js/path.join files-root "dA/sub/A") "pay3" %)
+        :async #(fs/copy-path fs (js/path.join files-root "dA")
+                              (js/path.join files-root "dB")
+                              %)
+        :do #(is (= (str (fs.readFileSync (js/path.join files-root "dB/A")))
+                    "pay1"))
+        :do #(is (= (str (fs.readFileSync (js/path.join files-root "dB/B")))
+                    "pay2"))
+        :do #(is (= (str (fs.readFileSync (js/path.join files-root "dB/sub/A")))
+                    "pay3"))
+        :done #(done))))))
+
 (deftest file-save-laod
   (testing "File Saving and Loading"
     (let [db (default-db :temp)

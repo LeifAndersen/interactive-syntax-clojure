@@ -14,6 +14,8 @@
 (def FOLDER "Folder")
 (def UNSAVED-CHANGES "Unsaved Changes...")
 (def CONTINUE-WITHOUT-SAVING "Continue Without Saving")
+(def COPY "Copy")
+(def RENAME "Rename")
 
 (def PROJECT "Project")
 (def NEW-PROJECT "New Project")
@@ -78,4 +80,5 @@
 (def CTRL-SPACE "Ctrl+Space")
 
 (def INSERT-CLOSE-PARENTHESES "Insert Close Parentheses")
+
 

@@ -287,7 +287,9 @@
 (defn make-control-dialog [menu key title confirm placeholder action]
   (let [text (atom "")]
     (fn []
-      [:> Modal {:show (= (peek @menu) key)
+      [:> Modal {:show (let [m (peek @menu)]
+                         (or (= m key)
+                             (and (coll? m) (= (first m) key))))
                  :on-hide #(swap! menu pop)}
        [:> (oget Modal :Header) {:close-button true}
         [:h3 title]]
@@ -304,22 +306,31 @@
             {:placeholder placeholder
              :on-change #(reset! text (oget % "target.value"))}]]
           [:> Col {:xs "auto"}
-           [:> Button {:on-click (action text)}
+           [:> Button {:on-click #(action text)}
             confirm]]]]]])))
 
-(defn new-folder-dialog [{:keys [fs menu file-browser-folder]
-                          :as db}]
+(defn new-folder-dialog [{:keys [fs menu file-browser-folder] :as db}]
   (make-control-dialog
    menu :new-folder strings/NEW strings/CREATE strings/FOLDER
    (fn [text]
-     (fn []
-       (when (not= @text "")
-         (let [new-path (js/path.join @file-browser-folder (.replace @text "/" ""))]
-           (swap! menu conj :hold)
-           (ocall fs :mkdir new-path
-                  (fn [err]
-                    (swap! menu (comp pop pop))
-                    (reset! file-browser-folder new-path)))))))))
+     (when (not= @text "")
+       (let [new-path (js/path.join @file-browser-folder (.replace @text "/" ""))]
+         (swap! menu conj :hold)
+         (ocall fs :mkdir new-path
+                (fn [err]
+                  (swap! menu (comp pop pop))
+                  (reset! file-browser-folder new-path))))))))
+
+(defn copy-file-dialog [{:keys [fs menu file-browser-folder] :as db}]
+  (make-control-dialog
+   menu :copy-file strings/COPY strings/COPY strings/NAME
+   (fn [text]
+     (when (not= @text "")
+       (let [new-path (js/path.join @file-browser-folder (.replace @text "/" ""))
+             old-path (second (peek menu))]
+         (swap! menu conj :hold)
+         (fs/copy-path fs old-path new-path
+                       #(swap! menu (comp pop pop))))))))
 
 (defn confirm-save-dialog [{:keys [menu current-file]
                             :as db}]
@@ -433,7 +444,7 @@
                (oget ChonkyActions :OpenFileContextMenu.id) nil,
                (oget ChonkyActions :CreateFolder.id)
                (swap! menu conj :new-folder),
-               ChonkyActions.OpenFiles.id
+               (oget ChonkyActions :OpenFiles.id)
                (cond
                  (get-in payload ["targetFile" "breadCrumb"])
                  (swap! file-browser-folder
@@ -451,6 +462,7 @@
                  :else (do
                          (reset! text (get-in payload ["targetFile" "name"]))
                          (confirm-action))),
+               (oget ChonkyActions :CopyFiles.id) (js/console.log data),
                (oget ChonkyActions :ClearSelection.id) nil,
                (oget ChonkyActions :ChangeSelection.id) nil,
                (oget ChonkyActions :MoveFiles.id)
@@ -954,7 +966,14 @@
                      repl-ref :repl
                      visr-run-ref :visr-run
                      :as opts}]]
-  (let [search (js/URLSearchParams. js/window.location.search)]
+  (let [search (js/URLSearchParams. js/window.location.search)
+        rename-files-acation
+        (chonky/defineFileAction (clj->js {:id "rename_files"
+                                           :requiresSelection true
+                                           :hotkeys ["ctrl-x"]
+                                           :button {:name strings/RENAME
+                                                    :toolbar true
+                                                    :contextMenu true}}))]
     (chonky/setChonkyDefaults
      #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
     (set! codemirror/commands.save #(save-file db))

@@ -35,6 +35,21 @@
                                #(ocall fs :rmdir dir cb))))
              (ocall fs :unlink dir cb)))))
 
+(defn copy-path [fs src dst cb]
+  (ocall fs :stat src
+         (fn [err stats]
+           (if (ocall stats :isDirectory)
+             (cb-thread
+              #(ocall fs :mkdir dst %)
+              #(ocall fs :readdir src %)
+              #(cb-loop %3
+                        #(copy-path
+                          fs (js/path.join src %2) (js/path.join dst %2) %)
+                        cb))
+             (cb-thread
+              #(ocall fs :readFile src %)
+              #(ocall fs :writeFile dst %3 cb))))))
+
 (defn file-description [fs filepath cb]
   (ocall fs :stat filepath
          (fn [err stats]
