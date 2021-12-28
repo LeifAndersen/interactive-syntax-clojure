@@ -5,9 +5,9 @@ self.stopify = stopify;
 
 let runner = stopify.stopifyLocally("", {newMethod: "direct"});
 runner.run(() => {
-    self.onmessage = ({data: {prog}}) => {
+    self.onmessage = ({data: {prog, poly}}) => {
         let ast = parse(prog);
-        let polyfilled = polyfillHofFromAst(ast);
+        let polyfilled = poly ? polyfillHofFromAst(ast) : ast;
         self.postMessage({prog: runner.compileFromAst(polyfilled)});
     };
 });

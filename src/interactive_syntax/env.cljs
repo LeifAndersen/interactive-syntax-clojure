@@ -35,10 +35,9 @@
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
-   [react-bootstrap :refer [Button ButtonGroup SplitButton
+   [react-bootstrap :refer [Button ButtonGroup SplitButton Spinner
                             Dropdown DropdownButton Tabs Tab
-                            Row Col Form Container Modal
-                            Table]]
+                            Row Col Form Container Modal Table]]
    [react-switch]))
 
 (def ^:private template (.-default babel-template))
@@ -163,7 +162,8 @@
                          (reset! compiled? true)
                          (ocall runner :evalCompiled str
                                 (fn [res]
-                                  (cb res))))]
+                                  (cb res))))
+                   poly? false]
                (cond
                  (and
                   (not (string/ends-with? (str (:name cache)) "$macros"))
@@ -172,7 +172,7 @@
                  ;; sync v async, currently always sync
                  (< (count source) 1000)
                  (let [ast (babylon/parse source)
-                       polyfilled (hof/polyfillHofFromAst ast)
+                       polyfilled (if poly? (hof/polyfillHofFromAst ast) ast)
                        compiled (ocall runner :compileFromAst polyfilled)]
                    (when-not (string/ends-with? (str (:name cache)) "$macros")
                      (swap! stopified-cache assoc clj-source compiled))
@@ -188,7 +188,7 @@
                                     (oget msg :data.prog)))
                            (onRun)
                            (run (oget msg :data.prog))))
-                   (.postMessage worker #js {:prog source})))))
+                   (.postMessage worker #js {:prog source :poly poly?})))))
            cljs.js/js-eval)
    :load (partial ns->string fs)
    ;;:verbose true
@@ -553,7 +553,10 @@
         (when-not (contains? @info :show-text)
           (reset! show-code (contains? visr-defaults :show-code)))
         (when (and @show-visr (= @visr nil))
-          (reset! visr [:div])
+          (reset! visr [:> Spinner {:animation "border"
+                                    :variant "primary"
+                                    :role "status"}
+                        [:span {:className "visually-hidden"} "Loading"]])
           (mk-editor tag @info @stx runtime fs file-src
                      (fn [ret]
                        (reset! visr
