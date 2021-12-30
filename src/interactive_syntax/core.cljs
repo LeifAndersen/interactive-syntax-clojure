@@ -1060,6 +1060,7 @@
         send-rate (.get search "send-rate")
         fullscreen? (.get search "fullscreen")
         last-send (atom (js/Date.now))
+        editor-reset-ref (atom nil)
         msg-counter (atom 1)]
     (cb-thread
      #(if url
@@ -1121,6 +1122,11 @@
                           (when (> (- (js/Date.now) @last-send) (or send-rate 0))
                             (send-patch)
                             (reset! last-send (js/Date.now))))))
+           (add-watch editor-reset-ref ::reset-print
+                      (fn [k r o n]
+                        (when (and (not n) (not= o n))
+                          (swap! menu pop)
+                          (reset! resetting? false))))
            (send-full)
            (.addEventListener
             js/window "message"
@@ -1137,7 +1143,7 @@
                     (let [old @menu]
                       (reset! menu [:home :force-update])
                       (reset! menu old))
-                    (reset! resetting? false))))
+                    (swap! menu conj :hold))))
                "set-patch"
                (let [new-backing (t/read (t/reader :json) (-> % .-data .-data))]
                  (reset! resetting? true)
@@ -1145,13 +1151,15 @@
                  (let [old @menu]
                    (reset! menu [:home :force-update])
                    (reset! menu old))
-                 (reset! resetting? false))
+                 (swap! menu conj :hold))
                "run-buffer"
                (env/eval-buffer db)
                nil))))
        (if fullscreen?
          (d/render [editor-view db] (.getElementById js/document "app"))
-         (d/render [home-page db] (.getElementById js/document "app")))))))
+         (d/render [home-page db (when embedded?
+                                   {:editor-reset editor-reset-ref})]
+                   (.getElementById js/document "app")))))))
 
 (defn init! [& [opts]]
   (mount-root opts))
