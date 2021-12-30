@@ -667,6 +667,7 @@
           prog (indexing-push-back-reader source)
           eof (atom nil)
           fresh-cache (atom false)
+          cache-snapshot @cache
           cb (fn []
                (swap! queue pop)
                (when-not (empty? @queue)
@@ -681,8 +682,8 @@
          (doseq [[k v] @instances]
            (ocall @(:mark v) :clear))
          (reset! instances {})
-         (if-let [c @cache]
-           (n c)
+         (if cache-snapshot
+           (n @cache)
            (cb-thread
             #(deps->env db %)
             #(if %2

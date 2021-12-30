@@ -838,9 +838,11 @@
                      (reset! editor-reset-ref true))
                    (env/reset-editors! @input set-text edit visrs nil
                                        cache reset-queue db
-                                       #(when editor-reset-ref
-                                          (reset! editor-reset-ref false))
-                                       visr-run-ref))))
+                                       #() visr-run-ref))))
+    (add-watch reset-queue ::set-running?
+               (fn [k r o n]
+                 (when (and editor-reset-ref (empty? n))
+                   (reset! editor-reset-ref false))))
     (reset! visr-commit!
             (doseq [[k v] @visrs]
               ((:commit! v))))
@@ -864,9 +866,7 @@
                       (reset! editor-reset-ref true))
                     (env/reset-editors! @input set-text edit visrs operation
                                         cache reset-queue db
-                                        #(when editor-reset-ref
-                                           (reset! editor-reset-ref false))
-                                        visr-run-ref))
+                                        #() visr-run-ref))
         :onCursor (fn [editor data]
                     (reset! cursor data))
         :onScroll (fn [editor data]
@@ -896,10 +896,7 @@
                             (reset! editor-reset-ref true))
                           (env/reset-editors! @input set-text edit visrs nil
                                               cache reset-queue db
-                                              (fn []
-                                                (reset! mounted? true)
-                                                (when editor-reset-ref
-                                                  (reset! editor-reset-ref false)))
+                                              #(reset! mounted? true)
                                               visr-run-ref))}])))
 
 (defn result-view [{:keys [output options]

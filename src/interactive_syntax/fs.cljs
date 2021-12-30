@@ -94,13 +94,13 @@
                     (.then cb)
                     (.catch js/console.log)))))
 
-(defn merge-file [{:keys [fs deps deps-env env] :as db} file cb]
+(defn merge-file [{:keys [fs] :as db} file db-box cb]
   (let [name (js/path.relative zip-root (js/path.join "/" (oget file :name)))]
     (cond
       (= name manifest-path)
       (-> (ocall file :async "string")
           (.then #(let [new-db (read-string %)]
-                    (swap! deps into (:deps new-db))
+                    (reset! db-box new-db)
                     (cb)))
           (.catch js/console.log)),
       (oget file :dir) (ocall fs :mkdir (js/path.join "/" name)
@@ -117,17 +117,21 @@
                                   (cb)))))
                 (.catch js/console.log)))))
 
-(defn import-from-zip [db zip cb]
-  (cb-thread
-   #(-> (loadAsync zip)
-        (.then %)
-        (.catch js/console.log))
-   #(let [files (oget %2 :files)]
-      (cb-loop (js-keys files)
-               #(merge-file db (obj/get files %2) %)
-               cb))))
+(defn import-from-zip [{:keys [deps] :as db} zip cb]
+  (let [db-box (clojure.core/atom nil)]
+    (cb-thread
+     #(-> (loadAsync zip)
+          (.then %)
+          (.catch js/console.log))
+     #(let [files (oget %2 :files)]
+        (cb-loop (js-keys files)
+                 #(merge-file db (obj/get files %2) db-box %)
+                 %))
+     #(do
+        (swap! deps into (:deps @db-box))
+        (cb)))))
 
-(defn wipe-project! [{:keys [fs input output menu deps deps-env env
+(defn wipe-project! [{:keys [fs input output menu deps
                              file-changed running? current-folder
                              current-file file-browser-folder] :as db}
                      cb]
