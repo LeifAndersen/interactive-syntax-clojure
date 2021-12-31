@@ -1086,7 +1086,6 @@
          (set! js/window.captureState #(fs/capture-state! db %)))
        (when (= (peek @menu) :hold)
          (swap! menu pop))
-
        (when send-state-url
          (POST send-state-url {:params {:id id
                                         :number 0
@@ -1124,7 +1123,7 @@
                             (reset! last-send (js/Date.now))))))
            (add-watch editor-reset-ref ::reset-print
                       (fn [k r o n]
-                        (when (and (not n) (not= o n))
+                        (when (and @resetting? (not n) (not= o n))
                           (swap! menu pop)
                           (reset! resetting? false))))
            (send-full)
