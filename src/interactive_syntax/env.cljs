@@ -27,7 +27,12 @@
    [interactive-syntax.fakegoog :as fakegoog]
    [garden.core :as garden :refer [css]]
    ["@stopify/higher-order-functions" :as hof]
+   ["@stopify/hygiene" :as stopify-hygiene]
+   ["@stopify/util" :as stopify-util]
+   ["@stopify/continuations" :as stopify-callcc]
+   ["@babel/core" :as babel]
    ["@babel/parser" :as babylon]
+   ["@babel/types" :as babel-types]
    ["@babel/template" :as babel-template]
    [codemirror]
    ["@leifandersen/react-codemirror2" :as cm]
@@ -49,10 +54,13 @@
   (binding [*print-fn* #(swap! output conj %)]
     (cond
       (contains? res :error)
-      (println (oget (:error res) :stack))
+      (let [err (:error res)]
+        (println (oget err :stack))
+        (if-let [cause (oget err :cause)]
+          (println (str "Cause: " cause))))
       (contains? res :value)
       (let [v (:value res)]
-        (condp = (oget v :type)
+        (condp = (and v (oget v :type))
           "exception"
           (do (println (str (oget v :value.name) ": " (oget v :value.message)))
               (doseq [i (oget v :stack)]
@@ -155,6 +163,31 @@
 (def stopified-cache (atom {}))
 (def stopify-queue (atom #queue []))
 
+(def stopless-base-identifier "$R")
+
+(defn stopless-compile [src cb]
+  (babel/transform
+   src
+   (clj->js {:plugins [{:visitor {:Program
+                                  (fn [path state]
+                                    (stopify-hygiene/init path)
+                                    (stopify-util/transformFromAst
+                                     path
+                                     (clj->js
+                                      [[stopify-hygiene/plugin
+                                        {:reserved stopify-callcc/reserved
+                                         :global (babel-types/memberExpression
+                                                  (babel-types/identifier
+                                                   stopless-base-identifier)
+                                                  (babel-types/identifier "g"))}]]))
+                                    (stopify-hygiene/reset))}}]
+             :babelrc false
+             :ast false
+             :code true
+             :minified true
+             :comments false})
+   #(cb (oget %2 :code))))
+
 (defn eval-opts [fs runner print-fn sandbox? ns onYield onRun compiled?]
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
@@ -163,7 +196,7 @@
                          (ocall runner :evalCompiled str
                                 (fn [res]
                                   (cb res))))
-                   poly? false]
+                   poly? true]
                (cond
                  (and
                   (not (string/ends-with? (str (:name cache)) "$macros"))
@@ -189,7 +222,21 @@
                            (onRun)
                            (run (oget msg :data.prog))))
                    (.postMessage worker #js {:prog source :poly poly?})))))
-           cljs.js/js-eval)
+           (fn [{:keys [source name cache clj-source]} cb]
+             (obj/set js/window stopless-base-identifier runner.g)
+             (cb-thread
+              #(stopless-compile source %)
+              #(try (cljs.js/js-eval
+                     {:source (str "let " stopless-base-identifier "={g: window."
+                                   stopless-base-identifier "};" %2)
+                      :name name
+                      :cache cache
+                      :clj-source clj-source}
+                     #(cb #js {:type "value" :value %}))
+                    (catch :default e
+                      (cb (clj->js {:type "exception"
+                                    :value {:name (str e)
+                                            :stack (str e)}})))))))
    :load (partial ns->string fs)
    ;;:verbose true
    :source-map false ; true
@@ -286,6 +333,7 @@
                                  (finish-comp)
                                  (%)))
                    cb (fn [res]
+                        (js/console.log res)
                         (onYield)
                         (finish-comp)
                         (cb res runtime))
@@ -560,15 +608,13 @@
           (mk-editor tag @info @stx runtime fs file-src
                      (fn [ret]
                        (reset! visr
-                               (cond
-                                 (:value ret)
-                                 (let [v (:value ret)]
-                                   (cond (= (oget v :type) "exception")
-                                         [:div {:style {:white-space "pre"}}
-                                          ;;(oget v :value.message)
-                                          (oget v :value.stack)],
-                                         :else (oget v :value))),
-                                 :else [:div (.-stack ret)])))))
+                               (if-let [v (:value ret)]
+                                 (cond (= (oget v :type) "exception")
+                                       [:div {:style {:white-space "pre"}}
+                                        ;;(oget v :value.message)
+                                        (oget v :value.stack)],
+                                       :else (oget v :value)),
+                                 [:div (.-stack ret)])))))
         [:span {:style {:display "inline-block"}}
          [:> ButtonGroup {:aria-label strings/VISR}
           [:> Button {:size "sm"
