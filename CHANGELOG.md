@@ -1,6 +1,7 @@
 # 0.1.16
 
 * Add optional edit-time only field to render.
+* Add second stopify-less path (still uses virtual global environment)
 
 # 0.1.15
 

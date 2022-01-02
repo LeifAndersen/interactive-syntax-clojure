@@ -421,7 +421,7 @@
      :running? running?
      :runtime runtime}))
 
-(defn eval-buffer [{{:keys [run-functions]} :options
+(defn eval-buffer [{{:keys [run-functions sandbox]} :options
                     :keys [input output ns file-name fs running? runner] :as db}
                    & [cb]]
   (cb-thread
@@ -434,6 +434,7 @@
                          :fs fs
                          :running? running?
                          :file-name file-name
+                         :sandbox sandbox
                          :print-fn #(swap! output conj %)}
                         %)))
    (fn [n res rtm]
@@ -445,6 +446,7 @@
                                [:cljs.analyzer/namespaces new-ns :defs (symbol %2)])
                    (eval-str (str "(" %2 ")")
                              {:runtime rtm
+                              :sandbox sandbox
                               :fs fs
                               :file-name file-name
                               :ns new-ns
@@ -465,7 +467,7 @@
              (dec line)))))
 
 (defn mk-editor [tag {:keys [editor] :as data}
-                 stx runtime fs file-src cb & [visr-run-ref]]
+                 stx runtime sandbox fs file-src cb & [visr-run-ref]]
   (let [ns (namespace editor)
         mk-fn (fn [res]
                 (if (and res (:error res))
@@ -476,6 +478,7 @@
                             {:runtime runtime
                              :ns ns
                              :running? visr-run-ref
+                             :sandbox sandbox
                              :fs fs}
                             cb)))]
     (cond
@@ -487,11 +490,13 @@
                          (eval-str src
                                    {:runtime runtime
                                     :running? visr-run-ref
+                                    :sandbox sandbox
                                     :fs fs}
                                    mk-fn))))
       :else (eval-str file-src
                       {:runtime runtime
                        :running? visr-run-ref
+                       :sandbox sandbox
                        :fs fs}
                       mk-fn))))
 
@@ -578,7 +583,7 @@
   (binding [cljs.pprint/*print-right-margin* 40]
     (with-out-str (pprint stx))))
 
-(defn visr-hider [{{:keys [visr-defaults]} :options :as db}
+(defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
                   runtime tag info stx file-src refs mark-box]
   (let [visr-scroll (atom nil)
         visr (atom nil)
@@ -605,7 +610,7 @@
                                     :variant "primary"
                                     :role "status"}
                         [:span {:className "visually-hidden"} "Loading"]])
-          (mk-editor tag @info @stx runtime fs file-src
+          (mk-editor tag @info @stx runtime sandbox fs file-src
                      (fn [ret]
                        (reset! visr
                                (if-let [v (:value ret)]

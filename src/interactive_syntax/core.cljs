@@ -593,6 +593,7 @@
                                theme
                                autocomplete
                                insert-close
+                               sandbox
                                run-functions]} :options
                        :keys [menu]}]
   [:> Modal {:show (= (peek @menu) :options)
@@ -666,7 +667,12 @@
        [:h4 (str strings/RUN-MAIN ":")]]
       [:> Col [:> Switch {:checked (= @run-functions ["main"])
                           :on-change #(reset! run-functions
-                                              (if % ["main"] []))}]]]]]
+                                              (if % ["main"] []))}]]]
+     [:> (oget Form :Group) {:as Row}
+      [:> (oget Form :Label) {:column true}
+       [:h4 "Sandbox:"]]
+      [:> Col [:> Switch {:checked (= @run-functions ["main"])
+                          :on-change #(reset! sandbox %)}]]]]]
    [:> (oget Modal :Footer)
     [:> Button {:variant "primary"
                 :on-click #(swap! menu pop)}
