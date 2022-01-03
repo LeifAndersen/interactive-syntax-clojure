@@ -333,7 +333,6 @@
                                  (finish-comp)
                                  (%)))
                    cb (fn [res]
-                        (js/console.log res)
                         (onYield)
                         (finish-comp)
                         (cb res runtime))

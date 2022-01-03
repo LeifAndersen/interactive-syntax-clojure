@@ -671,7 +671,7 @@
      [:> (oget Form :Group) {:as Row}
       [:> (oget Form :Label) {:column true}
        [:h4 "Sandbox:"]]
-      [:> Col [:> Switch {:checked (= @run-functions ["main"])
+      [:> Col [:> Switch {:checked @sandbox
                           :on-change #(reset! sandbox %)}]]]]]
    [:> (oget Modal :Footer)
     [:> Button {:variant "primary"
