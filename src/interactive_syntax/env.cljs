@@ -189,6 +189,7 @@
    #(cb (oget %2 :code))))
 
 (defn eval-opts [fs runner print-fn sandbox? ns onYield onRun compiled?]
+  (js/console.log sandbox?)
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
              (let [run (fn [str]
@@ -433,7 +434,7 @@
                          :fs fs
                          :running? running?
                          :file-name file-name
-                         :sandbox sandbox
+                         :sandbox @sandbox
                          :print-fn #(swap! output conj %)}
                         %)))
    (fn [n res rtm]
@@ -445,7 +446,7 @@
                                [:cljs.analyzer/namespaces new-ns :defs (symbol %2)])
                    (eval-str (str "(" %2 ")")
                              {:runtime rtm
-                              :sandbox sandbox
+                              :sandbox @sandbox
                               :fs fs
                               :file-name file-name
                               :ns new-ns
@@ -477,7 +478,7 @@
                             {:runtime runtime
                              :ns ns
                              :running? visr-run-ref
-                             :sandbox sandbox
+                             :sandbox @sandbox
                              :fs fs}
                             cb)))]
     (cond
@@ -489,13 +490,13 @@
                          (eval-str src
                                    {:runtime runtime
                                     :running? visr-run-ref
-                                    :sandbox sandbox
+                                    :sandbox @sandbox
                                     :fs fs}
                                    mk-fn))))
       :else (eval-str file-src
                       {:runtime runtime
                        :running? visr-run-ref
-                       :sandbox sandbox
+                       :sandbox @sandbox
                        :fs fs}
                       mk-fn))))
 
@@ -709,7 +710,7 @@
                                                (stx->stx-str @stx))))}]]]]])]]))))
 
 (defn reset-editors! [source set-text editor instances operation cache queue
-                      {{:keys [show-editors visr-default]} :options
+                      {{:keys [show-editors visr-default sandbox]} :options
                        :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
   (when (and @show-editors @editor)
@@ -751,6 +752,7 @@
                                                         (atom nil)))))
                                     db)
                           :running? visr-run-ref
+                          :sandbox @sandbox
                           :fs fs}
                          %)
                (cb))
