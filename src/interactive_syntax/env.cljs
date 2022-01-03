@@ -189,7 +189,6 @@
    #(cb (oget %2 :code))))
 
 (defn eval-opts [fs runner print-fn sandbox? ns onYield onRun compiled?]
-  (js/console.log sandbox?)
   {:eval (if sandbox?
            (fn [{:keys [source name cache clj-source]} cb]
              (let [run (fn [str]
