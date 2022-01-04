@@ -1082,7 +1082,7 @@
      #(if send-state-url
         (fs/state->serializable %2 (fn [res] (% %2 res)))
         (% %2))
-     (fn [next {:keys [fs menu backing file-changed]
+     (fn [next {:keys [fs menu input backing file-changed]
                 :as db} & [serialized-state]]
        (when debug
          (set! js/window.git isomorphic-git)
@@ -1147,15 +1147,26 @@
                     (reset! backing new-backing)
                     (let [old @menu]
                       (reset! menu [:home :force-update])
-                      (reset! menu old))
+                      (reset! menu [:home]))
+                    (swap! menu conj :hold))))
+               "set-fs"
+               (let [{:keys [zip]} (t/read (t/reader :json) (-> % .-data .-data))]
+                 (reset! resetting? true)
+                 (fs/import-from-zip
+                  db zip
+                  (fn []
+                    (let [old @menu]
+                      (reset! menu [:home :force-update])
+                      (reset! menu [:home]))
                     (swap! menu conj :hold))))
                "set-patch"
-               (let [new-backing (t/read (t/reader :json) (-> % .-data .-data))]
+               (let [new-backing (t/read (t/reader :json) (-> % .-data .-data))
+                     old-input @input]
                  (reset! resetting? true)
                  (reset! backing new-backing)
-                 (let [old @menu]
-                   (reset! menu [:home :force-update])
-                   (reset! menu old))
+                 (reset! input old-input)
+                 (reset! menu [:home :force-update])
+                 (reset! menu [:home])
                  (swap! menu conj :hold))
                "run-buffer"
                (env/eval-buffer db)
