@@ -1130,6 +1130,10 @@
            (add-watch editor-reset-ref ::reset-print
                       (fn [k r o n]
                         (when (and @resetting? (not n) (not= o n))
+                          (loop [n (peek @menu)]
+                            (when (= n :hold)
+                              (swap! menu pop)
+                              (recur (peek @menu))))
                           (swap! menu pop)
                           (reset! resetting? false))))
            (send-full)
@@ -1138,36 +1142,22 @@
             #(condp = (-> % .-data .-action)
                "set-state"
                (let [{:keys [zip] new-backing :db} (t/read (t/reader :json)
-                                                           (-> % .-data .-data))]
+                                                           (-> % .-data .-state))
+                     {:keys [extra-zip]} (t/read (t/reader :json)
+                                                 (-> % .-data .-extrafs))
+                     new-backing (or (t/read (t/reader :json) (-> % .-data .-patch))
+                                     new-backing)]
                  (reset! resetting? true)
                  (cb-thread
                   #(fs/wipe-project! db %)
                   #(fs/import-from-zip db zip %)
+                  #(if extra-zip (fs/import-from-zip db extra-zip %) (%))
                   (fn []
                     (reset! backing new-backing)
                     (let [old @menu]
                       (reset! menu [:home :force-update])
                       (reset! menu [:home]))
                     (swap! menu conj :hold))))
-               "set-fs"
-               (let [{:keys [zip]} (t/read (t/reader :json) (-> % .-data .-data))]
-                 (reset! resetting? true)
-                 (fs/import-from-zip
-                  db zip
-                  (fn []
-                    (let [old @menu]
-                      (reset! menu [:home :force-update])
-                      (reset! menu [:home]))
-                    (swap! menu conj :hold))))
-               "set-patch"
-               (let [new-backing (t/read (t/reader :json) (-> % .-data .-data))
-                     old-input @input]
-                 (reset! resetting? true)
-                 (reset! backing new-backing)
-                 (reset! input old-input)
-                 (reset! menu [:home :force-update])
-                 (reset! menu [:home])
-                 (swap! menu conj :hold))
                "run-buffer"
                (env/eval-buffer db)
                nil))))
