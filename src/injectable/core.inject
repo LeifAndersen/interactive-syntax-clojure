@@ -8,7 +8,7 @@
 (defmacro defvisr [name & props]
   (let [{:keys [render
                 elaborate
-                functionn?
+                function?
                 name+render
                 name+elaborate]} (private/parse-defvisr name props)]
     `(do (defn ~name+render
