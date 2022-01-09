@@ -78,8 +78,11 @@
         (cond
           (and (list? fst) (= (first fst) 'render))
           (recur (assoc props :render (rest fst)) (rest rst)),
+          (and (list? fst) (= (first fst) 'elaborate-fn))
+          (recur (assoc props :elaborate (rest fst) :function? true) (rest rst)),
           (and (list? fst) (= (first fst) 'elaborate))
-          (recur (assoc props :elaborate (rest fst)) (rest rst)))))))
+          (recur (assoc props :elaborate (rest fst) :function? false)
+                 (rest rst)))))))
 
 (defn state-injection [lib-name lib-publics]
   {lib-name
