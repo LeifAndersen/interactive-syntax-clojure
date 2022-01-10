@@ -475,7 +475,7 @@
                                  " (js/visr->atom " (pr-str tag)
                                  ")(js/visr->atom-info " (pr-str tag)")]")
                             {:runtime runtime
-                             :ns ns
+                             :ns (or ns (:ns res))
                              :running? visr-run-ref
                              :sandbox @sandbox
                              :fs fs}
@@ -492,7 +492,7 @@
                                     :sandbox @sandbox
                                     :fs fs}
                                    mk-fn))))
-      :else (eval-str file-src
+      :else (eval-str @file-src
                       {:runtime runtime
                        :running? visr-run-ref
                        :sandbox @sandbox
@@ -775,7 +775,7 @@
                    ((fn rec [form]
                       (let [stxinfo (meta form)]
                         (when (:editor stxinfo)
-                          (let [[k {:keys [visr stx info mark refs]}]
+                          (let [[k {:keys [visr stx info file-src mark refs]}]
                                 (some (fn [[k v]]
                                         (when (= @(:stx v) (second form)) [k v]))
                                       @old-instances),
@@ -783,6 +783,7 @@
                                 info (or info (atom stxinfo))
                                 stx (or stx (atom (second form)))
                                 mark (or mark (clojure.core/atom nil))
+                                file-src (or file-src (atom source))
                                 tag (or k (random-uuid))
                                 refs (or refs (atom nil))
                                 start (buffer-position->index
@@ -808,10 +809,13 @@
                                 (remove-watch stx ::commit)
                                 (when @fresh-cache
                                   (swap! info assoc :visr-internal-refresh true))
+                                (when-not (namespace (get @info :editor))
+                                  (reset! file-src source)
+                                  (swap! info assoc :visr-internal-refresh true))
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
                               (d/render [visr-hider db runtime tag info stx
-                                         source refs mark]
+                                         file-src refs mark]
                                         visr))
                             (let [r-mark (->
                                           @editor (ocall :getDoc)
@@ -830,6 +834,7 @@
                                       :commit! commit!
                                       :visr visr
                                       :info info
+                                      :file-src file-src
                                       :stx stx
                                       :refs refs})
                               (add-watch info ::commit
