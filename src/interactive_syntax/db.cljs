@@ -180,6 +180,8 @@
 ;; :error  - error-dialog
 ;; :wipe - confirm-wipe-dialog
 ;; :auth - git authentication screen
+;; :copy-file - copy-file-dialog
+;; :rename-file - rename-file-dialog
 (s/def ::menu (s/* keyword?))
 
 (s/def ::fs any?)

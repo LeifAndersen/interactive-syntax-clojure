@@ -50,6 +50,11 @@
               #(ocall fs :readFile src %)
               #(ocall fs :writeFile dst %3 cb))))))
 
+(defn move-path [fs src dst cb]
+  (cb-thread
+   #(copy-path fs src dst %)
+   #(recursive-rm fs src cb)))
+
 (defn file-description [fs filepath cb]
   (ocall fs :stat filepath
          (fn [err stats]

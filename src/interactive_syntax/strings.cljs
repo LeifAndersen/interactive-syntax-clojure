@@ -16,6 +16,7 @@
 (def CONTINUE-WITHOUT-SAVING "Continue Without Saving")
 (def COPY "Copy")
 (def RENAME "Rename")
+(def RENAME-SELECTION "Rename selection")
 
 (def PROJECT "Project")
 (def NEW-PROJECT "New Project")

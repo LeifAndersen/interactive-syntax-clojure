@@ -359,6 +359,18 @@
          (fs/copy-path fs old-path new-path
                        #(swap! menu (comp pop pop))))))))
 
+(defn rename-file-dialog [{:keys [fs menu file-browser-folder] :as db}]
+  (make-control-dialog
+   menu :rename-file strings/RENAME strings/RENAME strings/NAME
+   (fn [text]
+     (when (not= @text "")
+       (let [new-path (js/path.join @file-browser-folder (.replace @text "/" ""))
+             old-path (js/path.join @file-browser-folder (-> @menu peek second
+                                                             (get "name")))]
+         (swap! menu conj :hold)
+         (fs/move-path fs old-path new-path
+                       #(swap! menu (comp pop pop))))))))
+
 (defn confirm-save-dialog [{:keys [menu current-file]
                             :as db}]
   (let [item (peek @menu)]
@@ -379,6 +391,17 @@
       [:> Button {:variant "secondary"
                   :on-click (fn [] (swap! menu #(-> % pop (conj (second item)))))}
        strings/CONTINUE-WITHOUT-SAVING]]]))
+
+(def rename-files-acation
+  (chonky/defineFileAction
+    (clj->js {:id "rename_files"
+              :requiresSelection true
+              :hotkeys ["ctrl-x"]
+              :button {:name strings/RENAME-SELECTION
+                       :toolbar true
+                       :group "Actions"
+                       :icon (oget chonky/ChonkyIconName :copy)
+                       :contextMenu true}})))
 
 (defn file-browser [{:keys [fs
                             menu
@@ -455,6 +478,7 @@
                         ;;(oget ChonkyActions :UploadFiles)
                         ;;(oget ChonkyActions :DownloadFiles)
                         (oget ChonkyActions :CopyFiles)
+                        rename-files-acation
                         (oget ChonkyActions :DeleteFiles)]
          :on-file-action
          (fn [data-js]
@@ -501,7 +525,11 @@
                (oget ChonkyActions :CopyFiles.id)
                (if-let [s @selected]
                  (if (= (count s) 1)
-                   (swap! menu conj [:copy-file (first s)])))
+                   (swap! menu conj [:copy-file (js->clj (first s))])))
+               "rename_files"
+               (if-let [s @selected]
+                 (if (= (count s) 1)
+                   (swap! menu conj [:rename-file (js->clj (first s))]))),
                (oget ChonkyActions :ClearSelection.id) nil,
                (oget ChonkyActions :MoveFiles.id)
                (do (begin-transaction)
@@ -1010,14 +1038,7 @@
                      repl-ref :repl
                      visr-run-ref :visr-run
                      :as opts}]]
-  (let [search (js/URLSearchParams. js/window.location.search)
-        rename-files-acation
-        (chonky/defineFileAction (clj->js {:id "rename_files"
-                                           :requiresSelection true
-                                           :hotkeys ["ctrl-x"]
-                                           :button {:name strings/RENAME
-                                                    :toolbar true
-                                                    :contextMenu true}}))]
+  (let [search (js/URLSearchParams. js/window.location.search)]
     (chonky/setChonkyDefaults
      #js {:iconComponent chonky-icon-fontawesome/ChonkyIconFA})
     (set! codemirror/commands.save #(save-file db))
@@ -1066,6 +1087,7 @@
      [confirm-save-dialog db]
      [new-folder-dialog db]
      [copy-file-dialog db]
+     [rename-file-dialog db]
      [deps-dialog db]
      [auth-dialog db]
      [hold-dialog db]
