@@ -368,8 +368,7 @@
              old-path (js/path.join @file-browser-folder (-> @menu peek second
                                                              (get "name")))]
          (swap! menu conj :hold)
-         (fs/move-path fs old-path new-path
-                       #(swap! menu (comp pop pop))))))))
+         (ocall fs :rename old-path new-path #(swap! menu (comp pop pop))))))))
 
 (defn confirm-save-dialog [{:keys [menu current-file]
                             :as db}]
@@ -538,12 +537,19 @@
                                         (get-in payload ["draggedFile" "name"]))
                           (cond
                             (get-in payload ["destination" "breadCrumb"])
-                            (let [split (filter (partial not= "")
-                                                (.split @file-browser-folder
-                                                        js/path.sep))
+                            (let [split (filter
+                                         (partial not= "")
+                                         (.split (js/path.relative
+                                                  files-root
+                                                  @file-browser-folder)
+                                                 js/path.sep))
                                   total (count split)
                                   crumbs (get-in payload ["destination"
                                                           "breadCrumb"])]
+                              (js/console.log payload)
+                              (js/console.log total)
+                              (js/console.log split)
+                              (js/console.log crumbs)
                               (if (= total crumbs)
                                 (js/path.join
                                  files-root
