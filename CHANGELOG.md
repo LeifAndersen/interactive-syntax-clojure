@@ -2,6 +2,7 @@
 
 * Add optional edit-time only field to render.
 * Add second stopify-less path (still uses virtual global environment)
+* Copy/Paste works in file menu
 
 # 0.1.15
 

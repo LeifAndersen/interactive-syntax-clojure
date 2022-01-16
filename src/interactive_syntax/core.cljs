@@ -165,6 +165,18 @@
       [:div {:class-name "d-grid gap-2"}
        [:> Button {:on-click wipe :variant "danger"} strings/CONFIRM-WIPE]]]]))
 
+(defn cancel-update-row [cnl upd]
+  [:> Row {:class-name "align-items-center flex-nowrap"
+           :style {:margin-left 0
+                   :margin-right 0}}
+   [:> Col {:xs "auto"}
+    [:> Button {:on-click cnl}
+     strings/CANCEL]]
+   [:> Col {:xs "auto"}
+    [:> Button {:variant "success"
+                :on-click upd}
+     strings/UPDATE]]])
+
 (defn deps-dialog [{:keys [deps menu] :as db}]
   (let [new-deps (atom @deps)]
     (add-watch deps ::update-new-deps
@@ -214,24 +226,38 @@
                                                                     :version ""
                                                                     :url ""})}
                   "+"]]]]]
-         [:> Row {:class-name "align-items-center flex-nowrap"
-                  :style {:margin-left 0
-                          :margin-right 0}}
-          [:> Col {:xs "auto"}
-           [:> Button {:on-click (fn []
-                                   (swap! menu pop)
-                                   (reset! new-deps @deps))}
-            strings/CANCEL]]
-          [:> Col {:xs "auto"}
-           [:> Button {:variant "success"
-                       :on-click (fn []
-                                   (reset! deps @new-deps)
-                                   (swap! menu pop)
-                                   (swap! menu conj :hold)
-                                   (cb-thread
-                                    #(env/setup-deps db true %)
-                                    #(swap! menu pop)))}
-            strings/UPDATE]]]]]])))
+         [cancel-update-row
+          (fn []
+            (swap! menu pop)
+            (reset! new-deps @deps))
+          (fn []
+            (reset! deps @new-deps)
+            (swap! menu pop)
+            (swap! menu conj :hold)
+            (cb-thread
+             #(env/setup-deps db true %)
+             #(swap! menu pop)))]]]])))
+
+(defn auth-dialog [{:keys [menu auth] :as db}]
+  (let [new-auth (atom @auth)]
+    (add-watch auth ::update-new-auth
+               (fn [k r o n]
+                 (when-not (and (= o n) (= n @new-auth))
+                   (reset! new-auth n))))
+    (fn [{:keys [menu auth] :as db}]
+      [:> Modal {:show (= (peek @menu) :auth)
+                 :size "xl"
+                 :on-hide (fn []
+                            (swap! menu pop)
+                            (reset! new-auth @auth))}
+       [:> Modal.Header {:close-button true}
+        [:h3 strings/GIT-AUTH " " [:span {:style {:font-size "small"}}
+                                   "(Stored in browser)"]]]
+       [:> Modal.Body
+        [:> Form {:onSubmit (fn [x]
+                              (.preventDefault x)
+                              (.stopPropagation x))}]
+        [cancel-update-row #() #()]]])))
 
 (defn hold-dialog [{:keys [menu] :as db}]
   [:> Modal {:show (= (peek @menu) :hold)
@@ -327,7 +353,8 @@
    (fn [text]
      (when (not= @text "")
        (let [new-path (js/path.join @file-browser-folder (.replace @text "/" ""))
-             old-path (second (peek menu))]
+             old-path (js/path.join @file-browser-folder (-> @menu peek second
+                                                             (get "name")))]
          (swap! menu conj :hold)
          (fs/copy-path fs old-path new-path
                        #(swap! menu (comp pop pop))))))))
@@ -364,6 +391,7 @@
                     & [{ref :file-browser
                         list-ref :file-browser-list}]]
   (let [text (atom "")
+        selected (clojure.core/atom #{})
         dir-list (atom [nil])
         populate-dir-list (fn [& [cb]]
                             (ocall fs :readdir @file-browser-folder
@@ -377,6 +405,10 @@
                                                          (first rst))
                                            #(rec (conj acc %) (rest rst)))))
                                       [] files))))
+        dir-list->table (fn [lst]
+                          (into {}
+                                (for [i lst :when i]
+                                  {(.-id i) i})))
         confirm-action (fn []
                          (when (not= @text "")
                            (choice-callback @text)
@@ -422,7 +454,7 @@
          :file-actions [(oget ChonkyActions :CreateFolder)
                         ;;(oget ChonkyActions :UploadFiles)
                         ;;(oget ChonkyActions :DownloadFiles)
-                        ;;(oget ChonkyActions :CopyFiles)
+                        (oget ChonkyActions :CopyFiles)
                         (oget ChonkyActions :DeleteFiles)]
          :on-file-action
          (fn [data-js]
@@ -437,6 +469,10 @@
                                    (populate-dir-list
                                     #(swap! menu pop)))]
              (condp = id
+               (oget ChonkyActions :ChangeSelection.id)
+               (reset! selected (let [dir-tab (dir-list->table @dir-list)]
+                                  (into #{} (for [id (get payload "selection")]
+                                              (get dir-tab id))))),
                (oget ChonkyActions :OpenParentFolder.id) nil,
                (oget ChonkyActions :StartDragNDrop.id) nil,
                (oget ChonkyActions :EndDragNDrop.id) nil,
@@ -462,9 +498,11 @@
                  :else (do
                          (reset! text (get-in payload ["targetFile" "name"]))
                          (confirm-action))),
-               (oget ChonkyActions :CopyFiles.id) (js/console.log data),
+               (oget ChonkyActions :CopyFiles.id)
+               (if-let [s @selected]
+                 (if (= (count s) 1)
+                   (swap! menu conj [:copy-file (first s)])))
                (oget ChonkyActions :ClearSelection.id) nil,
-               (oget ChonkyActions :ChangeSelection.id) nil,
                (oget ChonkyActions :MoveFiles.id)
                (do (begin-transaction)
                    (ocall fs :rename
@@ -708,6 +746,7 @@
                     #(swap! menu conj :load))
         options #(swap! menu conj :options)
         deps #(swap! menu conj :deps)
+        auth #(swap! menu conj :auth)
         file-name (str (if @current-file
                          (js/path.join (.replace @current-folder files-root "/")
                                        @current-file)
@@ -743,6 +782,7 @@
           strings/IMPORT-PROJECT]
          [:> (oget Dropdown :Item) {:on-click export-project}
           strings/EXPORT-PROJECT]
+         [:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
           strings/ABOUT]]]
        [:> Col
@@ -786,6 +826,7 @@
            strings/IMPORT-PROJECT]
           [:> (oget Dropdown :Item) {:on-click export-project}
            strings/EXPORT-PROJECT]
+          [:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
           [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
            strings/ABOUT]]
          [:> Button {:on-click options} strings/OPTIONS]]]
@@ -1024,7 +1065,9 @@
      [options-dialog db]
      [confirm-save-dialog db]
      [new-folder-dialog db]
+     [copy-file-dialog db]
      [deps-dialog db]
+     [auth-dialog db]
      [hold-dialog db]
      [error-dialog db]
      [:div {:style {:flex "0 1 auto"}}

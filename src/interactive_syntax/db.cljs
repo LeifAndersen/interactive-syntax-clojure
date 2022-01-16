@@ -128,6 +128,8 @@
                                   ::visr-defaults
                                   ::sandbox]))
 
+(s/def ::auth (s/map-of keyword? coll?))
+
 (s/def ::name string?)
 (s/def ::version string?)
 (s/def ::url string?)
@@ -177,6 +179,7 @@
 ;; :import - import-dialog
 ;; :error  - error-dialog
 ;; :wipe - confirm-wipe-dialog
+;; :auth - git authentication screen
 (s/def ::menu (s/* keyword?))
 
 (s/def ::fs any?)
@@ -188,7 +191,8 @@
                                    ::current
                                    ::options
                                    ::deps
-                                   ::menu]))
+                                   ::menu
+                                   ::auth]))
 
 (defn current-buffer [{:keys [buffers current]
                        :as db}]
@@ -262,6 +266,7 @@
                         :buffers [(default-buffer mode)]
                         :fs {}
                         :deps {}
+                        :auth {}
                         :menu (case mode
                                 :local [:home :splash]
                                 :persist-test [:home]
@@ -296,6 +301,7 @@
               :mode mode
               :buffers (->DBAtom backed-db [:buffers])
               :menu (->DBAtom backed-db [:menu])
+              :auth (->DBAtom backed-db [:auth])
               :input (->DBAtom backed-db [:current :input])
               :output (atom "") ;;(->DBAtom backed-db [:current :output])
               :ns (->DBAtom backed-db [:current :ns])

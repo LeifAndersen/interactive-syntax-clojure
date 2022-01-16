@@ -81,4 +81,4 @@
 
 (def INSERT-CLOSE-PARENTHESES "Insert Close Parentheses")
 
-
+(def GIT-AUTH "Git Authentication")
