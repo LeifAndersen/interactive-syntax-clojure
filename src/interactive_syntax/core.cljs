@@ -21,6 +21,7 @@
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
+   [garden.core :as garden :refer [css]]
    [react-bootstrap :refer [Button ButtonGroup ButtonToolbar SplitButton
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
@@ -238,26 +239,125 @@
              #(env/setup-deps db true %)
              #(swap! menu pop)))]]]])))
 
+(def token-links
+  {:github "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token"
+   :gitlab "https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html"
+   :bitbucket "https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/"})
+
 (defn auth-dialog [{:keys [menu auth] :as db}]
-  (let [new-auth (atom @auth)]
+  (let [auth->new #(into [] (vals %))
+        new-auth (atom (auth->new @auth))]
     (add-watch auth ::update-new-auth
                (fn [k r o n]
                  (when-not (and (= o n) (= n @new-auth))
-                   (reset! new-auth n))))
+                   (reset! new-auth (auth->new n)))))
     (fn [{:keys [menu auth] :as db}]
       [:> Modal {:show (= (peek @menu) :auth)
                  :size "xl"
                  :on-hide (fn []
                             (swap! menu pop)
-                            (reset! new-auth @auth))}
+                            (reset! new-auth (auth->new @auth)))}
        [:> Modal.Header {:close-button true}
         [:h3 strings/GIT-AUTH " " [:span {:style {:font-size "small"}}
                                    "(Stored in browser)"]]]
        [:> Modal.Body
         [:> Form {:onSubmit (fn [x]
                               (.preventDefault x)
-                              (.stopPropagation x))}]
-        [cancel-update-row #() #()]]])))
+                              (.stopPropagation x))}
+         [:div.auth-dialog
+          [:style (css [:.auth-dialog [:.table-responsive {:overflow "visible"}]])]
+          [:> Table {:striped true
+                     :bordered true
+                     :hover true
+                     :responsive true
+                     :size "sm"
+                     :style {:overflow "visible"}}
+           [:thead
+            [:tr
+             [:th {:col-span 2} strings/PROVIDER]
+             [:th {:col-span 2} strings/TOKEN]
+             [:th]]]
+           [:tbody
+            (for [[i {:keys [type name username passwd] :as item}]
+                  (map list (range) @new-auth)]
+              (let [on-change (fn [prop]
+                                #(let [value (oget % "target.value")]
+                                   (swap! new-auth assoc-in [i prop] value)))]
+                [:tr {:key (hash i)}
+                 [:td {:col-span (if type 1 2)}
+                  [:> DropdownButton {:title (condp = type
+                                                   :github "GitHub"
+                                                   :gitlab "GitLab"
+                                                   :bitbucket "BitBucket"
+                                                   :passwd (str strings/OTHER ":")
+                                                   strings/SELECT)
+                                          :as ButtonGroup
+                                          :variant "secondary"}
+                       [:> (oget Dropdown :Item)
+                        {:on-click #(swap! new-auth assoc-in [i :type] :github)}
+                        "GitHub"]
+                       [:> (oget Dropdown :Item)
+                        {:on-click #(swap! new-auth assoc-in [i :type] :gitlab)}
+                        "GitLab"]
+                       [:> (oget Dropdown :Item)
+                        {:on-click #(swap! new-auth assoc-in [i :type] :bitbucket)}
+                        "Bitbucket"]
+                       [:> (oget Dropdown :Item)
+                        {:on-click #(swap! new-auth assoc-in [i :type] :passwd)}
+                        strings/OTHER]]]
+                 (cond
+                   (= type :passwd) [:td [:> (oget Form :Control)
+                                          {:placeholder strings/NAME
+                                           :on-change (on-change :name)
+                                           :value name}]],
+                   type [:td [:> Button {:href (get token-links type)
+                                         :target "_blank"}
+                              strings/GET-TOKEN]],
+                   :else nil)
+                 (cond (= type :passwd)
+                       (list [:td [:> (oget Form :Control)
+                                   {:key (random-uuid)
+                                    :placeholder strings/USERNAME
+                                    :on-change (on-change :username)
+                                    :value username}]]
+                             [:td [:> (oget Form :Control)
+                                   {:key (random-uuid)
+                                    :placeholder strings/PASSWORD
+                                    :on-change (on-change :passwd)
+                                    :value passwd}]])
+                       type
+                       [:td {:col-span 2} [:> (oget Form :Control)
+                                           {:placeholder strings/TOKEN
+                                            :on-change (on-change :passwd)
+                                            :value passwd}]]
+                       :else [:td {:col-span 2}])
+                 [:td [:> Button
+                       {:variant "danger"
+                        :on-click #(let [na @new-auth]
+                                     (reset! new-auth
+                                             (vec (concat (subvec na 0 i)
+                                                          (subvec na (inc i))))))}
+                       "-"]]]))
+              [:tr {:key 0}
+               [:td {:col-span 4}]
+               [:td [:> Button
+                     {:on-click #(swap! new-auth conj {:type nil
+                                                       :name ""
+                                                       :username ""
+                                                       :passwd ""})}
+                     "+"]]]]]]]
+        [cancel-update-row
+         (fn []
+           (swap! menu pop)
+           (reset! new-auth (auth->new @auth)))
+         (fn []
+           (reset! auth
+                   (into {}
+                         (for [{:keys [type name] :as entry} @new-auth]
+                           (if (= type :passwd)
+                             [name entry]
+                             [type entry]))))
+           (swap! menu pop))]]])))
 
 (defn hold-dialog [{:keys [menu] :as db}]
   [:> Modal {:show (= (peek @menu) :hold)
@@ -546,10 +646,6 @@
                                   total (count split)
                                   crumbs (get-in payload ["destination"
                                                           "breadCrumb"])]
-                              (js/console.log payload)
-                              (js/console.log total)
-                              (js/console.log split)
-                              (js/console.log crumbs)
                               (if (= total crumbs)
                                 (js/path.join
                                  files-root

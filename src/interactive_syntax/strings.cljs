@@ -83,3 +83,10 @@
 (def INSERT-CLOSE-PARENTHESES "Insert Close Parentheses")
 
 (def GIT-AUTH "Git Authentication")
+(def PROVIDER "Provider")
+(def TOKEN "Token")
+(def SELECT "SELECT")
+(def OTHER "Other")
+(def GET-TOKEN "Get Token")
+(def USERNAME "Username")
+(def PASSWORD "Password")

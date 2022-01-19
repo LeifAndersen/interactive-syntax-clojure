@@ -128,6 +128,7 @@
                                   ::visr-defaults
                                   ::sandbox]))
 
+;; ::type (s/or :github :gitlab :bitbucket :passwd nil)
 (s/def ::auth (s/map-of keyword? coll?))
 
 (s/def ::name string?)
