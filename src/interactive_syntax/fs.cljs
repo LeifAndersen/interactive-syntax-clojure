@@ -9,8 +9,6 @@
    [cljs.reader :refer [read-string]]
    [file-saver :refer [saveAs]]
    [cognitect.transit :as t]
-   [isomorphic-git]
-   ["isomorphic-git/http/web" :as isohttp]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]))
 
@@ -154,21 +152,8 @@
            (fn [err files]
              (cb-loop files
                       #(recursive-rm fs (js/path.join db/deps-root %2) %)
-                      cb)))))
-
-;; -------------------------
-;; Git
-
-(defn git-clone [{:keys [fs] :as db} dir url cb]
-  (cb-thread
-   #(-> (ocall isomorphic-git :clone #js {:fs fs :http isohttp :dir dir :url url})
-        (.then (fn [v] (cb v)))
-        (.catch (fn [e] (%))))
-   #(-> (ocall isomorphic-git :clone
-               #js {:fs fs :http isohttp :dir dir
-                    :url (str "https://cors.isomorphic-git.org/" url)})
-        (.then (fn [v] (cb v)))
-        (.catch (fn [e] (cb e))))))
+                      %)))
+   #(db/git-init db cb)))
 
 ;; -------------------------
 ;; (For creating embedding states, currently unused)

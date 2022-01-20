@@ -6,6 +6,10 @@
             [cognitect.transit :as t]
             [alandipert.storage-atom :as storage :refer [local-storage]]
             [interactive-syntax.utils :refer [cb-thread cb-loop]]
+            [isomorphic-git]
+            ["isomorphic-git/http/web" :as isohttp]
+            [oops.core :refer [oget oset! ocall oapply ocall! oapply!
+                               oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
             [browserfs]))
 
 (def package (t/read (t/reader :json) (slurp "package.json")))
@@ -14,6 +18,7 @@
                   (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")
+(def git-root files-root)
 (def prompt "> ")
 (def end-prompt "<EOF>")
 (def shop-url "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/")
@@ -93,6 +98,13 @@
 (swap! storage/transit-write-handlers assoc
        js/Function (FunctionHandler.))
 
+
+(defn git-init [{:keys [fs] :as db} cb]
+  (cb)
+  ;;(-> (ocall isomorphic-git :init #js {:fs fs :dir git-root})
+  ;;    (.then cb)
+  ;;    (.catch (fn [e] (js/console.error e) (cb e))))
+  )
 
 ;; -------------------------
 ;; Database Spec
@@ -240,23 +252,17 @@
     :scroll {}}))
 
 (defn bfs-config [mode]
-  (clj->js {:fs "MountableFileSystem"
-            :options {files-root
-                      (case mode
-                        :local {:fs "IndexedDB"
-                                :options {:storeName "bfs"}}
-                        :persist-test {:fs "IndexedDB"
-                                       :options {:storeName "bfstest"}}
-                        :fallback {:fs "LocalStorage"}
-                        :temp {:fs "InMemory"})
-                      deps-root
-                      (case mode
-                        :local {:fs "IndexedDB"
-                                :options {:storeName "depsfs"}}
-                        :persist-test {:fs "IndexedDB"
-                                       :options {:storeName "depsfstest"}}
-                        :fallback {:fs "LocalStorage"}
-                        :temp {:fs "InMemory"})}}))
+  (let [mk-fs (fn [name]
+                (case mode
+                  :local {:fs "IndexedDB"
+                          :options {:storeName name}}
+                  :persist-test {:fs "IndexedDB"
+                                 :options {:storeName (str name "test")}}
+                  :fallback {:fs "LocalStorage"}
+                  :temp {:fs "InMemory"}))]
+    (clj->js {:fs "MountableFileSystem"
+              :options {files-root (mk-fs "bfs")
+                        deps-root (mk-fs "depsfs")}})))
 
 (defn default-db
   ([] (default-db :temp))
@@ -320,7 +326,11 @@
               :split (->DBAtom backed-db [:current :split])
               :cm-ref (clojure.core/atom nil) ; <- really gross, can we remove?
               :scroll (clojure.core/atom nil)
-              :cursor (clojure.core/atom nil)}]
+              :cursor (clojure.core/atom nil)}
+         cb (fn [ret]
+              (cb-thread
+               #(git-init ret %)
+               #(cb ret)))]
      (cb-thread
       #(browserfs/configure (bfs-config mode)
                             (fn [e] (if e (%) (cb ret))))
