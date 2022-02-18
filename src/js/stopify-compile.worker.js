@@ -1,4 +1,4 @@
-let stopify = require('@leifandersen/stopify-tweak');
+let stopify = require('@stopify/stopify-tweak');
 import {parse} from "@babel/parser";
 import {polyfillHofFromAst} from "@stopify/higher-order-functions";
 self.stopify = stopify;

@@ -29,7 +29,7 @@
    [react-hotkeys :refer [GlobalHotKeys]]
    [codemirror]
    [file-saver :refer [saveAs]]
-   ["@leifandersen/react-codemirror2" :as cm]
+   [react-codemirror2 :as cm]
    ["codemirror/keymap/vim"]
    ["codemirror/keymap/emacs"]
    ["codemirror/keymap/sublime"]

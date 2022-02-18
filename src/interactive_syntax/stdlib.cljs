@@ -35,7 +35,7 @@
    [react-split-pane]
    [react-switch]
    [codemirror]
-   ["@leifandersen/react-codemirror2" :as cm]
+   [react-codemirror2 :as cm]
    [goog.object]
    [oops.core]
    [garden.core :as garden :refer [css]]

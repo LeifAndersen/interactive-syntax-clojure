@@ -35,7 +35,7 @@
    ["@babel/types" :as babel-types]
    ["@babel/template" :as babel-template]
    [codemirror]
-   ["@leifandersen/react-codemirror2" :as cm]
+   [react-codemirror2 :as cm]
    [react-resize-detector]
    [popper.js]
    [bootstrap]
