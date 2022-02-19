@@ -29,6 +29,7 @@
     "@babel/template": "^7.12.13",
     "@babel/types": "^7.16.7",
     "@cljs-oss/module-deps": "^1.1.1",
+    "@reduxjs/toolkit": "^1.7.2",
     "@stopify/continuations": "^0.7.5",
     "@stopify/continuations-runtime": "^0.7.3",
     "@stopify/higher-order-functions": "^0.7.3",
