@@ -1,3 +1,8 @@
+# 0.1.17
+
+* Add (highly experimental) printing feature
+* Additional work on git integration
+
 # 0.1.16
 
 * Add optional edit-time only field to render.

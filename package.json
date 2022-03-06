@@ -1,6 +1,6 @@
 {
   "name": "interactive-syntax",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LeifAndersen/interactive-syntax-clojure.git"
@@ -58,6 +58,7 @@
     "react-resize-detector": "^6.7.6",
     "react-split-pane": "^2.0.3",
     "react-switch": "^6.0.0",
+    "react-to-print": "^2.14.4",
     "stream-browserify": "^2.0.2",
     "styled-components": "^4.4.1",
     "systemjs": "^6.9.0",

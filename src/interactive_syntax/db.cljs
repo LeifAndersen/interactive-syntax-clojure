@@ -195,6 +195,7 @@
 ;; :auth - git authentication screen
 ;; :copy-file - copy-file-dialog
 ;; :rename-file - rename-file-dialog
+;; :print - print screen
 (s/def ::menu (s/* keyword?))
 
 (s/def ::fs any?)

@@ -48,6 +48,7 @@
    [react-switch]
    [react-dnd :refer [DndProvider]]
    [react-dnd-html5-backend :refer [HTML5Backend]]
+   [react-to-print]
    [isomorphic-git]
    ["isomorphic-git/http/web" :as isohttp]
    [chonky :refer [ChonkyActions]]
@@ -57,6 +58,7 @@
 ;; Components
 (def ^:private SplitPane (.-default react-split-pane))
 (def ^:private Switch (.-default react-switch))
+(def ^:private ReactToPrint (.-default react-to-print))
 
 ;; -------------------------
 ;; Dialogs
@@ -103,12 +105,14 @@
                         (swap! menu pop)
                         (swap! menu conj :hold)
                         (reset! show-confirm? false)
-                        (-> (ocall (aget (oget @file :target.files) 0) :arrayBuffer)
+                        (-> (ocall (aget (oget @file :target.files) 0)
+                                   :arrayBuffer)
                             (.then
                              (fn [r]
                                (fs/wipe-project!
                                 db (fn []
-                                     (fs/import-from-zip db r #(swap! menu pop))))))
+                                     (fs/import-from-zip
+                                      db r #(swap! menu pop))))))
                             (.catch (fn [e]
                                       (swap! menu pop)
                                       (swap! menu conj :error))))))]
@@ -265,7 +269,8 @@
                               (.preventDefault x)
                               (.stopPropagation x))}
          [:div.auth-dialog
-          [:style (css [:.auth-dialog [:.table-responsive {:overflow "visible"}]])]
+          [:style (css [:.auth-dialog [:.table-responsive
+                                       {:overflow "visible"}]])]
           [:> Table {:striped true
                      :bordered true
                      :hover true
@@ -300,7 +305,8 @@
                         {:on-click #(swap! new-auth assoc-in [i :type] :gitlab)}
                         "GitLab"]
                        [:> (oget Dropdown :Item)
-                        {:on-click #(swap! new-auth assoc-in [i :type] :bitbucket)}
+                        {:on-click #(swap! new-auth assoc-in [i :type]
+                                           :bitbucket)}
                         "Bitbucket"]
                        [:> (oget Dropdown :Item)
                         {:on-click #(swap! new-auth assoc-in [i :type] :passwd)}
@@ -369,8 +375,8 @@
 
 (defn error-dialog [{:keys [menu] :as db}]
   (let [err (peek @menu)]
-    [:> Modal{:show (and (coll? err) (= (first err) :error))
-              :on-hide #(swap! menu pop)}
+    [:> Modal {:show (and (coll? err) (= (first err) :error))
+               :on-hide #(swap! menu pop)}
      [:> (oget Modal :Header) {:close-button true} [:h3 strings/ERROR-MESSAGE]]
      [:> (oget Modal :Body)
       [:pre [:code (and (coll? err) (second err))]]]
@@ -380,9 +386,9 @@
         :on-click #(swap! menu pop)}
        strings/CLOSE]]]))
 
+
 ;; -------------------------
 ;; File Dialogs
-
 
 (defn save-buffer [{:keys [fs menu current-folder current-file input
                            file-changed visr-commit! cm-ref scroll cursor]
@@ -887,6 +893,7 @@
         export-project #(fs/export-to-zip db (fn [res] (saveAs res "project.zip")))
         do-insert-visr #(when @insert-visr!
                           (@insert-visr!))
+        print-buffer #(swap! menu conj :print)
         run+pause (fn []
                     (reset! output #queue [])
                     (env/eval-buffer db))]
@@ -912,7 +919,8 @@
           strings/IMPORT-PROJECT]
          [:> (oget Dropdown :Item) {:on-click export-project}
           strings/EXPORT-PROJECT]
-         [:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
+         ;;[:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
+         [:> (oget Dropdown :Item) {:on-click print-buffer} strings/PRINT]
          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
           strings/ABOUT]]]
        [:> Col
@@ -956,7 +964,8 @@
            strings/IMPORT-PROJECT]
           [:> (oget Dropdown :Item) {:on-click export-project}
            strings/EXPORT-PROJECT]
-          [:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
+          ;;[:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
+          [:> (oget Dropdown :Item) {:on-click print-buffer} strings/PRINT]
           [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
            strings/ABOUT]]
          [:> Button {:on-click options} strings/OPTIONS]]]
@@ -973,9 +982,13 @@
          [:> Button {:variant "danger"} strings/STOP]]]]]]))
 
 (defn editor-view [{:keys [menu input output options backing file-changed deps
-                           current-file fs visr-commit! insert-visr! cursor scroll]
+                           current-file fs visr-commit! insert-visr! cursor
+                           scroll]
                     :as db}
                    & [{editor-ref :editor
+                       for-print :for-print
+                       print-ref :print-ref
+                       print-options :print-options
                        editor-reset-ref :editor-reset
                        visr-run-ref :visr-run}]]
   (let [edit (atom nil)
@@ -1027,15 +1040,28 @@
             #(let [doc (ocall @edit :getDoc)
                    pos (ocall doc :getCursor)]
                (ocall doc :replaceRange stdlib/starter-visr pos)))
-    (fn [{:keys [menu input options file-changed current-file cursor scroll cm-ref]
+    (fn [{:keys [menu input options file-changed current-file cursor scroll
+                 cm-ref]
           :as db}
          & [{editor-ref :editor
+             for-print :for-print
+             print-ref :print-ref
+             {print-width :width
+              print-height :height
+              :theme "neat"
+              :as print-options} :print-options
              editor-reset-ref :editor-reset
              visr-run-ref :visr-run}]]
       @current-file
       @menu
+      [:div
+       {:ref print-ref
+        :style (if for-print
+                 {:width "max-content"
+                  :height "max-content"}
+                 {:height "100%"})}
       [:> cm/UnControlled
-       {:options (env/codemirror-options db)
+       {:options (conj (env/codemirror-options db) print-options)
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
@@ -1052,7 +1078,8 @@
                    ;;(js/console.log (oget e :keyCode))
                    (when (and (= "auto" @(:autocomplete options))
                               (not (-> this .-state .-completionActive))
-                              (not (contains? #{8 9 13 16 18 27 37 38 39 40 48 221}
+                              (not (contains? #{8 9 13 16 18 27 37 38 39 40
+                                                48 221}
                                               (oget e :keyCode))))
                      (ocall codemirror/commands :autocomplete this nil
                             #js {:completeSingle false})))
@@ -1074,7 +1101,13 @@
                           (env/reset-editors! @input set-text edit visrs nil
                                               cache reset-queue db
                                               #(reset! mounted? true)
-                                              visr-run-ref))}])))
+                                              visr-run-ref))}]
+       (when for-print
+         [:style {:type "text/css" :media "print"}
+          (css [(keyword "@page")
+                {:margin 0
+                 :size (str (+ 10 (js/Math.ceil print-width)) "px "
+                            (+ 10 (js/Math.ceil print-height)) "px")}])])])))
 
 (defn result-view [{:keys [output options]
                     :as db}
@@ -1101,7 +1134,8 @@
                      (d/render [env/styled-frame i] element)
                      (swap! instances conj
                             (-> @edit (ocall "getDoc")
-                                (ocall "addLineWidget" (max 0 (dec line)) element)))
+                                (ocall "addLineWidget" (max 0 (dec line))
+                                       element)))
                      (recur (inc line) rest)))))))]
     (add-watch edit ::set-font
                (fn [k r o n]
@@ -1127,6 +1161,39 @@
                            (when repl-ref
                              (reset! repl-ref %))
                            (reset! edit %))}])))
+
+(defn print-dialog [db]
+  (let [ref #js {:current nil}
+        width (atom nil)
+        height (atom nil)]
+    (fn [{:keys [menu] :as db}]
+      [:> Modal {:show (= (peek @menu) :print)
+                 :on-hide #(swap! menu pop)}
+       [:> Modal.Header {:close-button true} strings/PRINT]
+       [:> (oget Modal :Body)
+        [:p "Warning, this feature is VERY experimental."
+         " You will likely need to print twice for the right document to show up."
+         " Works best in Chrome."]
+        [:div
+         [:> ReactToPrint
+          {:trigger #(r/as-element [:> Button "Print"])
+           :style ""
+           :onBeforeGetContent #(let [rect (ocall (oget ref :current)
+                                                  :getBoundingClientRect)]
+                                 (reset! width (oget rect :width))
+                                 (reset! height (oget rect :height)))
+           :content #(oget ref :current)}]
+         [editor-view db {:for-print true
+                          :print-ref ref
+                          :print-options {:width @width
+                                          :height @height
+                                          :theme "neo"
+                                          :readOnly "nocursor"
+                                          :matchBrackets false
+                                          :showCursorWhenSelecting false
+                                          :viewportMargin ##Inf
+                                          :gutters #js ["CodeMirror-linenumbers"]
+                                          :foldGutter false}}]]]])))
 
 
 ;; -------------------------
@@ -1194,6 +1261,7 @@
      [auth-dialog db]
      [hold-dialog db]
      [error-dialog db]
+     [print-dialog db]
      [:div {:style {:flex "0 1 auto"}}
       [button-row db]]
      (if (= (count @buffers) 1)
@@ -1312,7 +1380,8 @@
                                                            (-> % .-data .-state))
                      {:keys [extra-zip]} (t/read (t/reader :json)
                                                  (-> % .-data .-extrafs))
-                     new-backing (or (t/read (t/reader :json) (-> % .-data .-patch))
+                     new-backing (or (t/read (t/reader :json)
+                                             (-> % .-data .-patch))
                                      new-backing)]
                  (reset! resetting? true)
                  (cb-thread

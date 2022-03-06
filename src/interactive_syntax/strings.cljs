@@ -90,3 +90,5 @@
 (def GET-TOKEN "Get Token")
 (def USERNAME "Username")
 (def PASSWORD "Password")
+
+(def PRINT "Print")
