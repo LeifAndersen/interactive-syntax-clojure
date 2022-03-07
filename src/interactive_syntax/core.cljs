@@ -1091,8 +1091,9 @@
                    ;;(js/console.log (oget e :keyCode))
                    (when (and (= "auto" @(:autocomplete options))
                               (not (-> this .-state .-completionActive))
-                              (not (contains? (keys exclude-autocomplete-keys)
-                                              (oget e :keyCode))))
+                              (not (contains?
+                                    (into #{} (keys exclude-autocomplete-keys))
+                                    (oget e :keyCode))))
                      (ocall codemirror/commands :autocomplete this nil
                             #js {:completeSingle false})))
         :onKeyDown (fn [this e]
