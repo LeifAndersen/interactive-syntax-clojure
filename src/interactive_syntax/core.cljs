@@ -1104,7 +1104,9 @@
                                               visr-run-ref))}]
        (when for-print
          [:style {:type "text/css" :media "print"}
-          (css [(keyword "@page")
+          (css [:.CodeMirror-linenumber
+                {:color "black !important"}]
+               [(keyword "@page")
                 {:margin 0
                  :size (str (+ 10 (js/Math.ceil print-width)) "px "
                             (+ 10 (js/Math.ceil print-height)) "px")}])])])))
