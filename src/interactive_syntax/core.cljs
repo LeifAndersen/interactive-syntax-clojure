@@ -1007,6 +1007,7 @@
   (let [edit (atom nil)
         cache (atom nil)
         visrs (atom {})
+        key (random-uuid)
         set-text (fn [txt]
                    (let [c @cursor
                          s @scroll
@@ -1018,19 +1019,20 @@
         watch-updater (fn [k r o n]
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
+                            (set! js/window.edit @edit)
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! cache nil)
                             (reset! file-changed fc))))
         reset-queue (clojure.core/atom #queue [])]
-    (add-watch current-file ::editor-view watch-updater)
-    (add-watch menu ::editor-view watch-updater)
+    (add-watch current-file key watch-updater)
+    (add-watch menu key watch-updater)
     (add-watch edit ::set-font
                (fn [k r o n]
                  (when (not= n nil)
                    (oset! (ocall n :getWrapperElement) :style.fontSize
                           (str @(:font-size options) "px"))
                    (ocall n :refresh))))
-    (add-watch deps ::new-deps
+    (add-watch deps key
                (fn [k r o n]
                  (when-not (= o n)
                    (reset! cache nil)
@@ -1101,12 +1103,17 @@
                        (.preventDefault e)
                        (reset! output #queue [])
                        (env/eval-buffer db)))
+        :editorWillUnmount (fn []
+                             (remove-watch current-file key)
+                             (remove-watch menu key)
+                             (remove-watch deps key))
         :editorDidMount (fn [e]
                           (let [fc @file-changed]
                             (-> e (ocall "getDoc") (ocall "setValue" @input))
                             (reset! file-changed fc))
                           (reset! edit e)
-                          (reset! cm-ref e)
+                          (when-not for-print
+                            (reset! cm-ref e))
                           (when editor-ref
                             (reset! editor-ref e))
                           (when editor-reset-ref
@@ -1342,6 +1349,8 @@
          (set! js/window.captureState #(fs/capture-state! db %)))
        (when (= (peek @menu) :hold)
          (swap! menu pop))
+       (when (= (peek @menu) nil)  ; <-- Shouldn't even be possible
+         (reset! menu [:home]))
        (when send-state-url
          (POST send-state-url {:params {:id id
                                         :number 0
