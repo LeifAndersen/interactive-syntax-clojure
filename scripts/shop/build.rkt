@@ -26,8 +26,20 @@
 
 (make-directory* deps)
 
+(define (entry->package entry)
+  (if (string? entry)
+      entry
+      (format "~a@~a" (dict-ref entry 'name) (dict-ref entry 'version))))
+
+(define (entry->path entry)
+  (if (string? entry) entry (dict-ref entry 'name)))
+
 (for ([(out d) (in-dict database)])
   (when (or (not package) (eq? (string->symbol package) out))
+    (define path (or (dict-ref d 'full-path #f)
+                     (format "./node_modules/~a/~a"
+                             (entry->path (dict-ref d 'package))
+                             (dict-ref d 'path))))
     (parameterize ([current-directory (make-temporary-file "tmp~a" 'directory)])
       (printf "Building: ~a~n" out)
       (copy-file webpack-config "webpack.config.js")
@@ -37,10 +49,9 @@
                "path-browserify" "browserify-zlib" "crypto-browserify")
       (if (generic-set? (dict-ref d 'package))
           (for ([p (dict-ref d 'package)])
-            (system* npm "install" p))
-          (system* npm "install" (dict-ref d 'package)))
-      (system* npx "webpack" (dict-ref d 'path)
-               (format "--output-filename=~a.js" out))
+            (system* npm "install" (entry->package p)))
+          (system* npm "install" (entry->package (dict-ref d 'package))))
+      (system* npx "webpack" path (format "--output-filename=~a.js" out))
       (for ([f (in-glob "dist/*")])
         (copy-file f (build-path deps (file-name-from-path f)) #t)))))
 
