@@ -1023,7 +1023,8 @@
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! cache nil)
                             (reset! file-changed fc))))
-        reset-queue (clojure.core/atom #queue [])]
+        reset-queue (clojure.core/atom #queue [])
+        codemirror-options #(conj (env/codemirror-options db) print-options)]
     (add-watch current-file key watch-updater)
     (add-watch menu key watch-updater)
     (add-watch edit ::set-font
@@ -1042,7 +1043,7 @@
                    (when editor-reset-ref
                      (reset! editor-reset-ref true))
                    (env/reset-editors! @input set-text edit visrs nil
-                                       cache reset-queue db
+                                       cache reset-queue (codemirror-options) db
                                        #() visr-run-ref))))
     (add-watch reset-queue ::set-running?
                (fn [k r o n]
@@ -1076,14 +1077,14 @@
                   :height "max-content"}
                  {:height "100%"})}
       [:> cm/UnControlled
-       {:options (conj (env/codemirror-options db) print-options)
+       {:options (codemirror-options)
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
                     (when editor-reset-ref
                       (reset! editor-reset-ref true))
                     (env/reset-editors! @input set-text edit visrs operation
-                                        cache reset-queue db
+                                        cache reset-queue (codemirror-options) db
                                         #() visr-run-ref))
         :onCursor (fn [editor data]
                     (reset! cursor data))
@@ -1119,7 +1120,8 @@
                           (when editor-reset-ref
                             (reset! editor-reset-ref true))
                           (env/reset-editors! @input set-text edit visrs nil
-                                              cache reset-queue db
+                                              cache reset-queue
+                                              (codemirror-options) db
                                               #(reset! mounted? true)
                                               visr-run-ref))}]
        (when for-print
@@ -1187,7 +1189,8 @@
 (defn print-dialog [db]
   (let [ref #js {:current nil}
         width (atom nil)
-        height (atom nil)]
+        height (atom nil)
+        line-numbers (atom true)]
     (fn [{:keys [menu] :as db}]
       [:> Modal {:show (= (peek @menu) :print)
                  :on-hide #(swap! menu pop)}
@@ -1205,11 +1208,16 @@
                                  (reset! width (oget rect :width))
                                  (reset! height (oget rect :height)))
            :content #(oget ref :current)}]
+         [:> Row
+          [:> Col "Line Numbers: "]
+          [:> Col [:> Switch {:checked @line-numbers
+                              :on-change #(reset! line-numbers %)}]]]
          [editor-view db {:for-print true
                           :print-ref ref
                           :print-options {:width @width
                                           :height @height
                                           :theme "neo"
+                                          :lineNumbers @line-numbers
                                           :readOnly "nocursor"
                                           :matchBrackets false
                                           :showCursorWhenSelecting false

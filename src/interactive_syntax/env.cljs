@@ -583,7 +583,7 @@
     (with-out-str (pprint stx))))
 
 (defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
-                  runtime tag info stx file-src refs mark-box]
+                  runtime tag info stx file-src refs mark-box codemirror-options]
   (let [visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)
@@ -696,7 +696,7 @@
                [:> Col {:xs "12"
                         :style {:padding "0"}}
                 [:> cm/UnControlled
-                 {:options (codemirror-options db)
+                 {:options (or codemirror-options (codemirror-options db))
                   :onChange (fn [this operation value]
                               (if @focused?
                                 (swap! scratch assoc :value value)
@@ -709,6 +709,7 @@
                                                (stx->stx-str @stx))))}]]]]])]]))))
 
 (defn reset-editors! [source set-text editor instances operation cache queue
+                      codemirror-options
                       {{:keys [show-editors visr-default sandbox]} :options
                        :keys [fs deps] :as db}
                       cb & [visr-run-ref]]
@@ -815,7 +816,7 @@
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
                               (d/render [visr-hider db runtime tag info stx
-                                         file-src refs mark]
+                                         file-src refs mark codemirror-options]
                                         visr))
                             (let [r-mark (->
                                           @editor (ocall :getDoc)
