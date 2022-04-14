@@ -26,6 +26,11 @@ module.exports = {
                 test: /\.(woff|woff2|eot|ttf|otf)$/,
                 use: ['file-loader'],
             },
+            {
+                test: /\.(js|jsx)$/,
+                loader: 'babel-loader',
+                options: { presets: ['@babel/env','@babel/preset-react'] }
+            }
         ]},
     resolve: {
         fallback: {

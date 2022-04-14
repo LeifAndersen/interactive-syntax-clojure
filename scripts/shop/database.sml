@@ -67,6 +67,9 @@ react-three-fiber:
 react-unity-webgl:
 {package: {name: "react-unity-webgl" version: "8"} path: "distribution/index.js"}
 
+react-video-editor:
+{package: "react-video-editor" path: "src/Video_Editor/VideoEditor.js"}
+
 react-video-renderer:
 {package: ["react-video-renderer" "tslib"]
  full-path: "./node_modules/react-video-renderer/dist/es2015/index.js"}

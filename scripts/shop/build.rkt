@@ -43,10 +43,11 @@
     (parameterize ([current-directory (make-temporary-file "tmp~a" 'directory)])
       (printf "Building: ~a~n" out)
       (copy-file webpack-config "webpack.config.js")
-      (system* npm "install" "--save-dev" "-y" "webpack" "webpack-cli"
-               "css-loader" "style-loader" "file-loader"
-               "assert" "buffer" "stream-browserify" "os-browserify"
-               "path-browserify" "browserify-zlib" "crypto-browserify")
+      (system* npm "install" "--save-dev" "-y" "webpack" "webpack-cli" "css-loader"
+               "style-loader" "file-loader" "babel-loader" "assert" "buffer"
+               "stream-browserify" "os-browserify" "path-browserify"
+               "browserify-zlib" "crypto-browserify" "@babel/core"
+               "@babel/preset-env" "@babel/preset-react")
       (if (generic-set? (dict-ref d 'package))
           (for ([p (dict-ref d 'package)])
             (system* npm "install" (entry->package p)))
