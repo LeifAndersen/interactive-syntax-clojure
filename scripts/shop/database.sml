@@ -39,6 +39,12 @@ react-diagrams:
 react-digraph:
 {package: "react-digraph" path: "dist/main.min.js"}
 
+react-frame-component:
+{package: "react-frame-component" path: "lib/index.js"}
+
+react-file-drop:
+{package: "react-file-drop" path: "index.js"}
+
 react-graph-vis:
 {package: "react-graph-vis" path: "lib/index.js"}
 
@@ -69,6 +75,12 @@ react-unity-webgl:
 
 react-video-editor:
 {package: "react-video-editor" path: "src/Video_Editor/VideoEditor.js"}
+
+react-video-editor-css:
+{package: "react-video-editor" path: "src/Video_Editor/css/editor.css"}
+
+react-video-editor-editor:
+{package: "react-video-editor" path: "src/Video_Editor/Editor.js"}
 
 react-video-renderer:
 {package: ["react-video-renderer" "tslib"]
