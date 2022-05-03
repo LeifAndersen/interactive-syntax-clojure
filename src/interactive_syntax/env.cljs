@@ -743,7 +743,8 @@
                                     (-> %2
                                         (assoc-in [:env (munge "visr->atom")]
                                                   (fn [x]
-                                                    (or (get-in @instances [x :stx])
+                                                    (or (get-in @instances
+                                                                [x :stx])
                                                         (atom nil))))
                                         (assoc-in [:env (munge "visr->atom-info")]
                                                   (fn [x]

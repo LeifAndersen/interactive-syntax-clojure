@@ -141,6 +141,7 @@
    :encodeURIComponent js/encodeURIComponent
    :decodeURI js/decodeURI
    :decodeURIComponent js/decodeURIComponent
+   :Reflect js/Reflect
    :stopify js/stopify
    :$stopifyArray js/stopifyArray})
 
