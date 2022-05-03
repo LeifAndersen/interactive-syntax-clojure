@@ -176,7 +176,7 @@
                     :css css}}
             :reagent {:core reagent.core
                       :dom reagent.dom}
-            :goog {:opject goog.object}
+            :goog {:object goog.object}
             :oops {:core oops.core}
             :garden {:core garden.core
                      :color garden.color
