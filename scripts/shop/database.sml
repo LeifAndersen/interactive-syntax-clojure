@@ -39,11 +39,14 @@ react-diagrams:
 react-digraph:
 {package: "react-digraph" path: "dist/main.min.js"}
 
-react-frame-component:
-{package: "react-frame-component" path: "lib/index.js"}
-
 react-file-drop:
 {package: "react-file-drop" path: "index.js"}
+
+react-flow-renderer:
+{package: "react-flow-renderer" path: "dist/esm/index.js"}
+
+react-frame-component:
+{package: "react-frame-component" path: "lib/index.js"}
 
 react-graph-vis:
 {package: "react-graph-vis" path: "lib/index.js"}
@@ -56,6 +59,9 @@ react-icons:
 
 react-player:
 {package: "react-player" path: "dist/ReactPlayer.js"}
+
+react-scenejs-timeline:
+{package: "react-scenejs-timeline" path: "dist/timeline.esm.js"}
 
 react-sortable-pane:
 {package: "react-sortable-pane" path: "lib/react-sortable-pane.js"}
@@ -85,6 +91,9 @@ react-video-editor-editor:
 react-video-renderer:
 {package: ["react-video-renderer" "tslib"]
  full-path: "./node_modules/react-video-renderer/dist/es2015/index.js"}
+
+scenejs:
+{package: "scenejs" path: "dist/scene.js"}
 
 showdown:
 {package: "showdown" path: "dist/showdown.min.js"}

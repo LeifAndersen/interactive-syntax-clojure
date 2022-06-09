@@ -70,7 +70,8 @@
    [:> Modal.Body
     [:ul
      [:li "This is an early prototype of VISr for ClojureScript."]
-     [:li "If the prototype crashes, reset your browser's local storage."]
+     [:li "If the prototype crashes, you can reset browser's local"
+          " storage to completely reset it."]
      [:li "This page was built on:"
       [:div {:style {:text-align "center"}}
        [:h1 [:code (slurp "src/injectable/date.inject")]]]]
@@ -85,7 +86,10 @@
       [:a {:href "https://github.com/LeifAndersen/interactive-syntax-clojure"
            :target "_blank" :rel "noopener"}
        "this project's GitHub page"] "."]
-     [:li "This dialog will reappear when new versions are released."]]
+     [:li "This dialog will reappear when new versions are released,"
+      " or you can view it again in" [:code "Project > About"] "."]
+     [:li [:h2 {:href "https://prl.ccs.neu.edu/blog/2022/01/06/introducing-visual-and-interactive-syntax-realized-visr-for-clojurescript-and-javascript/"}
+           "Click here for a tutorial on this prototype."]]]
     [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
 
 (defn import-dialog [{:keys [fs menu] :as db}]
