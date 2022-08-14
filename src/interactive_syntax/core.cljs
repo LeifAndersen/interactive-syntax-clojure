@@ -1037,6 +1037,13 @@
                    (oset! (ocall n :getWrapperElement) :style.fontSize
                           (str @(:font-size options) "px"))
                    (ocall n :refresh))))
+    (add-watch (:font-size options) ::set-font
+               (fn [k r o n]
+                 (if-let [n @edit]
+                   (do
+                     (oset! (ocall n :getWrapperElement) :style.fontSize
+                            (str @(:font-size options) "px"))
+                     (ocall n :refresh)))))
     (add-watch deps key
                (fn [k r o n]
                  (when-not (= o n)
@@ -1171,6 +1178,13 @@
                    (oset! (ocall n :getWrapperElement) :style.fontSize
                           (str @(:font-size options) "px"))
                    (ocall n :refresh))))
+    (add-watch (:font-size options) ::set-font
+               (fn [k r o n]
+                 (if-let [n @edit]
+                   (do
+                     (oset! (ocall n :getWrapperElement) :style.fontSize
+                            (str @(:font-size options) "px"))
+                     (ocall n :refresh)))))
     (add-watch output ::result-view watch-updater)
     (fn [{:keys [output options]
         :as db}
