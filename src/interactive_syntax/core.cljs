@@ -1350,6 +1350,11 @@
         fullscreen? (.get search "fullscreen")
         last-send (atom (js/Date.now))
         editor-reset-ref (atom nil)
+        for-print? (.get search "for-print")
+        buffer-text (.get search "buffer-text")
+        line-numbers (.get search "line-numbers")
+        print-width (.get search "print-width")
+        print-height (.get search "print-height")
         msg-counter (atom 1)]
     (cb-thread
      #(if url
@@ -1401,6 +1406,8 @@
                                        :id embedded?
                                        :data (t/write (t/writer :json) @backing)}
                                   "*"))]
+           (when buffer-text
+             (reset! input buffer-text))
            (add-watch file-changed ::embedded-state-changed
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
@@ -1447,11 +1454,25 @@
                "run-buffer"
                (env/eval-buffer db)
                nil))))
-       (if fullscreen?
-         (d/render [editor-view db] (.getElementById js/document "app"))
-         (d/render [home-page db (when embedded?
-                                   {:editor-reset editor-reset-ref})]
-                   (.getElementById js/document "app")))))))
+       (cond for-print? (d/render [editor-view db
+                                   {:for-print for-print?
+                                    :print-options {:width (or print-width 1000)
+                                                    :height (or print-height 1000)
+                                                    :theme "neo"
+                                                    :lineNumbers line-numbers
+                                                    :readOnly "nocursor"
+                                                    :matchBrackets false
+                                                    :showCursorWhenSelecting false
+                                                    :viewportMargin ##Inf
+                                                    :gutters
+                                                    #js ["CodeMirror-linenumbers"]
+                                                    :foldGutter false}}]
+                                  (.getElementById js/document "app")),
+             fullscreen? (d/render [editor-view db]
+                                   (.getElementById js/document "app")),
+             :else (d/render [home-page db (when embedded?
+                                             {:editor-reset editor-reset-ref})]
+                             (.getElementById js/document "app")))))))
 
 (defn init! [& [opts]]
   (mount-root opts))

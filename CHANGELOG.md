@@ -1,3 +1,7 @@
+# 0.1.18
+
+* Add API options for printing (useful in papers)
+
 # 0.1.17
 
 * Add (highly experimental) printing feature
