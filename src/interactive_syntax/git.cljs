@@ -27,6 +27,16 @@
              "")
            remote))))
 
+(defn try-with-cors [op data cb-pass cb-fail]
+  (-> (op (clj->js data))
+      (.then cb-pass)
+      (.catch #(if (oget % :code)
+                 (cb-fail %)
+                 (-> (op (clj->js (assoc data :corsProxy cors-url)))
+                     (.then cb-pass)
+                     (.catch cb-fail))))))
+
+
 (defn add-remote [{:keys [fs auth] :as db} name url cb]
   (-> (ocall git :addRemote #js {:fs fs :dir db/git-root :force true
                                  :remote name :url url})
@@ -90,15 +100,14 @@
                                      :remote rem-name
                                      :url remote})
           (.then %) (.catch pr-and-ret))
-     #(do (js/console.log "A") (%))
-     #(-> (ocall git :fetch #js {:fs fs :dir db/git-root :cache cache
-                                :http isohttp :corsProxy cors-url
-                                :onAuth #(onAuth auth-data)
-                                :remote rem-name
-                                :ref branch
-                                :author author})
-          (.then %) (.catch pr-and-ret))
-     #(do (js/console.log "B") (%))
+     #(try-with-cors
+       #(ocall git :fetch %)
+       {:fs fs :dir db/git-root :cache cache
+        :http isohttp :onAuth #(onAuth auth-data)
+        :remote rem-name
+        :ref branch
+        :author author}
+       % pr-and-ret)
      #(-> (ocall git :checkout #js {:fs fs :dir db/git-root :cache cache
                                     :http isohttp :corsProxy cors-url
                                     :remote rem-name

@@ -1,5 +1,5 @@
 ^{:auto-bundle :webpack
-  :launch-js ["chromium-browser" "--repl" "--disable-gpu" :open-url]}
+  :launch-js ["sh" "test/res/test.sh" :open-url]}
 {:main interactive-syntax.core-test ;interactive-syntax.dev
  ;;:deps-command "npm"
  :bundle-cmd

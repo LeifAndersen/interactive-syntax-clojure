@@ -13,6 +13,7 @@
             [interactive-syntax.db :as db :refer [default-db ->RefAtom
                                                   files-root deps-root]]
             [interactive-syntax.fs :as fs]
+            [interactive-syntax.git :as git]
             [interactive-syntax.strings :as strings]
             [interactive-syntax.core :as core]
             [interactive-syntax.utils :as utils :refer [cb-thread cb-loop]]
@@ -20,6 +21,7 @@
             [interactive-syntax.stdlib :as stdlib]))
 
 (def test-dep (slurp "test/res/react-hexgrid.js"))
+(def git-host "http://localhost:8174/")
 
 (defn print-view [view]
   (->> view
@@ -276,6 +278,23 @@
       (core/load-buffer db)
       (is (= @(:input db) "(+ 1 2)"))
       (is (= @(:file-changed db) false)))))
+
+(deftest git-pull
+  (testing "Ensure Git Pull Works"
+    (async
+     done
+     (let [db (default-db :temp)
+           fs (:fs db)]
+       (test-do
+        db :check
+        :do #(is (= (count (.readdirSync fs files-root)) 0))
+        :async #(git/pull db (str git-host "simple.git") %)
+        :do #(is (= (count (.readdirSync fs files-root)) 2))
+        :do #(is (= (.toString (fs.readFileSync (js/path.join files-root
+                                                              "test.cljs")))
+                    "(+ 1 2)\n"))
+        :done #(done))))))
+
 
 (deftest file-title
   (testing "Make sure title matches current file, even accross save/load"
