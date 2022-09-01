@@ -82,7 +82,13 @@
 
 (def INSERT-CLOSE-PARENTHESES "Insert Close Parentheses")
 
+(def GIT-REPOS "Git Repositories")
 (def GIT-AUTH "Git Authentication")
+(def REPO-URL "Repository URL")
+(def PUSH "Push")
+(def GIT-PULL "Git Pull")
+(def PULL "Pull")
+(def GIT-PUSH "Git Push")
 (def PROVIDER "Provider")
 (def TOKEN "Token")
 (def SELECT "SELECT")

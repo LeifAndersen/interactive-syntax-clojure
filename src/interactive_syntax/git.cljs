@@ -9,8 +9,27 @@
 
 (def cors-url "https://cors.isomorphic-git.org")
 
+(defn onAuth [{:keys [type username passwd]}]
+  (condp = type
+    :github #js {:username "token" :password passwd}
+    #js {:username username :password passwd}))
+(def author #js {:name "VISr" :email "ide@visr.pl"})
+
+(defn remote->url [type remote]
+  (try
+    (js/URL. remote)
+    remote)
+  (catch js/Error e
+    (str (condp = type
+           :github "https://github.com/"
+           :bitbucket "https://bitbucket.org/"
+           :gitlab "https://gitlab.com/"
+           "")
+         remote)))
+
 (defn add-remote [{:keys [fs auth] :as db} name url cb]
-  (-> (ocall git :addRemote #js {:fs fs :dir db/git-root :remote name :url url})
+  (-> (ocall git :addRemote #js {:fs fs :dir db/git-root :force true
+                                 :remote name :url url})
       (.then cb)
       (.catch (fn [e] (js/console.error e) (cb)))))
 
@@ -19,35 +38,71 @@
       (.then cb)
       (.catch (fn [e] (js/console.error e) (cb)))))
 
-(defn push [{:keys [fs auth] :as db} remote branch cb]
+(defn push [{:keys [fs auth] :as db} remote cb]
   (let [pr-and-ret (fn [e] (js/console.error e) (cb e))
-        cache #js {}]
+        {:keys [type passwd] :as auth-data} (get @auth remote)
+        remote (remote->url type remote)
+        cache #js {}
+        branch "main"
+        rem-name "origin"]
     (cb-thread
+     #(-> (ocall git :init #js {:fs fs :dir db/git-root :cache cache
+                                :noCheckout true})
+          (.then %) (.catch pr-and-ret))
+     #(-> (ocall git :addRemote #js {:fs fs :dir db/git-root :cache cache
+                                     :force true
+                                     :remote rem-name
+                                     :url remote})
+          (.then %) (.catch pr-and-ret))
+     #(-> (ocall git :fetch #js {:fs fs :dir db/git-root :cache cache :http isohttp
+                                 :corsProxy cors-url :onAuth #(onAuth auth-data)
+                                 :remote rem-name})
+          (.then %) (.catch pr-and-ret))
      #(-> (ocall git :checkout #js {:fs fs :dir db/git-root :cache cache
-                                    :remote remote :ref branch
+                                    :remote rem-name
+                                    :ref branch
                                     :force true :noCheckout true})
           (.then %) (.catch pr-and-ret))
      #(-> (ocall git :add #js {:fs fs :dir db/git-root :filepath "." :cache cache})
           (.then %) (.catch pr-and-ret))
-     #(-> (ocall git :commit #js {:fs fs :dir db/git-root :message "VISr IDE"
-                                  :author {:name "VISr"} :cache cache})
+     #(-> (ocall git :commit #js {:fs fs :dir db/git-root :cache cache
+                                  :message "VISr IDE"
+                                  :author author})
           (.then %) (.catch pr-and-ret))
      #(-> (ocall git :push #js {:fs fs :http isohttp :dir db/git-root :cache cache
-                                :remote remote :corsProxy cors-url
-                                :onAuth #(js/console.error
-                                          "Auth not implemented")})
+                                :remote rem-name :corsProxy cors-url
+                                :onAuth #(onAuth auth-data)})
           (.then cb) (.catch pr-and-ret)))))
 
-(defn pull [{:keys [fs auth] :as db} remote branch cb]
+(defn pull [{:keys [fs auth] :as db} remote cb]
   (let [pr-and-ret (fn [e] (js/console.error e) (cb e))
-        cache #js {}]
+        {:keys [type passwd] :as auth-data} (get @auth remote)
+        remote (remote->url type remote)
+        cache #js {}
+        branch "main"
+        rem-name "origin"]
     (cb-thread
-     #(-> (ocall :fetch #js {:fs fs :http isohttp :dir db/git-root :cache cache
-                             :remote remote :corsProxy cors-url
-                             :onAuth #(js/console.error
-                                       "Auth not implemented")})
+     #(-> (ocall git :init #js {:fs fs :dir db/git-root :cache cache
+                                :noCheckout true})
           (.then %) (.catch pr-and-ret))
-     #(-> (ocall :checkout #js {:fs fs :dir db/git-root :remote remote :ref branch
-                                :force true :cache cache})
-          (.then %) (.catch pr-and-ret)))))
-
+     #(-> (ocall git :addRemote #js {:fs fs :dir db/git-root :cache cache
+                                     :force true
+                                     :remote rem-name
+                                     :url remote})
+          (.then %) (.catch pr-and-ret))
+     #(do (js/console.log "A") (%))
+     #(-> (ocall git :fetch #js {:fs fs :dir db/git-root :cache cache
+                                :http isohttp :corsProxy cors-url
+                                :onAuth #(onAuth auth-data)
+                                :remote rem-name
+                                :ref branch
+                                :author author})
+          (.then %) (.catch pr-and-ret))
+     #(do (js/console.log "B") (%))
+     #(-> (ocall git :checkout #js {:fs fs :dir db/git-root :cache cache
+                                    :http isohttp :corsProxy cors-url
+                                    :remote rem-name
+                                    :ref (str rem-name "/" branch)
+                                    :author author
+                                    :force true})
+          (.then cb) (.catch pr-and-ret)))))

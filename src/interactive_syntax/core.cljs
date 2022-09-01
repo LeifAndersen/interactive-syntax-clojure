@@ -16,6 +16,7 @@
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.fs :as fs :refer [recursive-rm filepath->id
                                           file-description]]
+   [interactive-syntax.git :as git]
    [cognitect.transit :as t]
    [ajax.core :refer [GET POST PUT]]
    [popper.js]
@@ -247,6 +248,68 @@
              #(env/setup-deps db true %)
              #(swap! menu pop)))]]]])))
 
+(defn pull-dialog [{:keys [menu auth] :as db}]
+  (let [selected (atom (first (keys @auth)))]
+    (fn [{:keys [menu auth] :as db}]
+      [:> Modal {:show (= (peek @menu) :pull)
+                 :on-hide #(swap! menu pop)}
+       [:> (oget Modal :Header) {:close-button true}
+        [:h3 strings/GIT-PULL " " [:span {:style {:font-size "small"}}
+                                   "(HIGHLY EXPERIMENTAL)"]]]
+       [:> (oget Modal :Body)
+        [:> Alert {:variant "danger"} strings/WARNING-WIPE]
+        [:> Row {:class-name "align-items-center"}
+         [:> Col (str strings/SELECT ":")]
+         [:> Col
+          (into
+           [:> DropdownButton {:title @selected
+                               :as ButtonGroup
+                               :variant "secondary"}]
+           (for [[name val] @auth]
+             [:> (oget Dropdown :Item)
+              {:on-click #(reset! selected name)}
+              name]))]]]
+       [:> (oget Modal :Footer)
+        [:> Button {:variant "danger"
+                    :on-click #(cb-thread
+                                #(do (swap! menu conj :hold) (%))
+                                #(git/pull db @selected %)
+                                #(do (swap! menu pop) (swap! menu pop)))}
+         strings/PULL]
+        [:> Button {:variant "secondary"
+                    :on-click #(swap! menu pop)}
+         strings/CANCEL]]])))
+
+(defn push-dialog [{:keys [menu auth] :as db}]
+  (let [selected (atom (first (keys @auth)))]
+    (fn [{:keys [menu auth] :as db}]
+      [:> Modal {:show (= (peek @menu) :push)
+                 :on-hide #(swap! menu pop)}
+       [:> (oget Modal :Header) {:close-button true}
+        [:h3 strings/GIT-PUSH " " [:span {:style {:font-size "small"}}
+                                   "(HIGHLY EXPERIMENTAL)"]]]
+       [:> (oget Modal :Body)
+        [:> Row {:class-name "align-items-center"}
+         [:> Col (str strings/SELECT ":")]
+         [:> Col
+          (into
+           [:> DropdownButton {:title @selected
+                               :as ButtonGroup
+                               :variant "secondary"}]
+           (for [[name val] @auth]
+             [:> (oget Dropdown :Item)
+              {:on-click #(reset! selected name)}
+              name]))]]]
+       [:> (oget Modal :Footer)
+        [:> Button {:on-click #(cb-thread
+                                #(do (swap! menu conj :hold) (%))
+                                #(git/push db @selected %)
+                                #(do (swap! menu pop) (swap! menu pop)))}
+         strings/PUSH]
+        [:> Button {:variant "secondary"
+                    :on-click #(swap! menu pop)}
+         strings/CANCEL]]])))
+
 (def token-links
   {:github "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token"
    :gitlab "https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html"
@@ -267,7 +330,7 @@
                             (reset! new-auth (auth->new @auth)))}
        [:> Modal.Header {:close-button true}
         [:h3 strings/GIT-AUTH " " [:span {:style {:font-size "small"}}
-                                   "(Stored in browser)"]]]
+                                   "(Stored in browser, HIGHLY EXPERIMENTAL)"]]]
        [:> Modal.Body
         [:> Form {:onSubmit (fn [x]
                               (.preventDefault x)
@@ -284,7 +347,7 @@
            [:thead
             [:tr
              [:th {:col-span 2} strings/PROVIDER]
-             [:th {:col-span 2} strings/TOKEN]
+             [:th {:col-span 3} strings/TOKEN]
              [:th]]]
            [:tbody
             (for [[i {:keys [type name username passwd] :as item}]
@@ -293,15 +356,15 @@
                                 #(let [value (oget % "target.value")]
                                    (swap! new-auth assoc-in [i prop] value)))]
                 [:tr {:key (hash i)}
-                 [:td {:col-span (if type 1 2)}
+                 [:td
                   [:> DropdownButton {:title (condp = type
-                                                   :github "GitHub"
-                                                   :gitlab "GitLab"
-                                                   :bitbucket "BitBucket"
-                                                   :passwd (str strings/OTHER ":")
-                                                   strings/SELECT)
-                                          :as ButtonGroup
-                                          :variant "secondary"}
+                                               :github "GitHub"
+                                               :gitlab "GitLab"
+                                               :bitbucket "BitBucket"
+                                               :passwd strings/OTHER
+                                               strings/SELECT)
+                                      :as ButtonGroup
+                                      :variant "secondary"}
                        [:> (oget Dropdown :Item)
                         {:on-click #(swap! new-auth assoc-in [i :type] :github)}
                         "GitHub"]
@@ -315,32 +378,45 @@
                        [:> (oget Dropdown :Item)
                         {:on-click #(swap! new-auth assoc-in [i :type] :passwd)}
                         strings/OTHER]]]
-                 (cond
-                   (= type :passwd) [:td [:> (oget Form :Control)
-                                          {:placeholder strings/NAME
-                                           :on-change (on-change :name)
-                                           :value name}]],
-                   type [:td [:> Button {:href (get token-links type)
-                                         :target "_blank"}
-                              strings/GET-TOKEN]],
-                   :else nil)
-                 (cond (= type :passwd)
-                       (list [:td [:> (oget Form :Control)
-                                   {:key (random-uuid)
-                                    :placeholder strings/USERNAME
-                                    :on-change (on-change :username)
-                                    :value username}]]
-                             [:td [:> (oget Form :Control)
-                                   {:key (random-uuid)
-                                    :placeholder strings/PASSWORD
-                                    :on-change (on-change :passwd)
-                                    :value passwd}]])
-                       type
-                       [:td {:col-span 2} [:> (oget Form :Control)
-                                           {:placeholder strings/TOKEN
-                                            :on-change (on-change :passwd)
-                                            :value passwd}]]
-                       :else [:td {:col-span 2}])
+                 [:td [:> (oget Form :Control)
+                       {:placeholder strings/REPO-URL
+                        :on-change (on-change :name)
+                        :value name}]],
+                 (condp contains? type
+                   #{:github}
+                   (list [:td {:col-span 2}
+                          [:> (oget Form :Control)
+                           {:placeholder strings/TOKEN
+                            :on-change (on-change :passwd)
+                            :value passwd}]]
+                         [:td [:> Button {:href (get token-links type)
+                                          :target "_blank"}
+                               strings/GET-TOKEN]])
+                   #{:gitlab :bitbucket}
+                   (list [:td [:> (oget Form :Control)
+                               {:key (random-uuid)
+                                :placeholder strings/USERNAME
+                                :on-change (on-change :username)
+                                :value username}]]
+                         [:td [:> (oget Form :Control)
+                               {:key (random-uuid)
+                                :placeholder strings/PASSWORD
+                                :on-change (on-change :passwd)
+                                :value passwd}]]
+                         [:td [:> Button {:href (get token-links type)
+                                          :target "_blank"}
+                               strings/GET-TOKEN]])
+                   (list [:td [:> (oget Form :Control)
+                               {:key (random-uuid)
+                                :placeholder strings/USERNAME
+                                :on-change (on-change :username)
+                                :value username}]]
+                         [:td {:col-span 2}
+                          [:> (oget Form :Control)
+                               {:key (random-uuid)
+                                :placeholder strings/PASSWORD
+                                :on-change (on-change :passwd)
+                                :value passwd}]]))
                  [:td [:> Button
                        {:variant "danger"
                         :on-click #(let [na @new-auth]
@@ -349,7 +425,7 @@
                                                           (subvec na (inc i))))))}
                        "-"]]]))
               [:tr {:key 0}
-               [:td {:col-span 4}]
+               [:td {:col-span 5}]
                [:td [:> Button
                      {:on-click #(swap! new-auth conj {:type nil
                                                        :name ""
@@ -364,9 +440,7 @@
            (reset! auth
                    (into {}
                          (for [{:keys [type name] :as entry} @new-auth]
-                           (if (= type :passwd)
-                             [name entry]
-                             [type entry]))))
+                           [name entry])))
            (swap! menu pop))]]])))
 
 (defn hold-dialog [{:keys [menu] :as db}]
@@ -886,6 +960,8 @@
                     #(swap! menu conj :load))
         options #(swap! menu conj :options)
         deps #(swap! menu conj :deps)
+        pull #(swap! menu conj :pull)
+        push #(swap! menu conj :push)
         auth #(swap! menu conj :auth)
         file-name (str (if @current-file
                          (js/path.join (.replace @current-folder files-root "/")
@@ -923,7 +999,9 @@
           strings/IMPORT-PROJECT]
          [:> (oget Dropdown :Item) {:on-click export-project}
           strings/EXPORT-PROJECT]
-         ;;[:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
+         [:> (oget Dropdown :Item) {:on-click auth} strings/GIT-REPOS]
+         [:> (oget Dropdown :Item) {:on-click pull} strings/GIT-PULL]
+         [:> (oget Dropdown :Item) {:on-click push} strings/GIT-PUSH]
          [:> (oget Dropdown :Item) {:on-click print-buffer} strings/PRINT]
          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
           strings/ABOUT]]]
@@ -968,7 +1046,9 @@
            strings/IMPORT-PROJECT]
           [:> (oget Dropdown :Item) {:on-click export-project}
            strings/EXPORT-PROJECT]
-          ;;[:> (oget Dropdown :Item) {:on-click auth} strings/GIT-AUTH]
+          [:> (oget Dropdown :Item) {:on-click auth} strings/GIT-REPOS]
+          [:> (oget Dropdown :Item) {:on-click pull} strings/GIT-PULL]
+          [:> (oget Dropdown :Item) {:on-click push} strings/GIT-PUSH]
           [:> (oget Dropdown :Item) {:on-click print-buffer} strings/PRINT]
           [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :splash)}
            strings/ABOUT]]
@@ -1306,6 +1386,8 @@
      [copy-file-dialog db]
      [rename-file-dialog db]
      [deps-dialog db]
+     [push-dialog db]
+     [pull-dialog db]
      [auth-dialog db]
      [hold-dialog db]
      [error-dialog db]

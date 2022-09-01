@@ -193,6 +193,8 @@
 ;; :error  - error-dialog
 ;; :wipe - confirm-wipe-dialog
 ;; :auth - git authentication screen
+;; :pull - git pull
+;; :push - git push
 ;; :copy-file - copy-file-dialog
 ;; :rename-file - rename-file-dialog
 ;; :print - print screen
