@@ -18,14 +18,14 @@
 (defn remote->url [type remote]
   (try
     (js/URL. remote)
-    remote)
-  (catch js/Error e
-    (str (condp = type
-           :github "https://github.com/"
-           :bitbucket "https://bitbucket.org/"
-           :gitlab "https://gitlab.com/"
-           "")
-         remote)))
+    remote
+    (catch js/Error e
+      (str (condp = type
+             :github "https://github.com/"
+             :bitbucket "https://bitbucket.org/"
+             :gitlab "https://gitlab.com/"
+             "")
+           remote))))
 
 (defn add-remote [{:keys [fs auth] :as db} name url cb]
   (-> (ocall git :addRemote #js {:fs fs :dir db/git-root :force true
