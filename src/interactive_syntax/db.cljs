@@ -342,10 +342,12 @@
      ret)))
 
 (defn reset-db! [{{:keys [theme]} :options
-                  :keys [mode deps] :as db}]
+                  :keys [mode deps auth] :as db}]
   (let [cdeps @deps
-        ctheme @theme]
+        ctheme @theme
+        cauth @auth]
     (when (= mode :local) (storage/remove-local-storage! "state"))
     (when cdeps (reset! deps cdeps))
     (when ctheme (reset! theme ctheme))
+    (when cauth (reset! auth cauth))
     db))
