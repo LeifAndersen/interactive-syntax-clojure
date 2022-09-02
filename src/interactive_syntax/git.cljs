@@ -64,10 +64,11 @@
                                      :remote rem-name
                                      :url remote})
           (.then %) (.catch pr-and-ret))
-     #(-> (ocall git :fetch #js {:fs fs :dir db/git-root :cache cache :http isohttp
-                                 :corsProxy cors-url :onAuth #(onAuth auth-data)
-                                 :remote rem-name})
-          (.then %) (.catch pr-and-ret))
+     #(try-with-cors
+       #(ocall git :fetch %)
+       {:fs fs :dir db/git-root :cache cache :http isohttp
+        :onAuth #(onAuth auth-data) :remote rem-name}
+       % pr-and-ret)
      #(-> (ocall git :checkout #js {:fs fs :dir db/git-root :cache cache
                                     :remote rem-name
                                     :ref branch
@@ -79,10 +80,11 @@
                                   :message "VISr IDE"
                                   :author author})
           (.then %) (.catch pr-and-ret))
-     #(-> (ocall git :push #js {:fs fs :http isohttp :dir db/git-root :cache cache
-                                :remote rem-name :corsProxy cors-url
-                                :onAuth #(onAuth auth-data)})
-          (.then cb) (.catch pr-and-ret)))))
+     #(try-with-cors
+       #(ocall git :push %)
+       {:fs fs :http isohttp :dir db/git-root :cache cache
+        :remote rem-name :onAuth #(onAuth auth-data)}
+       cb pr-and-ret))))
 
 (defn pull [{:keys [fs auth] :as db} remote cb]
   (let [pr-and-ret (fn [e] (js/console.error e) (cb e))
