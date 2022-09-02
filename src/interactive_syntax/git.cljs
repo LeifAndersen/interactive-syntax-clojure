@@ -30,7 +30,7 @@
 (defn try-with-cors [op data cb-pass cb-fail]
   (-> (op (clj->js data))
       (.then cb-pass)
-      (.catch #(if (oget % :code)
+      (.catch #(if (.-code %)
                  (cb-fail %)
                  (-> (op (clj->js (assoc data :corsProxy cors-url)))
                      (.then cb-pass)
