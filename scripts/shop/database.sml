@@ -18,6 +18,9 @@ mathjs:
 marked:
 {package: "marked" path: "marked.min.js"}
 
+opencascadejs:
+{package: {name: "opencascade.js" version: "beta"} path: "dist/index.js"}
+
 openpgp:
 {package: "openpgp" path: "dist/openpgp.min.js"}
 

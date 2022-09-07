@@ -30,7 +30,12 @@ module.exports = {
                 test: /\.(js|jsx)$/,
                 loader: 'babel-loader',
                 options: { presets: ['@babel/env','@babel/preset-react'] }
-            }
+            },
+            {
+                test: /\.wasm$/,
+                type: "javascript/auto",
+                loader: "raw-loader"
+            },
         ]},
     resolve: {
         fallback: {
@@ -41,6 +46,7 @@ module.exports = {
             path: require.resolve("path-browserify"),
             stream: require.resolve("stream-browserify"),
             zlib: require.resolve("browserify-zlib"),
+            fs: false,
         }
     }
 };

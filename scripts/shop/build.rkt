@@ -54,8 +54,8 @@
         (printf "Setting up environment...~n"))
       (copy-file webpack-config "webpack.config.js")
       (system* npm "install" "--save-dev" "-y" "webpack" "webpack-cli" "css-loader"
-               "style-loader" "file-loader" "babel-loader" "assert" "buffer"
-               "stream-browserify" "os-browserify" "path-browserify"
+               "style-loader" "file-loader" "raw-loader" "babel-loader" "assert" 
+	       "buffer" "stream-browserify" "os-browserify" "path-browserify"
                "browserify-zlib" "crypto-browserify" "@babel/core"
                "@babel/preset-env" "@babel/preset-react")
       (when verbose
