@@ -572,7 +572,7 @@
                         (if (nil? @err-state)
                           (into [:<>] children)
                           (let [[err info] @err-state]
-                            (js/console.error err)
+                            (js/console.log err)     ;; Not backwards
                             (js/console.error info)
                             [styled-frame ;;{:ref ref}
                              [:div
@@ -587,7 +587,8 @@
     (with-out-str (pprint stx))))
 
 (defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
-                  runtime tag info stx file-src refs mark-box codemirror-options]
+                  runtime tag info stx file-src refs mark-box visr-options
+                  codemirror-options]
   (let [visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)
@@ -601,7 +602,11 @@
                  (when-not (= o n)
                    (reset! visr nil))))
     (fn [{:keys [fs] :as db}
-         runtime tag info stx file-src refs mark-box]
+         runtime tag info stx file-src refs mark-box
+         {for-print :for-print
+          show-bars :hider-bars
+          :as visr-options}
+         codemirror-options]
       (let [show-visr (r/cursor info [:show-visr])
             show-code (r/cursor info [:show-text])]
         (when-not (contains? @info :show-visr)
@@ -625,14 +630,15 @@
                                  [:div (.-stack ret)])))))
         [:span {:style {:display "inline-block"}}
          [:> ButtonGroup {:aria-label strings/VISR}
-          [:> Button {:size "sm"
-                      :aria-label strings/VISUAL
-                      :style {:padding 0 :font-size "1.2em"}
-                      :on-click (fn []
-                                  (swap! show-visr not)
-                                  (if-let [rmb @mark-box]
-                                    (ocall rmb :changed)))}
-           "\uD83D\uDC41"]
+          (when (or (not for-print) show-bars)
+            [:> Button {:size "sm"
+                        :aria-label strings/VISUAL
+                        :style {:padding 0 :font-size "1.2em"}
+                        :on-click (fn []
+                                    (swap! show-visr not)
+                                    (if-let [rmb @mark-box]
+                                      (ocall rmb :changed)))}
+             "\uD83D\uDC41"])
           (when @show-visr
             [err-boundary
              ;;{:ref #(swap! refs assoc :visr-err %)}
@@ -646,15 +652,16 @@
                             :scroll-top (:scroll-top @visr-scroll)
                             :scroll-left (:scroll-left @visr-scroll)}
               @visr]])
-          [:> Button {:size "sm"
-                      :aria-label strings/CODE
-                      :style {:padding 0 :font-size "0.8em"}
-                      :variant "secondary"
-                      :on-click (fn []
-                                  (swap! show-code not)
-                                  (if-let [rmb @mark-box]
-                                    (ocall rmb :changed)))}
-           [:code "(\u03BB)"]]
+          (when (or (not for-print) show-bars)
+            [:> Button {:size "sm"
+                        :aria-label strings/CODE
+                        :style {:padding 0 :font-size "0.8em"}
+                        :variant "secondary"
+                        :on-click (fn []
+                                    (swap! show-code not)
+                                    (if-let [rmb @mark-box]
+                                      (ocall rmb :changed)))}
+             [:code "(\u03BB)"]])
           (when @show-code
             [styled-frame {:class "visr-code"}
              [:> Form {:onSubmit #(do (.preventDefault %)
@@ -716,7 +723,8 @@
                       codemirror-options
                       {{:keys [show-editors visr-default sandbox]} :options
                        :keys [fs deps] :as db}
-                      cb & [visr-run-ref]]
+                      cb & [{visr-run-ref :visr-run
+                             :as editor-options}]]
   (when (and @show-editors @editor)
     (let [old-instances (atom @instances)
           prog (indexing-push-back-reader source)
@@ -821,7 +829,8 @@
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
                               (d/render [visr-hider db runtime tag info stx
-                                         file-src refs mark codemirror-options]
+                                         file-src refs mark editor-options
+                                         codemirror-options]
                                         visr))
                             (let [r-mark (->
                                           @editor (ocall :getDoc)

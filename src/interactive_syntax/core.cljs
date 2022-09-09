@@ -1085,7 +1085,8 @@
                    & [{editor-ref :editor
                        for-print :for-print
                        print-ref :print-ref
-                       print-options :print-options
+                       {:keys [hider-bars]
+                        :as print-options} :print-options
                        editor-reset-ref :editor-reset
                        visr-run-ref :visr-run}]]
   (let [edit (atom nil)
@@ -1133,9 +1134,11 @@
                    (reset! visrs {})
                    (when editor-reset-ref
                      (reset! editor-reset-ref true))
-                   (env/reset-editors! @input set-text edit visrs nil
-                                       cache reset-queue (codemirror-options) db
-                                       #() visr-run-ref))))
+                   (env/reset-editors! @input set-text edit visrs nil cache
+                                       reset-queue (codemirror-options) db #()
+                                       {:for-print for-print
+                                        :hider-bars hider-bars
+                                        :visr-run visr-run-ref}))))
     (add-watch reset-queue ::set-running?
                (fn [k r o n]
                  (when (and editor-reset-ref (empty? n))
@@ -1155,6 +1158,7 @@
              print-ref :print-ref
              {print-width :width
               print-height :height
+              hider-bars :hider-bars
               :theme "neat"
               :as print-options} :print-options
              editor-reset-ref :editor-reset
@@ -1176,7 +1180,9 @@
                       (reset! editor-reset-ref true))
                     (env/reset-editors! @input set-text edit visrs operation
                                         cache reset-queue (codemirror-options) db
-                                        #() visr-run-ref))
+                                        #() {:for-print for-print
+                                             :hider-bars hider-bars
+                                             :visr-run visr-run-ref}))
         :onCursor (fn [editor data]
                     (reset! cursor data))
         :onScroll (fn [editor data]
@@ -1214,7 +1220,9 @@
                                               cache reset-queue
                                               (codemirror-options) db
                                               #(reset! mounted? true)
-                                              visr-run-ref))}]
+                                              {:for-print for-print
+                                               :hider-bars hider-bars
+                                               :visr-run visr-run-ref}))}]
        (when for-print
          [:style {:type "text/css" :media "print"}
           (css [:.CodeMirror-linenumber
@@ -1288,7 +1296,8 @@
   (let [ref #js {:current nil}
         width (atom nil)
         height (atom nil)
-        line-numbers (atom true)]
+        line-numbers (atom true)
+        hider-bars (atom true)]
     (fn [{:keys [menu] :as db}]
       [:> Modal {:show (= (peek @menu) :print)
                  :on-hide #(swap! menu pop)}
@@ -1309,13 +1318,17 @@
          [:> Row
           [:> Col "Line Numbers: "]
           [:> Col [:> Switch {:checked @line-numbers
-                              :on-change #(reset! line-numbers %)}]]]
+                              :on-change #(reset! line-numbers %)}]]
+          [:> Col "Hider Bars: "]
+          [:> Col [:> Switch {:checked @hider-bars
+                              :on-change #(reset! hider-bars %)}]]]
          [editor-view db {:for-print true
                           :print-ref ref
                           :print-options {:width @width
                                           :height @height
                                           :theme "neo"
                                           :lineNumbers @line-numbers
+                                          :hider-bars @hider-bars
                                           :readOnly "nocursor"
                                           :matchBrackets false
                                           :showCursorWhenSelecting false
