@@ -12,6 +12,7 @@ window.path = require('path');
 // Puts System into global namespace
 import 'systemjs';
 import 'systemjs/dist/extras/amd';
+import 'systemjs/dist/extras/named-register';
 
 window.React = require('react');
 window.ReactDOM = require('react-dom');

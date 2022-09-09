@@ -62,7 +62,7 @@
     "react-to-print": "^2.14.4",
     "stream-browserify": "^2.0.2",
     "styled-components": "^4.4.1",
-    "systemjs": "^6.9.0",
+    "systemjs": "^6.12.6",
     "tty-browserify": "*",
     "util": "^0.11.1"
   },

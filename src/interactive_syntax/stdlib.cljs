@@ -137,6 +137,7 @@
    :URL js/URL
    :URLSearchParams js/URLSearchParams
    :Blob js/Blob
+   :WebAssembly js/WebAssembly
    :encodeURI js/encodeURI
    :encodeURIComponent js/encodeURIComponent
    :decodeURI js/decodeURI

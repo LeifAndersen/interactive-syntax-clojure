@@ -572,11 +572,15 @@
                         (if (nil? @err-state)
                           (into [:<>] children)
                           (let [[err info] @err-state]
-                            (js/console.log err)
+                            (js/console.error err)
                             (js/console.error info)
                             [styled-frame ;;{:ref ref}
-                             [:div {:style {:white-space "pre"}}
-                              (pr-str info)]])))})))
+                             [:div
+                              [:div {:style {:white-space "pre"}}
+                               (pr-str info)]
+                              [:br]
+                              [:div {:style {:white-space "pre"}}
+                               (pr-str err)]]])))})))
 
 (defn stx->stx-str [stx]
   (binding [cljs.pprint/*print-right-margin* 40]
