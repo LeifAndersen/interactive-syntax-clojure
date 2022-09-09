@@ -1583,7 +1583,7 @@
             db
             :set [:deps] new-deps
             :set [:output] #queue ["Cannot load dependency bad-module:"
-                                   "SyntaxError: Unexpected identifier"]
+                                   "SyntaxError: Unexpected identifier 'a'"]
             :wait-until not resetting
             :check
             :do #(js/URL.revokeObjectURL uri)
