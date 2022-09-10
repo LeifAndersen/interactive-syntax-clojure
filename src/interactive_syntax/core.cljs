@@ -213,7 +213,8 @@
           [:thead
            [:tr
             [:th strings/NAME]
-            [:th (str strings/URL " " strings/OPTIONAL)]]]
+            [:th (str strings/URL " " strings/OPTIONAL)]
+            [:th strings/LOAD?]]]
           [:tbody
            (for [[key package] @new-deps]
              (let [on-change (fn [prop]
@@ -226,6 +227,9 @@
                 [:td [:> (oget Form :Control) {:on-change (on-change :url)
                                                :aria-label strings/URL
                                                :value (:url package)}]]
+                [:td [:> Switch
+                      {:checked (:load? package)
+                       :on-change #(swap! new-deps assoc-in [key :load?] %)}]]
                 [:td [:> Button {:variant "danger"
                                  :on-click #(swap! new-deps dissoc key)}
                       "-"]]]))
@@ -234,7 +238,8 @@
             [:td [:> Button
                    {:on-click #(swap! new-deps assoc (js/Date.now) {:name ""
                                                                     :version ""
-                                                                    :url ""})}
+                                                                    :url ""
+                                                                    :load? true})}
                   "+"]]]]]
          [cancel-update-row
           (fn []

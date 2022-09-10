@@ -1,8 +1,9 @@
 (ns interactive-syntax.utils)
 
-(defn module->uri [module]
+(defn module->uri [module & {:keys [mime]
+                             :or {:mime "application/javascript"}}]
   (js/URL.createObjectURL
-   (new js/Blob #js [module] #js {:type "application/javascript"})))
+   (new js/Blob #js [module] #js {:type mime})))
 
 (defn cb-thread [& funcs]
   ((fn rec [funcs ret]

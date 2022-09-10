@@ -879,7 +879,7 @@
         :do #(.change rtl/fireEvent (first (.getAllByLabelText view strings/URL))
                       #js {:target #js {:value uri}})
         :do #(.click rtl/fireEvent (first (.getAllByText view strings/UPDATE)))
-        :set [:deps] {1 {:name "react-hexgrid" :version "" :url uri}}
+        :set [:deps] {1 {:name "react-hexgrid" :version "" :url uri :load? true}}
         :wait 1000
         :do #(reset! input prog1)
         :set [:input] prog1 :check
@@ -1572,7 +1572,7 @@
            (default-db :temp),
            dep-mod "not a valid javascript file",
            uri (utils/module->uri dep-mod),
-           new-deps {1 {:name "bad-module" :url uri}}]
+           new-deps {1 {:name "bad-module" :url uri :load? true}}]
        (cb-thread
         #(fs.writeFile (.join js/path deps-root "bad-module") dep-mod %)
         #(let [resetting (atom nil),

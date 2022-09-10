@@ -31,6 +31,7 @@
 (def URL "URL")
 (def UPDATE "Update")
 (def CANCEL "Cancel")
+(def LOAD? "Load?")
 
 (def RUN "Run")
 (def PAUSE "Pause")

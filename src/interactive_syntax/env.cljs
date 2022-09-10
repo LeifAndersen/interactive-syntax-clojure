@@ -108,30 +108,42 @@
              %)
    #(when cb (cb %2))))
 
+(def blob-url-registry
+  (js/FinalizationRegistry. js/URL.revokeObjectURL))
+
+(defn dynamic-lookup [env mod-path]
+  (let [name (js/path.basename mod-path)]
+    42))
+
 (defn deps->env [{:keys [deps fs output] :as db} cb]
-  (let [system js/System];(new (.-constructor js/System))]
-    ((fn rec [denv dloaded djs deps]
+  (let [system js/System ;(new (.-constructor js/System))
+        in-use-token (atom false)]
+    ((fn rec [denv dloaded djs durls deps]
        (if (empty? deps)
-         (cb {:env denv :loaded dloaded :js-deps djs})
-         (let [[[key {:keys [name] :as dep}] & rest-deps] deps]
+         (cb {:env denv :loaded dloaded :js-deps djs :urls durls})
+         (let [[[key {:keys [name load?] :or {:load? true} :as dep}]
+                & rest-deps] deps]
            (cb-thread
             #(ocall fs :readFile (js/path.join deps-root name) %)
             #(if %2 (js/console.error %2) (% %3))
             #(let [url (module->uri %2)]
-               (-> system (ocall :import url)
-                   (.then #(rec (assoc denv (munge name) (.-default %))
-                                (conj dloaded (symbol name))
-                                (assoc djs (str name)
-                                       {:global-exports {(symbol name)
-                                                         (munge name)}})
-                                rest-deps))
-                   (.catch (fn [err]
-                             (reset! output #queue
-                                     [(str "Cannot load dependency " name ":")
-                                      (str err)])
-                             (cb nil)))
-                   (.finally #(js/URL.revokeObjectURL url))))))))
-     {} [] {} @deps)))
+               (.register blob-url-registry in-use-token url)
+               (if load?
+                 (-> system (ocall :import url)
+                     (.then #(rec (assoc denv (munge name) (.-default %))
+                                  (conj dloaded (symbol name))
+                                  (assoc djs (str name)
+                                         {:global-exports {(symbol name)
+                                                           (munge name)}})
+                                  (assoc durls name url)
+                                  rest-deps))
+                     (.catch (fn [err]
+                               (reset! output #queue
+                                       [(str "Cannot load dependency " name ":")
+                                        (str err)])
+                               (cb nil))))
+                 (rec denv dloaded djs durls rest-deps)))))))
+     {} [] {} {} @deps)))
 
 ;; -------------------------
 ;; Evaluator

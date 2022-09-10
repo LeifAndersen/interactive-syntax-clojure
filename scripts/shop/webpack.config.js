@@ -34,7 +34,7 @@ module.exports = {
             {
                 test: /\.wasm$/,
                 type: "javascript/auto",
-                loader: "raw-loader"
+                loader: "dynamic-loader"
             },
         ]},
     resolve: {

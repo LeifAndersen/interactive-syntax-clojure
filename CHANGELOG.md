@@ -1,3 +1,10 @@
+# 0.2.0
+
+* Deps can have sub-deps, user must still manually add sub-deps though.
+* User can add non-js resources to deps list
+* Non-JS deps must have their 'load' parameter turned off
+* Sub-deps loaded dynamically from `visr_dynamic_load` function
+
 # 0.1.18
 
 * Add API options for printing (useful in papers)

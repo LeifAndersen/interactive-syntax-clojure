@@ -151,7 +151,8 @@
 (s/def ::dep (s/keys :opt-un [::name
                               ::version
                               ::url
-                              ::sandbox]))
+                              ::sandbox
+                              ::load?]))
 (s/def ::deps (s/map-of number? ::dep))
 
 (s/def ::compiler any?)
