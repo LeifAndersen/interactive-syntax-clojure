@@ -113,14 +113,16 @@
 
 (defn dynamic-lookup [env mod-path]
   (let [name (js/path.basename mod-path)]
-    42))
+    (get env name)))
 
 (defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system js/System ;(new (.-constructor js/System))
         in-use-token (atom false)]
     ((fn rec [denv dloaded djs durls deps]
        (if (empty? deps)
-         (cb {:env denv :loaded dloaded :js-deps djs :urls durls})
+         (do
+           (set! js/window.visr_dynamic_lookup (partial dynamic-lookup durls))
+           (cb {:env denv :loaded dloaded :js-deps djs :urls durls}))
          (let [[[key {:keys [name load?] :or {:load? true} :as dep}]
                 & rest-deps] deps]
            (cb-thread
