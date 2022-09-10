@@ -20,8 +20,9 @@
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
    [goog.object :as obj]
    [ajax.core :refer [GET POST PUT]]
+   [ajax.protocols :refer [-body]]
    [interactive-syntax.utils :refer [cb-thread cb-loop module->uri]]
-   [interactive-syntax.db :refer [files-root deps-root shop-url]]
+   [interactive-syntax.db :refer [files-root deps-root shop-url Buffer]]
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.fakegoog :as fakegoog]
@@ -89,7 +90,8 @@
         url (if (and url (not= url ""))
               url
               (str shop-url pkg-name ".js"))]
-    (GET url {:handler cb})))
+    (GET url {:response-format {:read -body :type :arraybuffer}
+              :handler cb})))
 
 (defn setup-deps [{:keys [deps fs] :as db} force-update & [cb]]
   (cb-thread
@@ -100,10 +102,10 @@
                 (fn [n e src]
                   (if (or force-update e)
                     (cb-thread
-                     (fn [n] (get-pkg pkg n))
+                     #(get-pkg pkg %)
                      (fn [_ src]
                        (ocall fs :writeFile
-                              (js/path.join deps-root name) src next)))
+                              (js/path.join deps-root name) (Buffer.from src) next)))
                     (next)))))
              %)
    #(when cb (cb %2))))

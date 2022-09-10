@@ -4,6 +4,8 @@
 * User can add non-js resources to deps list
 * Non-JS deps must have their 'load' parameter turned off
 * Sub-deps loaded dynamically from `visr_dynamic_load` function
+* Download deps as a binary arraybuffer (rather than utf-8 string)
+* Store downloaded deps as a binary blob (doesn't change read api)
 
 # 0.1.18
 

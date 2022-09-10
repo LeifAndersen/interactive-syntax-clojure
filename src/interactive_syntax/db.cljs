@@ -22,6 +22,7 @@
 (def prompt "> ")
 (def end-prompt "<EOF>")
 (def shop-url "https://raw.githubusercontent.com/LeifAndersen/visr-deps/main/")
+(def Buffer (.-Buffer (browserfs/BFSRequire "buffer")))
 
 (deftype RefAtom [ref]
   IAtom
