@@ -10,6 +10,7 @@
 (define git (find-executable-path "git"))
 (define-runtime-path here-deps "deps")
 (define-runtime-path webpack-config "webpack.config.js")
+(define-runtime-path dynamic-loader "dynamic-loader.js")
 (define main-db (make-parameter "database.sml"))
 (define deps-param (make-parameter here-deps))
 (define verbose-param (make-parameter #f))
@@ -53,6 +54,7 @@
       (when verbose
         (printf "Setting up environment...~n"))
       (copy-file webpack-config "webpack.config.js")
+      (copy-file dynamic-loader "dynamic-loader.js")
       (system* npm "install" "--save-dev" "-y" "webpack" "webpack-cli" "css-loader"
                "style-loader" "file-loader" "raw-loader" "babel-loader" "assert" 
 	       "buffer" "stream-browserify" "os-browserify" "path-browserify"

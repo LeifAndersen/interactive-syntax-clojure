@@ -1,3 +1,5 @@
+const path = require('path')
+
 module.exports = {
     mode: "production",
     //devtool: "inline-source-map",
@@ -34,7 +36,7 @@ module.exports = {
             {
                 test: /\.wasm$/,
                 type: "javascript/auto",
-                loader: "dynamic-loader"
+                loader: path.resolve("dynamic-loader.js")
             },
         ]},
     resolve: {
