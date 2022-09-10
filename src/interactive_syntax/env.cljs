@@ -119,16 +119,18 @@
   (let [system js/System ;(new (.-constructor js/System))
         in-use-token (atom false)]
     ((fn rec [denv dloaded djs durls deps]
+       (set! js/window.visr_dynamic_load (partial dynamic-lookup durls))
        (if (empty? deps)
-         (do
-           (set! js/window.visr_dynamic_load (partial dynamic-lookup durls))
-           (cb {:env denv :loaded dloaded :js-deps djs :urls durls}))
+         (cb {:env denv :loaded dloaded :js-deps djs :urls durls})
          (let [[[key {:keys [name load?] :or {:load? true} :as dep}]
                 & rest-deps] deps]
            (cb-thread
             #(ocall fs :readFile (js/path.join deps-root name) %)
             #(if %2 (js/console.error %2) (% %3))
-            #(let [url (module->uri %2)]
+            #(let [mime (condp = (js/path.extname name)
+                          ".wasm" "application/wasm"
+                          "application/javascript")
+                   url (module->uri %2 :mime mime)]
                (.register blob-url-registry in-use-token url)
                (if load?
                  (-> system (ocall :import url)
@@ -144,8 +146,8 @@
                                        [(str "Cannot load dependency " name ":")
                                         (str err)])
                                (cb nil))))
-                 (rec denv dloaded djs durls rest-deps)))))))
-     {} [] {} {} @deps)))
+                 (rec denv dloaded djs (assoc durls name url) rest-deps)))))))
+     {(munge :visr-private-registry) in-use-token} [] {} {} @deps)))
 
 ;; -------------------------
 ;; Evaluator
