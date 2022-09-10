@@ -121,7 +121,7 @@
     ((fn rec [denv dloaded djs durls deps]
        (if (empty? deps)
          (do
-           (set! js/window.visr_dynamic_lookup (partial dynamic-lookup durls))
+           (set! js/window.visr_dynamic_load (partial dynamic-lookup durls))
            (cb {:env denv :loaded dloaded :js-deps djs :urls durls}))
          (let [[[key {:keys [name load?] :or {:load? true} :as dep}]
                 & rest-deps] deps]
