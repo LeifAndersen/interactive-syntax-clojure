@@ -18,6 +18,9 @@ mathjs:
 marked:
 {package: "marked" path: "marked.min.js"}
 
+model-viewer:
+{package: "@google/model-viewer" path: "dist/model-viewer.min.js"}
+
 opencascadejs:
 {package: {name: "opencascade.js" version: "beta"} path: "dist/index.js"}
 
