@@ -176,8 +176,8 @@
            (sandbox-env)
            (:env builtins)
            {:visr
-            {:fs {:fs fs}}
-            {:private$ {:print (partial wrap-printer core/print db)
+            {:fs {:fs fs}
+             :private$ {:print (partial wrap-printer core/print db)
                         :println (partial wrap-printer core/println db)
                         :parse_defvisr parse-defvisr
                         :render_visr (partial render-visr db)
@@ -205,12 +205,14 @@
                       'cljs.spec.gen.alpha 'cljs.spec.test.alpha 'cljs.stacktrace
                       'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
                       'clojure.walk 'clojure.string 'clojure.set 'clojure.data
-                      'visr.private 'reagent.core 'reagent.dom 'goog.object
-                      'oops.core 'garden.core 'garden.color 'garden.compiler
-                      'garden.compression 'garden.selectors 'garden.types
-                      'garden.units 'garden.util})
+                      'visr.fs 'visr.private 'reagent.core 'reagent.dom
+                      'goog.object 'oops.core 'garden.core 'garden.color
+                      'garden.compiler 'garden.compression 'garden.selectors
+                      'garden.types 'garden.units 'garden.util 'ajax.core
+                      'ajax.protocols 'alandipert.storage-atom 'cognitect.transit})
      :state-injections
-     (merge (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
+     (merge (state-injection 'visr.fs {fs 'visr.fs/fs})
+            (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
             (state-injection 'cljs.analyzer.api (ns-publics 'cljs.analyzer.api))
             (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))
             (state-injection 'cljs.env (ns-publics 'cljs.env))
@@ -222,7 +224,8 @@
                              (ns-publics 'cljs.tagged-literals))
             (state-injection 'cljs.test (ns-publics 'cljs.test))
             (state-injection 'cljs.spec.alpha (ns-publics 'cljs.spec.alpha))
-            (state-injection 'cljs.spec.gen.alpha (ns-publics 'cljs.spec.gen.alpha))
+            (state-injection 'cljs.spec.gen.alpha
+                             (ns-publics 'cljs.spec.gen.alpha))
             (state-injection 'cljs.spec.test.alpha
                              (ns-publics 'cljs.splec.test.alpha))
             (state-injection 'cljs.tools.reader (ns-publics 'cljs.tools.reader))
@@ -242,7 +245,12 @@
             (state-injection 'garden.selectors (ns-publics 'garden.selectors))
             (state-injection 'garden.types (ns-publics 'garden.types))
             (state-injection 'garden.units (ns-publics 'garden.units))
-            (state-injection 'garden.util (ns-publics 'garden.util)))
+            (state-injection 'garden.util (ns-publics 'garden.util))
+            (state-injection 'ajax.core (ns-publics 'ns.core))
+            (state-injection 'ajax.protocols (ns-publics 'ajax.protocols))
+            (state-injection 'cognitect.transit (ns-publics 'cognitect.transit))
+            (state-injection 'alandipert.storage-atom
+                             (ns-publics 'alandipert.storage-atom)))
      :js-deps (merge (:js-deps base) (:js-deps builtins))}))
 
 (defn write-visr [visr state & [{:keys [show-visr show-text]}]]
