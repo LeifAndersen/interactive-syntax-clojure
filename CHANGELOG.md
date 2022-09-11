@@ -6,6 +6,7 @@
 * Sub-deps loaded dynamically from `visr_dynamic_load` function
 * Download deps as a binary arraybuffer (rather than utf-8 string)
 * Store downloaded deps as a binary blob (doesn't change read api)
+* Add fs support in the sandbox (no permission structure added)
 
 # 0.1.18
 

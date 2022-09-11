@@ -45,7 +45,12 @@
    [garden.util]
    [garden.selectors]
    [garden.types]
-   [garden.units]))
+   [garden.units]
+   [cognitect.transit]
+   [ajax.core]
+   [ajax.protocols]
+   [alandipert.storage-atom]
+   ))
 
 (def injectable (slurp "src/injectable/core.inject"))
 
@@ -163,19 +168,20 @@
                             react-codemirror2 react-split-pane react-switch]]
                     [(str k) {:global-exports {k (munge k)}}]))})
 
-(defn reagent-runtime [base db]
+(defn reagent-runtime [base {:keys [fs] :as db}]
   (let [builtins (builtin-libs)]
     {:fakegoog true
      :env (merge
            (:env base)
            (sandbox-env)
            (:env builtins)
-           {:visr {:private$
-                   {:print (partial wrap-printer core/print db)
-                    :println (partial wrap-printer core/println db)
-                    :parse_defvisr parse-defvisr
-                    :render_visr (partial render-visr db)
-                    :css css}}
+           {:visr
+            {:fs {:fs fs}}
+            {:private$ {:print (partial wrap-printer core/print db)
+                        :println (partial wrap-printer core/println db)
+                        :parse_defvisr parse-defvisr
+                        :render_visr (partial render-visr db)
+                        :css css}}
             :reagent {:core reagent.core
                       :dom reagent.dom}
             :goog {:object goog.object}
@@ -187,7 +193,11 @@
                      :selectors garden.selectors
                      :types garden.types
                      :units garden.units
-                     :util garden.util}})
+                     :util garden.util}
+            :ajax {:core ajax.core
+                   :protocols ajax.protocols}
+            :cognitect {:transit cognitect.transit}
+            :alandipert {:storage-atom alandipert.storage-atom}})
      :loaded (union (:loaded base) (:loaded builtins)
                     #{'cljs.analyzer 'cljs.analyzer.api
                       'cljs.compiler 'cljs.env 'cljs.js 'cljs.pprint
