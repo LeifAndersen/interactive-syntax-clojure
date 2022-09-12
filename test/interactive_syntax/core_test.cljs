@@ -847,6 +847,30 @@
         :do #(set! js/console.error old-error)
         :do #(done))))))
 
+(deftest additional-dep-req
+  (testing "Test req for core (but non-primitive) library"
+    (async
+     done
+     (let [{:keys [fs input output running?] :as db}
+           (default-db :temp),
+           prog "
+(ns test.core
+  (:require [visr.utils :refer [fs]]))
+
+(println (object? fs))
+"
+           out #queue ["true"]
+           view (rtl/render (r/as-element [core/home-page db]))]
+       (test-do
+        db :check
+        :do #(reset! input prog)
+        :set [:input] prog :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 0
+        :set [:output] out :check
+        :done #(done))))))
+
 (deftest test-download-dep
   (testing "Test an installed/additional dep"
     (async

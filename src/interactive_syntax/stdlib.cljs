@@ -176,7 +176,7 @@
            (sandbox-env)
            (:env builtins)
            {:visr
-            {:fs {:fs fs}
+            {:utils {:fs fs}
              :private$ {:print (partial wrap-printer core/print db)
                         :println (partial wrap-printer core/println db)
                         :parse_defvisr parse-defvisr
@@ -205,13 +205,13 @@
                       'cljs.spec.gen.alpha 'cljs.spec.test.alpha 'cljs.stacktrace
                       'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
                       'clojure.walk 'clojure.string 'clojure.set 'clojure.data
-                      'visr.fs 'visr.private 'reagent.core 'reagent.dom
+                      'visr.utils 'visr.private 'reagent.core 'reagent.dom
                       'goog.object 'oops.core 'garden.core 'garden.color
                       'garden.compiler 'garden.compression 'garden.selectors
                       'garden.types 'garden.units 'garden.util 'ajax.core
                       'ajax.protocols 'alandipert.storage-atom 'cognitect.transit})
      :state-injections
-     (merge (state-injection 'visr.fs {fs 'visr.fs/fs})
+     (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
             (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
             (state-injection 'cljs.analyzer.api (ns-publics 'cljs.analyzer.api))
             (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))
