@@ -1,3 +1,7 @@
+# 0.2.1
+
+* Add button to upload resource
+
 # 0.2.0
 
 * Deps can have sub-deps, user must still manually add sub-deps though.

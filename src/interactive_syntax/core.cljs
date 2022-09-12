@@ -9,7 +9,7 @@
    [cljs.core.match :refer [match]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
-   [interactive-syntax.db :as db :refer [files-root default-db]]
+   [interactive-syntax.db :as db :refer [files-root default-db Buffer]]
    [interactive-syntax.utils :as utils :refer [cb-thread cb-loop]]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.env :as env]
@@ -491,13 +491,22 @@
              (when cb (cb))))))
 
 (defn load-buffer [{:keys [fs menu current-folder current-file input file-changed]
-                    :as db}]
+                    :as db}
+                   & [cb]]
   (swap! menu conj :hold)
   (ocall fs :readFile (js/path.join @current-folder @current-file)
          (fn [err txt]
            (reset! input (ocall txt :toString))
            (reset! file-changed false)
-           (swap! menu pop))))
+           (swap! menu pop)
+           (when cb (cb)))))
+
+(defn add-resource [{:keys [fs menu]} path res & [cb]]
+  (swap! menu conj :hold)
+  (ocall fs :writeFile path (Buffer.from res)
+         (fn [err res]
+           (swap! menu pop)
+           (when cb (cb)))))
 
 (defn make-control-dialog [menu key title confirm placeholder action]
   (let [text (atom "")]
@@ -598,10 +607,12 @@
                             options]
                      :as db}
                     choice-text
+                    style
                     choice-callback
                     & [{ref :file-browser
                         list-ref :file-browser-list}]]
-  (let [text (atom "")
+  (let [file (atom nil)
+        text (atom "")
         selected (clojure.core/atom #{})
         dir-list (atom [nil])
         populate-dir-list (fn [& [cb]]
@@ -621,8 +632,10 @@
                                 (for [i lst :when i]
                                   {(.-id i) i})))
         confirm-action (fn []
-                         (when (not= @text "")
-                           (choice-callback @text)
+                         (when (condp = style
+                                 :simple (not= @text "")
+                                 :upload @file)
+                           (choice-callback @text @file)
                            (swap! menu #(let [item (peek %)
                                               rest (pop %)]
                                           (if (and (coll? item)
@@ -644,6 +657,7 @@
                  options]
           :as db}
          choice-text
+         style
          choice-callback
          & [{ref :file-browser
              list-ref :file-browser-list}]]
@@ -766,22 +780,61 @@
         [:> Form {:onSubmit #(do (.preventDefault %)
                                  (.stopPropagation %)
                                  (confirm-action))}
-         [:> (oget Form :Group) {:as Row}
-          [:> Col {:xs "auto"}
-           [:> (oget Form :Label) {:column true}
-            strings/FILE]]
-          [:> Col {:xs 10}
-           [:> (oget Form :Control)
-            {:on-change #(reset! text (oget % "target.value"))}]]
-          [:> Col {:xs "auto"}
-           [:> Button
-            {:on-click
-             #(confirm-action)}
-            choice-text]]]]
+         (condp = style
+           :simple [:> (oget Form :Group) {:as Row}
+                    [:> Col {:xs "auto"}
+                     [:> (oget Form :Label) {:column true}
+                      strings/FILE]]
+                    [:> Col {:xs 10}
+                     [:> (oget Form :Control)
+                      {:on-change #(reset! text (oget % "target.value"))}]]
+                    [:> Col {:xs "auto"}
+                     [:> Button
+                      {:on-click
+                       #(confirm-action)}
+                      choice-text]]]
+           :upload [:> (oget Form :Group) {:as Row}
+                    [:> Col {:xs 6}
+                     [:> (oget Form :Control)
+                      {:type "file"
+                       :on-change #(reset! file %)}]]
+                    [:> Col {:xs 5}
+                     [:> (oget Form :Control)
+                      {:placeholder (str strings/NAME " " strings/OPTIONAL)
+                       :on-change #(reset! text (oget % "target.value"))}]]
+                    [:> Col {:xs "auto"}
+                     [:> Button
+                      {:on-click
+                       #(confirm-action)}
+                      choice-text]]])]
         [:> chonky/FileNavbar]
         [:> chonky/FileToolbar]
         [:> chonky/FileList]
         [:> chonky/FileContextMenu]]])))
+
+(defn add-resource-dialog [{:keys [menu
+                                   file-browser-folder]
+                            :as db}
+                           & [{fb-ref :add-resource-file-browser
+                               fb-list-ref :add-resource-file-browser-list}]]
+  [:> Modal {:show (= (peek @menu) :add-resource)
+             :size "xl"
+             :on-hide #(swap! menu pop)}
+   [:> (oget Modal :Header) {:close-button true}
+    [:h3 strings/ADD-RESOURCE]]
+   [file-browser db strings/ADD-lower :upload
+    (fn [optname files]
+      (cb-loop (oget files :target.files)
+               #(let [name (if (= optname "")
+                             (oget %2 :name)
+                             optname)]
+                  (-> (ocall %2 :arrayBuffer)
+                      (.then (fn [v] (add-resource
+                                      db
+                                      (js/path.join @file-browser-folder name)
+                                      v %)))
+                      (.catch js/console.error)))
+               #()))]])
 
 (defn save-dialog [{:keys [menu
                            file-browser-folder
@@ -796,7 +849,7 @@
                :on-hide #(swap! menu pop)}
      [:> (oget Modal :Header) {:close-button true}
       [:h3 strings/SAVE]]
-     [file-browser db strings/SAVE
+     [file-browser db strings/SAVE :simple
       (fn [file]
         (reset! current-folder @file-browser-folder)
         (reset! current-file file)
@@ -817,7 +870,7 @@
    [:> (oget Modal :Header) {:close-button true}
     [:h3 strings/LOAD]]
    [:> (oget Modal :Body)
-    [file-browser db strings/LOAD
+    [file-browser db strings/LOAD :simple
      (fn [file]
        (reset! current-folder @file-browser-folder)
        (reset! current-file file)
@@ -963,6 +1016,7 @@
         load-file (if @file-changed
                     #(swap! menu conj [:confirm-save :load])
                     #(swap! menu conj :load))
+        add-file #(swap! menu conj :add-resource)
         options #(swap! menu conj :options)
         deps #(swap! menu conj :deps)
         pull #(swap! menu conj :pull)
@@ -996,6 +1050,7 @@
          [:> (oget Dropdown :Item) {:on-click save-file} strings/SAVE]
          [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]
          [:> (oget Dropdown :Item) {:on-click load-file} strings/LOAD]
+         [:> (oget Dropdown :Item) {:on-click add-file} strings/ADD-RESOURCE]
          [:> (oget Dropdown :Item) {:on-click options} strings/OPTIONS]
          [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :wipe)}
           strings/NEW-PROJECT]
@@ -1042,6 +1097,7 @@
            :on-click save-file}
           [:> (oget Dropdown :Item) {:on-click save-file-as} strings/SAVE-AS]]
          [:> Button {:on-click load-file} strings/LOAD]
+         [:> Button {:on-click add-file} strings/ADD-lower]
          [:> DropdownButton {:as ButtonGroup
                              :title strings/PROJECT}
           [:> (oget Dropdown :Item) {:on-click #(swap! menu conj :wipe)}
@@ -1396,6 +1452,7 @@
      [new-file-action db]
      [save-dialog db opts]
      [load-dialog db opts]
+     [add-resource-dialog db opts]
      [import-dialog db]
      [confirm-wipe-dialog db]
      [options-dialog db]

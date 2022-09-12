@@ -17,6 +17,9 @@
 (def COPY "Copy")
 (def RENAME "Rename")
 (def RENAME-SELECTION "Rename selection")
+(def UPLOAD "Upload")
+(def ADD-lower "Add")
+(def ADD-RESOURCE "Add Resource")
 
 (def PROJECT "Project")
 (def NEW-PROJECT "New Project")

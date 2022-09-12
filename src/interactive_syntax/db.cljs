@@ -188,6 +188,7 @@
 ;; [:confirm-save <post>] - confirm-save-dialog
 ;; [:save <post>] - save-dialog
 ;; :load - load-dialog
+;; :add-resource - add-resource-dialog
 ;; :options - options-dialog
 ;; :deps - deps-dialog
 ;; :splash - splash-dialog
