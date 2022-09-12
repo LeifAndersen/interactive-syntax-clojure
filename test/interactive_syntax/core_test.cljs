@@ -509,7 +509,7 @@
            ref #js {:current nil}
            _ (reset! (-> db :options :enable-drag-and-drop) false)
            view (rtl/render (r/as-element
-                             [core/file-browser db "Unused" (fn [] nil)
+                             [core/file-browser db "Unused" :simple (fn [] nil)
                               {:file-browser ref}]))]
        (test-do
         db :check
