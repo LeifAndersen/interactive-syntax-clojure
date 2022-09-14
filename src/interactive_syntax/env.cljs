@@ -527,7 +527,7 @@
         on-scroll (and (map? mopts) (:on-scroll mopts))
         scroll-top (and (map? mopts) (:scroll-top mopts))
         scroll-left (and (map? mopts) (:scroll-left mopts))
-        resizable? (and (map? mopts (:resizable? mopts)))]
+        resizable? (and (map? mopts) (:resizable? mopts))]
     (into [:div
            (assoc opts :style {:margin 0
                                :padding 0
@@ -662,7 +662,7 @@
             [err-boundary
              ;;{:ref #(swap! refs assoc :visr-err %)}
              [styled-frame {:class "visr-body"
-                            :resizable? (and for-print (not show-bars))
+                            :resizable? (or (not for-print) show-bars)
                             :on-scroll
                             (fn [event]
                               (let [se (oget event :target.scrollingElement)]
@@ -684,7 +684,7 @@
              [:code "(\u03BB)"]])
           (when @show-code
             [styled-frame {:class "visr-code"
-                           :resizable? (and for-print (not show-bars))}
+                           :resizable? (or (not for-print) show-bars)}
              [:> Form {:onSubmit #(do (.preventDefault %)
                                       (.stopPropagation %))
                        :on-focus (fn []
