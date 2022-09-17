@@ -350,7 +350,7 @@
                      :size "sm"
                      :style {:overflow "visible"}}
            [:thead
-            [:tr
+            [:tr {:key "head"}
              [:th {:col-span 2} strings/PROVIDER]
              [:th {:col-span 3} strings/TOKEN]
              [:th]]]
@@ -361,7 +361,7 @@
                                 #(let [value (oget % "target.value")]
                                    (swap! new-auth assoc-in [i prop] value)))]
                 [:tr {:key (hash i)}
-                 [:td
+                 [:td {:key (random-uuid)}
                   [:> DropdownButton {:title (condp = type
                                                :github "GitHub"
                                                :gitlab "GitLab"
@@ -383,46 +383,55 @@
                        [:> (oget Dropdown :Item)
                         {:on-click #(swap! new-auth assoc-in [i :type] :passwd)}
                         strings/OTHER]]]
-                 [:td [:> (oget Form :Control)
+                 [:td {:key (random-uuid)}
+                  [:> (oget Form :Control)
                        {:placeholder strings/REPO-URL
                         :on-change (on-change :name)
                         :value name}]],
                  (condp contains? type
                    #{:github}
-                   (list [:td {:col-span 2}
+                   (list [:td {:col-span 2
+                               :key (random-uuid)}
                           [:> (oget Form :Control)
                            {:placeholder strings/TOKEN
                             :on-change (on-change :passwd)
                             :value passwd}]]
-                         [:td [:> Button {:href (get token-links type)
+                         [:td {:key (random-uuid)}
+                          [:> Button {:href (get token-links type)
                                           :target "_blank"}
                                strings/GET-TOKEN]])
                    #{:gitlab :bitbucket}
-                   (list [:td [:> (oget Form :Control)
+                   (list [:td {:key (random-uuid)}
+                          [:> (oget Form :Control)
                                {:key (random-uuid)
                                 :placeholder strings/USERNAME
                                 :on-change (on-change :username)
                                 :value username}]]
-                         [:td [:> (oget Form :Control)
+                         [:td {:key (random-uuid)}
+                          [:> (oget Form :Control)
                                {:key (random-uuid)
                                 :placeholder strings/PASSWORD
                                 :on-change (on-change :passwd)
                                 :value passwd}]]
-                         [:td [:> Button {:href (get token-links type)
+                         [:td {:key (random-uuid)}
+                          [:> Button {:href (get token-links type)
                                           :target "_blank"}
                                strings/GET-TOKEN]])
-                   (list [:td [:> (oget Form :Control)
+                   (list [:td {:key (random-uuid)}
+                          [:> (oget Form :Control)
                                {:key (random-uuid)
                                 :placeholder strings/USERNAME
                                 :on-change (on-change :username)
                                 :value username}]]
-                         [:td {:col-span 2}
+                         [:td {:key (random-uuid)}
+                          {:col-span 2}
                           [:> (oget Form :Control)
                                {:key (random-uuid)
                                 :placeholder strings/PASSWORD
                                 :on-change (on-change :passwd)
                                 :value passwd}]]))
-                 [:td [:> Button
+                 [:td {:key (random-uuid)}
+                  [:> Button
                        {:variant "danger"
                         :on-click #(let [na @new-auth]
                                      (reset! new-auth
