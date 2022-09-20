@@ -148,6 +148,10 @@
    :encodeURIComponent js/encodeURIComponent
    :decodeURI js/decodeURI
    :decodeURIComponent js/decodeURIComponent
+   :setTimout js/setTimeout
+   :clearTimeout js/clearTimeout
+   :setInterval js/setInterval
+   :clearInterval js/clearInterval
    :Reflect js/Reflect
    :stopify js/stopify
    :$stopifyArray js/stopifyArray})

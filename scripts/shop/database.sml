@@ -1,5 +1,8 @@
 #lang sml
 
+bezier-js:
+{package: "bezier-js" path: "dist/bezier.js"}
+
 iink-js:
 {package: "iink-js" path: "dist/iink.min.js"}
 
@@ -32,6 +35,9 @@ pepjs:
 
 re-resizable:
 {package: "re-resizable" path: "lib/index.js"}
+
+react-bezier-curve-editor:
+{package: "react-bezier-curve-editor" path: "lib/index.js"}
 
 react-canvas-core:
 {package: "@projectstorm/react-diagrams" path: "dist/index.js"}
