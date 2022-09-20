@@ -148,7 +148,7 @@
    :encodeURIComponent js/encodeURIComponent
    :decodeURI js/decodeURI
    :decodeURIComponent js/decodeURIComponent
-   :setTimout js/setTimeout
+   :setTimeout js/setTimeout
    :clearTimeout js/clearTimeout
    :setInterval js/setInterval
    :clearInterval js/clearInterval
