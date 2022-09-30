@@ -16,7 +16,7 @@ highlightjs-github-css:
 {package: "highlight.js" path: "styles/github.css"}
 
 mathjs:
-{package: "mathjs" path: "dist/math.min.js"}
+{package: "mathjs" path: "lib/browser/math.js"}
 
 marked:
 {package: "marked" path: "marked.min.js"}

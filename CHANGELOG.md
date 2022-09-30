@@ -1,6 +1,7 @@
 # 0.2.1
 
 * Add button to upload resource
+* Upgrade ClojureScript to 1.11
 
 # 0.2.0
 

@@ -19,10 +19,15 @@
    [cljs.tagged-literals]
    [cljs.test :include-macros true]
    [cljs.tools.reader]
+   [cljs.math]
+   [cljs.repl]
    [clojure.walk]
    [clojure.string]
    [clojure.set :refer [union]]
    [clojure.data]
+   [clojure.edn]
+   [clojure.zip]
+   [clojure.reflect]
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
    [react]
@@ -114,11 +119,16 @@
           :tagged_literals cljs.tagged-literals
           :test cljs.test
           :tools {:reader cljs.tools.reader}
+          :math cljs.math
+          :repl cljs.repl
           :user {}}
    :clojure {:walk clojure.walk
              :string clojure.string
              :set clojure.set
-             :data clojure.data}
+             :data clojure.data
+             :edn clojure.edn
+             :zip clojure.zip
+             :reflect clojure.reflect}
    :console js/console
    :navigator js/navigator
    :document js/document
@@ -208,12 +218,14 @@
                       'cljs.reader 'cljs.source-map 'cljs.spec.alpha
                       'cljs.spec.gen.alpha 'cljs.spec.test.alpha 'cljs.stacktrace
                       'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
-                      'clojure.walk 'clojure.string 'clojure.set 'clojure.data
-                      'visr.utils 'visr.private 'reagent.core 'reagent.dom
-                      'goog.object 'oops.core 'garden.core 'garden.color
-                      'garden.compiler 'garden.compression 'garden.selectors
-                      'garden.types 'garden.units 'garden.util 'ajax.core
-                      'ajax.protocols 'alandipert.storage-atom 'cognitect.transit})
+                      'cljs.math 'cljs.repl 'clojure.walk 'clojure.string
+                      'clojure.set 'clojure.data 'clojure.edn 'clojure.zip
+                      'clojure.reflect 'visr.utils 'visr.private 'reagent.core
+                      'reagent.dom 'goog.object 'oops.core 'garden.core
+                      'garden.color 'garden.compiler 'garden.compression
+                      'garden.selectors 'garden.types 'garden.units 'garden.util
+                      'ajax.core 'ajax.protocols 'alandipert.storage-atom
+                      'cognitect.transit})
      :state-injections
      (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
             (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
@@ -233,13 +245,18 @@
             (state-injection 'cljs.spec.test.alpha
                              (ns-publics 'cljs.splec.test.alpha))
             (state-injection 'cljs.tools.reader (ns-publics 'cljs.tools.reader))
+            (state-injection 'cljs.math (ns-publics 'cljs.math))
+            (state-injection 'cljs.repl (ns-publics 'cljs.repl))
             (state-injection 'clojure.walk (ns-publics 'clojure.walk))
             (state-injection 'clojure.string (ns-publics 'clojure.string))
             (state-injection 'clojure.set (ns-publics 'clojure.set))
             (state-injection 'clojure.data (ns-publics 'clojure.data))
+            (state-injection 'clojure.edn (ns-publics 'clojure.edn))
+            (state-injection 'clojure.zip (ns-publics 'clojure.zip))
+            (state-injection 'clojure.reflect (ns-publics 'clojure.reflect))
             (state-injection 'reagent.dom (ns-publics 'reagent.dom))
             (state-injection 'reagent.core (ns-publics 'reagent.core))
-            (state-injection 'goog.object (ns-publics 'goog.object))
+            ;(state-injection 'goog.object (ns-publics 'goog.object))
             (state-injection 'oops.core (ns-publics 'oops.core))
             (state-injection 'garden.core (ns-publics 'garden.core))
             (state-injection 'garden.color (ns-publics 'garden.color))
