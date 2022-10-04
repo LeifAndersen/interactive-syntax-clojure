@@ -19,6 +19,7 @@
    [interactive-syntax.git :as git]
    [cognitect.transit :as t]
    [ajax.core :refer [GET POST PUT]]
+   [ajax.protocols :refer [-body]]
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
@@ -267,7 +268,7 @@
          [:> Col (str strings/SELECT ":")]
          [:> Col
           (into
-           [:> DropdownButton {:title @selected
+           [:> DropdownButton {:title (or @selected "")
                                :as ButtonGroup
                                :variant "secondary"}]
            (for [[name val] @auth]
@@ -298,7 +299,7 @@
          [:> Col (str strings/SELECT ":")]
          [:> Col
           (into
-           [:> DropdownButton {:title @selected
+           [:> DropdownButton {:title (or @selected "")
                                :as ButtonGroup
                                :variant "secondary"}]
            (for [[name val] @auth]
@@ -1508,9 +1509,10 @@
 
 (defn mount-root [& [{:keys [debug]}]]
   (let [search (js/URLSearchParams. js/window.location.search)
-        url (.get search "get-state-from")
+        get-state-url (.get search "get-state-from")
         id (or (.get search "send-state-id") (random-uuid))
         send-state-url (.get search "send-state-to")
+        import-zip-url (.get search "import-zip")
         embedded? (.get search "embedded")
         send-rate (.get search "send-rate")
         fullscreen? (.get search "fullscreen")
@@ -1523,14 +1525,21 @@
         print-height (.get search "print-height")
         msg-counter (atom 1)]
     (cb-thread
-     #(if url
-        (GET url {:handler %})
-        (%))
-     #(cond url
+     #(cond
+        get-state-url (GET get-state-url {:handler %})
+        import-zip-url (GET import-zip-url
+                            {:response-format {:read -body :type :arraybuffer}
+                             :handler %})
+        :else (%))
+     #(cond get-state-url
             (let [{:keys [zip db]} (t/read (t/reader :json) %2)]
               (cb-thread
                #(default-db :temp % db)
                (fn [n db] (fs/import-from-zip db zip (fn [] (% db)))))),
+            import-zip-url
+            (cb-thread
+             #(default-db :temp %)
+             (fn [n db] (fs/import-from-zip db %2 (fn [] (% db))))),
             embedded? (default-db :temp %),
             :else (default-db :local %))
      #(if send-state-url
