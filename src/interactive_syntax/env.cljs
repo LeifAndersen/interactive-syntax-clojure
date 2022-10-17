@@ -631,7 +631,6 @@
       (let [show-visr (r/cursor info [:show-visr])
             show-code (r/cursor info [:show-text])
             show-bars (or show-bars (get-in @info [:show-hider-bars]))]
-        (js/console.log (str "Update code:" @show-code))
         (when-not (contains? @info :show-visr)
           (reset! show-visr (contains? visr-defaults :show-visr)))
         (when-not (contains? @info :show-text)
@@ -653,7 +652,6 @@
                                  [:div (.-stack ret)])))))
         (when @startup
           (let [sc @show-code]
-            (js/console.log "Starting Up...")
             (reset! startup false)
             (reset! show-code false)
             (js/setTimeout #(reset! show-code sc) 0)))
