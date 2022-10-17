@@ -1521,6 +1521,7 @@
         for-print? (.get search "for-print")
         buffer-text (.get search "buffer-text")
         line-numbers (.get search "line-numbers")
+        hider-bars (.get search "show-hider-bars")
         print-width (.get search "print-width")
         print-height (.get search "print-height")
         msg-counter (atom 1)]
@@ -1635,6 +1636,7 @@
                                                     :height (or print-height 1000)
                                                     :theme "neo"
                                                     :lineNumbers line-numbers
+                                                    :hider-bars hider-bars
                                                     :readOnly "nocursor"
                                                     :matchBrackets false
                                                     :showCursorWhenSelecting false

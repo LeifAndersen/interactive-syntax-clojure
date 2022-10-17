@@ -627,7 +627,8 @@
           :as visr-options}
          codemirror-options]
       (let [show-visr (r/cursor info [:show-visr])
-            show-code (r/cursor info [:show-text])]
+            show-code (r/cursor info [:show-text])
+            show-bars (or show-bars (get-in @info [:show-hider-bars]))]
         (when-not (contains? @info :show-visr)
           (reset! show-visr (contains? visr-defaults :show-visr)))
         (when-not (contains? @info :show-text)
