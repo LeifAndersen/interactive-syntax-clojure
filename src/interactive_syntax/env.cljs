@@ -608,10 +608,12 @@
 (defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
                   runtime tag info stx file-src refs mark-box visr-options
                   codemirror-options]
+  (js/console.log "Setup")
   (let [visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)
-        scratch (clojure.core/atom nil)]
+        scratch (clojure.core/atom nil)
+        startup (atom true)]
     (add-watch info ::reset-visr
                (fn [k r o n]
                  (when-not (= o n)
@@ -629,6 +631,7 @@
       (let [show-visr (r/cursor info [:show-visr])
             show-code (r/cursor info [:show-text])
             show-bars (or show-bars (get-in @info [:show-hider-bars]))]
+        (js/console.log (str "Update code:" @show-code))
         (when-not (contains? @info :show-visr)
           (reset! show-visr (contains? visr-defaults :show-visr)))
         (when-not (contains? @info :show-text)
@@ -648,6 +651,12 @@
                                         (oget v :value.stack)],
                                        :else (oget v :value)),
                                  [:div (.-stack ret)])))))
+        (when @startup
+          (let [sc @show-code]
+            (js/console.log "Starting Up...")
+            (reset! startup false)
+            (reset! show-code false)
+            (js/setTimeout #(reset! show-code sc) 0)))
         [:span {:style {:display "inline-block"}}
          [:> ButtonGroup {:aria-label strings/VISR}
           (when (or (not for-print) show-bars)
