@@ -608,7 +608,6 @@
 (defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
                   runtime tag info stx file-src refs mark-box visr-options
                   codemirror-options]
-  (js/console.log "Setup")
   (let [visr-scroll (atom nil)
         visr (atom nil)
         focused? (atom false)

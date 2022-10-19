@@ -77,22 +77,67 @@
 (defn visr->elaborate [visr]
   (symbol (str visr "+elaborate")))
 
+(defn buffer-writes [main buff timeout]
+  (fn [k r o n]
+    (when-not (= o n)
+      (when @timeout
+        (js/clearTimeout @timeout))
+      (reset! timeout
+              (js/setTimeout
+               (fn []
+                 (reset! timeout false)
+                 (reset! main @buff))
+               1000)))))
+
 (defn parse-defvisr [name stx]
-  (loop [props {}
-         rst stx]
-    (if (empty? rst)
-      (assoc props
-             :name+render (visr->render name)
-             :name+elaborate (visr->elaborate name))
-      (let [fst (first rst)]
-        (cond
-          (and (list? fst) (= (first fst) 'render))
-          (recur (assoc props :render (rest fst)) (rest rst)),
-          (and (list? fst) (= (first fst) 'elaborate-fn))
-          (recur (assoc props :elaborate (rest fst) :function? true) (rest rst)),
-          (and (list? fst) (= (first fst) 'elaborate))
-          (recur (assoc props :elaborate (rest fst) :function? false)
-                 (rest rst)))))))
+  (let [this (gensym 'this)]
+    (loop [props {}
+           rst stx]
+      (if (empty? rst)
+        (let [{:keys [elaborate render state state-render-mixin full?]} props]
+          (assoc props
+                 :this this
+                 :render (cond (and state full?)
+                               `([~this]
+                                 (let [~@state-render-mixin]
+                                   ((fn ~render) ~this))),
+                               state
+                               `([~this]
+                                 (let [~@state-render-mixin]
+                                   (fn ~render))),
+                               :else render)
+                 :elaborate (if state
+                              `([{:keys [~@state] :as ~this}]
+                                ((fn ~elaborate) ~this))
+                              elaborate)
+                 :name+render (visr->render name)
+                 :name+elaborate (visr->elaborate name)))
+        (let [fst (first rst)]
+          (cond
+            (and (list? fst) (= (first fst) 'state))
+            (recur (assoc props
+                          :state (for [[k v] (partition 2 (rest fst))] k)
+                          :state-render-mixin
+                          (apply concat
+                                 (for [[k v] (partition 2 (rest fst))]
+                                   `[t# (atom false)
+                                     k# (r/cursor ~this [~(keyword k)])
+                                     _# (when-not (contains? @~this ~(keyword k))
+                                          (reset! k# ~v))
+                                     ~k (atom @k#)
+                                     _# (add-watch ~k :capture
+                                                   (visr.private/buffer-writes
+                                                    k# ~k t#))])))
+                   (rest rst))
+            (and (list? fst) (= (first fst) 'render))
+            (recur (assoc props :render (rest fst) :full? false) (rest rst)),
+            (and (list? fst) (= (first fst) 'render-full))
+            (recur (assoc props :render (rest fst) :full? true) (rest rst)),
+            (and (list? fst) (= (first fst) 'elaborate-fn))
+            (recur (assoc props :elaborate (rest fst) :function? true) (rest rst)),
+            (and (list? fst) (= (first fst) 'elaborate))
+            (recur (assoc props :elaborate (rest fst) :function? false)
+                   (rest rst))))))))
 
 (defn state-injection [lib-name lib-publics]
   {lib-name
@@ -193,6 +238,7 @@
             {:utils {:fs fs}
              :private$ {:print (partial wrap-printer core/print db)
                         :println (partial wrap-printer core/println db)
+                        :buffer_writes buffer-writes
                         :parse_defvisr parse-defvisr
                         :render_visr (partial render-visr db)
                         :css css}}
@@ -228,6 +274,13 @@
                       'cognitect.transit})
      :state-injections
      (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
+            (state-injection 'visr.private
+                             {'print 'visr.private/print
+                              'println 'visr.private/println
+                              'css 'visr.private/css
+                              'render-visr 'visr.private/render-visr
+                              'parse-defvisr 'visr.private/parse-defvisr
+                              'buffer-writes 'visr.private/buffer-writes})
             (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
             (state-injection 'cljs.analyzer.api (ns-publics 'cljs.analyzer.api))
             (state-injection 'cljs.compiler (ns-publics 'cljs.compiler))

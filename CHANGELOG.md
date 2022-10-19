@@ -1,3 +1,8 @@
+# 0.2.2
+
+* Add (optional) state option to defvisr
+* Additional query-args api.
+
 # 0.2.1
 
 * Add button to upload resource
