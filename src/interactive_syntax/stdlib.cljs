@@ -113,31 +113,33 @@
                  :name+render (visr->render name)
                  :name+elaborate (visr->elaborate name)))
         (let [fst (first rst)]
-          (cond
-            (and (list? fst) (= (first fst) 'state))
-            (recur (assoc props
-                          :state (for [[k v] (partition 2 (rest fst))] k)
-                          :state-render-mixin
-                          (apply concat
-                                 (for [[k v] (partition 2 (rest fst))]
-                                   `[t# (atom false)
-                                     k# (r/cursor ~this [~(keyword k)])
-                                     _# (when-not (contains? @~this ~(keyword k))
-                                          (reset! k# ~v))
-                                     ~k (atom @k#)
-                                     _# (add-watch ~k :capture
-                                                   (visr.private/buffer-writes
-                                                    k# ~k t#))])))
-                   (rest rst))
-            (and (list? fst) (= (first fst) 'render))
-            (recur (assoc props :render (rest fst) :full? false) (rest rst)),
-            (and (list? fst) (= (first fst) 'render-full))
-            (recur (assoc props :render (rest fst) :full? true) (rest rst)),
-            (and (list? fst) (= (first fst) 'elaborate-fn))
-            (recur (assoc props :elaborate (rest fst) :function? true) (rest rst)),
-            (and (list? fst) (= (first fst) 'elaborate))
-            (recur (assoc props :elaborate (rest fst) :function? false)
-                   (rest rst))))))))
+          (when (seq? fst)
+            (condp contains? (first fst)
+              #{'state :state}
+              (recur (assoc props
+                            :state (for [[k v] (partition 2 (rest fst))] k)
+                            :state-render-mixin
+                            (apply concat
+                                   (for [[k v] (partition 2 (rest fst))]
+                                     `[t# (atom false)
+                                       k# (r/cursor ~this [~(keyword k)])
+                                       _# (when-not (contains? @~this ~(keyword k))
+                                            (reset! k# ~v))
+                                       ~k (atom @k#)
+                                       _# (add-watch ~k :capture
+                                                     (visr.private/buffer-writes
+                                                      k# ~k t#))])))
+                     (rest rst))
+              #{'render :render}
+              (recur (assoc props :render (rest fst) :full? false) (rest rst)),
+              #{'render-full :render-full}
+              (recur (assoc props :render (rest fst) :full? true) (rest rst)),
+              #{'elaborate-fn :elaborate-fn}
+              (recur (assoc props :elaborate (rest fst) :function? true)
+                     (rest rst)),
+              #{'elaborate :elaborate}
+              (recur (assoc props :elaborate (rest fst) :function? false)
+                     (rest rst)))))))))
 
 (defn state-injection [lib-name lib-publics]
   {lib-name
