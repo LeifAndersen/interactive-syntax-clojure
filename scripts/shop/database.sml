@@ -15,6 +15,9 @@ highlightjs-css:
 highlightjs-github-css:
 {package: "highlight.js" path: "styles/github.css"}
 
+luxon:
+{package: "luxon" path: "build/global/luxon.js"}
+
 mathjs:
 {package: "mathjs" path: "lib/browser/math.js"}
 
@@ -32,6 +35,9 @@ openpgp:
 
 pepjs:
 {package: "pepjs" path: "dist/pep.js"}
+
+prismjs:
+{package: "prismjs" path: "prism.js"}
 
 re-resizable:
 {package: "re-resizable" path: "lib/index.js"}
