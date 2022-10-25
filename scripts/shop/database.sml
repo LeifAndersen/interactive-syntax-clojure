@@ -3,6 +3,9 @@
 bezier-js:
 {package: "bezier-js" path: "dist/bezier.js"}
 
+file-type:
+{package: "file-type" path: "browser.js"}
+
 iink-js:
 {package: "iink-js" path: "dist/iink.min.js"}
 

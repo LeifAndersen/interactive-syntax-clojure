@@ -1,4 +1,5 @@
-const path = require('path')
+const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
     mode: "production",
@@ -50,5 +51,10 @@ module.exports = {
             zlib: require.resolve("browserify-zlib"),
             fs: false,
         }
-    }
+    },
+    plugins: [
+        new webpack.NormalModuleReplacementPlugin(/node:/, (resource) => {
+            resource.request = resource.request.replace(/^node:/, "");
+        }),
+    ]
 };
