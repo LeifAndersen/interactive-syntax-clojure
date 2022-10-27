@@ -322,7 +322,7 @@
               :auth (->DBAtom backed-db [:auth])
               :input (->DBAtom backed-db [:current :input])
               :output (atom "") ;;(->DBAtom backed-db [:current :output])
-              :buffer-mode (-> DBAtom backed-db [:current :mode])
+              :buffer-mode (->DBAtom backed-db [:current :mode])
               :ns (->DBAtom backed-db [:current :ns])
               :repl (atom [])
               :current-folder (->DBAtom backed-db [:current :folder])
