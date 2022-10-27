@@ -168,6 +168,7 @@
 (s/def ::split string?)
 (s/def ::ns any?)
 (s/def ::repl any?)
+(s/def ::mode string?) ;; or false/null
 (s/def ::buffer (s/keys :req-un [::input
                                  ::output
                                  ::folder
@@ -175,6 +176,7 @@
                                  ::changed?
                                  ::split
                                  ::ns
+                                 ::mode
                                  ::repl]))
 
 (s/def ::buffers (s/+ ::buffer))
@@ -253,6 +255,7 @@
              :persist-test ""
              :temp "")
     :output ""
+    :mode false
     :split "50%"
     :cursor nil
     :scroll {}}))
@@ -319,6 +322,7 @@
               :auth (->DBAtom backed-db [:auth])
               :input (->DBAtom backed-db [:current :input])
               :output (atom "") ;;(->DBAtom backed-db [:current :output])
+              :buffer-mode (-> DBAtom backed-db [:current :mode])
               :ns (->DBAtom backed-db [:current :ns])
               :repl (atom [])
               :current-folder (->DBAtom backed-db [:current :folder])

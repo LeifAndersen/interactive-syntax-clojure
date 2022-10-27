@@ -90,7 +90,7 @@
        "this project's GitHub page"] "."]
      [:li "This dialog will reappear when new versions are released,"
       " or you can view it again in " [:code "Project > About"] "."]
-     [:li [:a {:href "https://prl.ccs.neu.edu/blog/2022/01/06/introducing-visual-and-interactive-syntax-realized-visr-for-clojurescript-and-javascript/"}
+     [:li [:a {:href "https://blog.visr.pl/posts/intro/"}
            "Click here for a tutorial on this prototype."]]]
     [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
 
@@ -1520,6 +1520,8 @@
         editor-reset-ref (atom nil)
         for-print? (.get search "for-print")
         buffer-text (.get search "buffer-text")
+        buffer-theme (.get search "buffer-theme")
+        buffer-mode (.get search "buffer-mode")
         line-numbers (.get search "line-numbers")
         hider-bars (.get search "show-hider-bars")
         print-width (.get search "print-width")
@@ -1630,20 +1632,22 @@
                "run-buffer"
                (env/eval-buffer db)
                nil))))
-       (cond for-print? (d/render [editor-view db
-                                   {:for-print for-print?
-                                    :print-options {:width (or print-width 1000)
-                                                    :height (or print-height 1000)
-                                                    :theme "neo"
-                                                    :lineNumbers line-numbers
-                                                    :hider-bars hider-bars
-                                                    :readOnly "nocursor"
-                                                    :matchBrackets false
-                                                    :showCursorWhenSelecting false
-                                                    :viewportMargin ##Inf
-                                                    :gutters
-                                                    #js ["CodeMirror-linenumbers"]
-                                                    :foldGutter false}}]
+       (cond for-print? (d/render
+                         [editor-view db
+                          {:for-print for-print?
+                           :print-options {:width (or print-width 1000)
+                                           :height (or print-height 1000)
+                                           :theme (or buffer-theme "neo")
+                                           :lineNumbers line-numbers
+                                           :hider-bars hider-bars
+                                           :readOnly "nocursor"
+                                           :matchBrackets false
+                                           :showCursorWhenSelecting false
+                                           :viewportMargin ##Inf
+                                           :mode (or buffer-mode "clojure")
+                                           :gutters
+                                           #js ["CodeMirror-linenumbers"]
+                                           :foldGutter false}}]
                                   (.getElementById js/document "app")),
              fullscreen? (d/render [editor-view db]
                                    (.getElementById js/document "app")),

@@ -27,3 +27,7 @@ window.stopifyArray = function(array) {
 
 import asyncCompile from "./stopify-compile.worker.js";
 window.StopifyWorker = asyncCompile;
+
+function requireAll(r) { r.keys().forEach(r); }
+requireAll(require.context("codemirror/mode/", true, /\.js$/));
+requireAll(require.context("codemirror/theme/"));
