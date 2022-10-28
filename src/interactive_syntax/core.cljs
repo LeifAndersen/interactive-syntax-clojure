@@ -1243,7 +1243,9 @@
                   :height "max-content"}
                  {:height "100%"})}
       [:> cm/UnControlled
-       {:options (codemirror-options)
+       {:options (if for-print?
+                   (into (codemirror-options) print-options)
+                   (codemirror-options))
         :onChange (fn [this operation value]
                     (reset! file-changed true)
                     (reset! input value)
@@ -1523,6 +1525,7 @@
         buffer-theme (.get search "buffer-theme")
         buffer-mode (.get search "buffer-mode")
         line-numbers (.get search "line-numbers")
+        font-size (.get search "font-size")
         hider-bars (.get search "show-hider-bars")
         print-width (.get search "print-width")
         print-height (.get search "print-height")
@@ -1548,7 +1551,8 @@
      #(if send-state-url
         (fs/state->serializable %2 (fn [res] (% %2 res)))
         (% %2))
-     (fn [next {:keys [fs menu input backing file-changed]
+     (fn [next {{db-font-size :font-size} :options
+                :keys [fs menu input backing file-changed]
                 :as db} & [serialized-state]]
        (when debug
          (set! js/window.git isomorphic-git)
@@ -1586,6 +1590,8 @@
                                   "*"))]
            (when buffer-text
              (reset! input buffer-text))
+           (when font-size
+             (reset! db-font-size font-size))
            (add-watch file-changed ::embedded-state-changed
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
@@ -1645,6 +1651,7 @@
                                            :showCursorWhenSelecting false
                                            :viewportMargin ##Inf
                                            :mode (or buffer-mode "clojure")
+                                           :font-size (or font-size 12)
                                            :gutters
                                            #js ["CodeMirror-linenumbers"]
                                            :foldGutter false}}]
