@@ -55,7 +55,7 @@
    [ajax.core]
    [ajax.protocols]
    [alandipert.storage-atom]
-   ))
+   [zprint.core]))
 
 (def injectable (slurp "src/injectable/core.inject"))
 
@@ -256,6 +256,7 @@
                      :types garden.types
                      :units garden.units
                      :util garden.util}
+            :zprint {:core zprint.core}
             :ajax {:core ajax.core
                    :protocols ajax.protocols}
             :cognitect {:transit cognitect.transit}
@@ -272,8 +273,8 @@
                       'reagent.dom 'goog.object 'oops.core 'garden.core
                       'garden.color 'garden.compiler 'garden.compression
                       'garden.selectors 'garden.types 'garden.units 'garden.util
-                      'ajax.core 'ajax.protocols 'alandipert.storage-atom
-                      'cognitect.transit})
+                      'zprint.core 'ajax.core 'ajax.protocols
+                      'alandipert.storage-atom 'cognitect.transit})
      :state-injections
      (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
             (state-injection 'visr.private
@@ -322,6 +323,7 @@
             (state-injection 'garden.types (ns-publics 'garden.types))
             (state-injection 'garden.units (ns-publics 'garden.units))
             (state-injection 'garden.util (ns-publics 'garden.util))
+            (state-injection 'zprint.core (ns-publics 'zprint.core))
             (state-injection 'ajax.core (ns-publics 'ns.core))
             (state-injection 'ajax.protocols (ns-publics 'ajax.protocols))
             (state-injection 'cognitect.transit (ns-publics 'cognitect.transit))
