@@ -41,6 +41,7 @@
    [popper.js]
    [bootstrap]
    [alandipert.storage-atom :as storage]
+   [zprint.core :as zp :refer [zprint zprint-str]]
    [react-bootstrap :refer [Button ButtonGroup SplitButton Spinner
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal Table]]
@@ -602,8 +603,7 @@
                                (pr-str err)]]])))})))
 
 (defn stx->stx-str [stx]
-  (binding [cljs.pprint/*print-right-margin* 40]
-    (with-out-str (pprint stx))))
+  (zprint-str stx 40))
 
 (defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
                   runtime tag info stx file-src refs mark-box visr-options

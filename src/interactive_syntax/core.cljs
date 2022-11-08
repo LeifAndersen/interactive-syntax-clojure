@@ -1243,7 +1243,7 @@
                   :height "max-content"}
                  {:height "100%"})}
       [:> cm/UnControlled
-       {:options (if for-print?
+       {:options (if for-print
                    (into (codemirror-options) print-options)
                    (codemirror-options))
         :onChange (fn [this operation value]
