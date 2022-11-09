@@ -948,8 +948,7 @@
 (ns test.use
   (:require-macros [test.core])
   (:require [test.core]))
-(println (+ ^{:editor test.core/Counter :show-visr true :show-text false}(test.core/Counter+elaborate 330
-) 5))"]
+(println (+ ^{:editor test.core/Counter :show-visr true :show-text false}(test.core/Counter+elaborate 330) 5))"]
        (test-do
         db :check
         :async #(fs.mkdir (.join js/path files-root "test") %)
@@ -1064,7 +1063,7 @@
            (default-db :temp),
            new-input (str "A" stdlib/empty-visr "B"),
            open-input (str "A"
-                           (stdlib/write-visr "visr.core/empty-visr" "{}\n"
+                           (stdlib/write-visr "visr.core/empty-visr" "{}"
                                               {:show-visr true :show-text false})
                            "B")
            _ (reset! input new-input),
@@ -1433,8 +1432,7 @@
 (+ 1 2)"
            new-use "
 (ns test.use (:require [test.core :include-macros true]))
-^{:editor test.core/multi-update :show-visr true :show-text false}(test.core/multi-update+elaborate {:a 42, :b 819}
-)
+^{:editor test.core/multi-update :show-visr true :show-text false}(test.core/multi-update+elaborate {:a 42, :b 819})
 (+ 1 2)"
            view (rtl/render (r/as-element [core/home-page db
                                            {:editor editor
@@ -1486,8 +1484,7 @@
            use2 "
 (ns test.use
  (:require [test.core :include-macros true]))
-^{:editor test.core/DeepUp :show-visr true :show-text false}(test.core/DeepUp+elaborate {:a {:key 42}}
-)
+^{:editor test.core/DeepUp :show-visr true :show-text false}(test.core/DeepUp+elaborate {:a {:key 42}})
 (+ 1 2)"
            editor (atom nil),
            resetting (atom nil),
@@ -1635,8 +1632,7 @@
            use2 "
 (ns test.use
   (:require [test.core :include-macros true]))
-^{:editor test.core/Edi2 :show-visr true :show-text true}(test.core/Edi2+elaborate {}
-)"
+^{:editor test.core/Edi2 :show-visr true :show-text true}(test.core/Edi2+elaborate {})"
            editor (atom nil),
            repl (atom nil),
            resetting (atom nil),

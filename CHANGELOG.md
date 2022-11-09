@@ -2,6 +2,7 @@
 
 * Add (optional) state option to defvisr
 * Additional query-args api.
+* Use zprint for nicer visr text printing
 
 # 0.2.1
 
