@@ -1527,6 +1527,7 @@
         line-numbers (.get search "line-numbers")
         font-size (.get search "font-size")
         hider-bars (.get search "show-hider-bars")
+        visual-syntax (.get search "visual-syntax")
         print-width (.get search "print-width")
         print-height (.get search "print-height")
         msg-counter (atom 1)]
@@ -1551,7 +1552,8 @@
      #(if send-state-url
         (fs/state->serializable %2 (fn [res] (% %2 res)))
         (% %2))
-     (fn [next {{db-font-size :font-size} :options
+     (fn [next {{db-font-size :font-size
+                 :keys [show-editors]} :options
                 :keys [fs menu input backing file-changed]
                 :as db} & [serialized-state]]
        (when debug
@@ -1592,6 +1594,8 @@
              (reset! input buffer-text))
            (when font-size
              (reset! db-font-size font-size))
+           (when (= visual-syntax "false")
+             (reset! show-editors false))
            (add-watch file-changed ::embedded-state-changed
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
