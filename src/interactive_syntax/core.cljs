@@ -1530,6 +1530,7 @@
         visual-syntax (.get search "visual-syntax")
         print-width (.get search "print-width")
         print-height (.get search "print-height")
+        debug (or debug (.get search "debug"))
         msg-counter (atom 1)]
     (cb-thread
      #(cond
@@ -1596,6 +1597,8 @@
              (reset! db-font-size font-size))
            (when (= visual-syntax "false")
              (reset! show-editors false))
+           (when debug
+             (set! js/window.ready true))
            (add-watch file-changed ::embedded-state-changed
                       (fn [k r o n]
                            (when-not (or @resetting? (= o n))
@@ -1615,6 +1618,8 @@
                               (swap! menu pop)
                               (recur (peek @menu))))
                           (swap! menu pop)
+                          (when debug
+                            (set! js/window.ready true))
                           (reset! resetting? false))))
            (send-full)
            (.addEventListener
@@ -1628,6 +1633,8 @@
                      new-backing (or (t/read (t/reader :json)
                                              (-> % .-data .-patch))
                                      new-backing)]
+                 (when debug
+                   (set! js/window.ready false))
                  (reset! resetting? true)
                  (cb-thread
                   #(fs/wipe-project! db %)
