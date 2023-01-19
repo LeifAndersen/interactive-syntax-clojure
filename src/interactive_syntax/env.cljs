@@ -631,7 +631,7 @@
             show-bars (or show-bars (get-in @info [:show-hider-bars]))
             fmt-visr-text (fn []
                             (str "^:visr";(stx->stx-str @info)
-                                 "\n(" @name " " (stx->stx-str @stx) ")"))]
+                                 "\n(" @name "\n" (stx->stx-str @stx) ")"))]
         (when-not (contains? @info :show-visr)
           (reset! show-visr (contains? visr-defaults :show-visr)))
         (when-not (contains? @info :show-text)
