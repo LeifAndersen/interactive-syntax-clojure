@@ -484,13 +484,12 @@
       (recur (inc (.indexOf str "\n" i))
              (dec line)))))
 
-(defn mk-editor [tag {:keys [editor] :as data}
-                 stx runtime sandbox fs file-src cb & [visr-run-ref]]
-  (let [ns (namespace editor)
+(defn mk-editor [tag name info stx runtime sandbox fs file-src cb & [visr-run-ref]]
+  (let [ns (namespace @name)
         mk-fn (fn [res]
                 (if (and res (:error res))
                   (cb res)
-                  (eval-str (str "[" (stdlib/visr->render editor)
+                  (eval-str (str "[" (stdlib/visr->render @name)
                                  " (js/visr->atom " (pr-str tag)
                                  ")(js/visr->atom-info " (pr-str tag)")]")
                             {:runtime runtime
@@ -606,7 +605,7 @@
   (zprint-str stx 40))
 
 (defn visr-hider [{{:keys [visr-defaults sandbox]} :options :as db}
-                  runtime tag info stx file-src refs mark-box visr-options
+                  runtime tag name info stx file-src refs mark-box visr-options
                   codemirror-options]
   (let [visr-scroll (atom nil)
         visr (atom nil)
@@ -622,14 +621,17 @@
                  (when-not (= o n)
                    (reset! visr nil))))
     (fn [{:keys [fs] :as db}
-         runtime tag info stx file-src refs mark-box
+         runtime tag name info stx file-src refs mark-box
          {for-print :for-print
           show-bars :hider-bars
           :as visr-options}
          codemirror-options]
       (let [show-visr (r/cursor info [:show-visr])
             show-code (r/cursor info [:show-text])
-            show-bars (or show-bars (get-in @info [:show-hider-bars]))]
+            show-bars (or show-bars (get-in @info [:show-hider-bars]))
+            fmt-visr-text (fn []
+                            (str "^:visr";(stx->stx-str @info)
+                                 "\n(" @name " " (stx->stx-str @stx) ")"))]
         (when-not (contains? @info :show-visr)
           (reset! show-visr (contains? visr-defaults :show-visr)))
         (when-not (contains? @info :show-text)
@@ -639,7 +641,7 @@
                                     :variant "primary"
                                     :role "status"}
                         [:span {:className "visually-hidden"} "Loading"]])
-          (mk-editor tag @info @stx runtime sandbox fs file-src
+          (mk-editor tag name @info @stx runtime sandbox fs file-src
                      (fn [ret]
                        (reset! visr
                                (if-let [v (:value ret)]
@@ -695,40 +697,18 @@
              [:> Form {:onSubmit #(do (.preventDefault %)
                                       (.stopPropagation %))
                        :on-focus (fn []
-                                   (reset! scratch {:name (:editor @info)
-                                                    :value (stx->stx-str @stx)})
+                                   (reset! scratch (fmt-visr-text))
                                    (reset! focused? true))
                        :on-blur (fn []
-                                  (swap! info assoc :editor (:name @scratch))
-                                  (reset! stx
-                                          (let [v (:value @scratch)]
-                                            (try (read-string v)
-                                                 (catch js/Error e {:value v}))))
-                                  (reset! focused? false))
+                                  (try
+                                    (let [v (read-string @scratch)]
+                                      (reset! name (first v))
+                                      (reset! stx (second v))
+                                      (swap! info (meta v)))
+                                    (reset! focused? false)))
                        :style {:height "100%"
                                :display "flex"
                                :flex-flow "column"}}
-              [:> (oget Form :Group) {:as Row
-                                      :style {:margin "0"
-                                              :flex "0 1 auto"}}
-               [:> Col {:xs "1"
-                        :style {:padding "0"}}
-                [:> (oget Form :Label) {:column true
-                                        :style {:padding "0"}}
-                 (str strings/VISR ":")]]
-               [:> Col {:xs "11"
-                        :style {:padding-right "0"}}
-                [:> (oget Form :Control)
-                 {:size "sm"
-                  :style {:padding "0"
-                          :min-height "0"}
-                  :aria-label strings/VISR
-                  :default-value (str (:editor @info))
-                  :on-change #(let [value (oget % "target.value")]
-                                (when (valid-id? value)
-                                  (if @focused?
-                                    (swap! scratch assoc :name (symbol value))
-                                    (swap! info assoc :editor (symbol value)))))}]]]
               [:> (oget Form :Group) {:as Row
                                       :style {:margin "0"
                                               :flex "1 1 auto"}}
@@ -738,14 +718,15 @@
                  {:options (or codemirror-options (codemirror-options db))
                   :onChange (fn [this operation value]
                               (if @focused?
-                                (swap! scratch assoc :value value)
-                                (reset! stx
-                                        (try (read-string value)
-                                             (catch js/Error e {:value value})))))
+                                (reset! scratch value)))
                   :editorDidMount (fn [e]
                                     (-> e (ocall "getDoc")
                                         (ocall "setValue"
-                                               (stx->stx-str @stx))))}]]]]])]]))))
+                                               (fmt-visr-text))))}]]]]])]]))))
+
+(defn editor-or-visr [form]
+  (or (:editor form)
+      (:visr form)))
 
 (defn reset-editors! [source set-text editor instances operation cache queue
                       codemirror-options
@@ -816,11 +797,16 @@
                  (when (coll? form)
                    ((fn rec [form]
                       (let [stxinfo (meta form)]
-                        (when (:editor stxinfo)
-                          (let [[k {:keys [visr stx info file-src mark refs]}]
+                        (when (editor-or-visr stxinfo)
+                          (let [[k {:keys [visr name stx info file-src mark refs]}]
                                 (some (fn [[k v]]
                                         (when (= @(:stx v) (second form)) [k v]))
                                       @old-instances),
+                                name (or name
+                                         (atom (if (symbol?
+                                                    (editor-or-visr stxinfo))
+                                                 (editor-or-visr stxinfo)
+                                                 (first form))))
                                 visr (or visr (.createElement js/document "span"))
                                 info (or info (atom stxinfo))
                                 stx (or stx (atom (second form)))
@@ -837,7 +823,7 @@
                                      (:end-line stxinfo)
                                      (:end-column stxinfo)),
                                 commit! #(let [s (stdlib/write-visr
-                                                  (:editor @info)
+                                                  @name
                                                   (stx->stx-str @stx)
                                                   @info)
                                                ret (str (subs source 0 start)
@@ -851,12 +837,12 @@
                                 (remove-watch stx ::commit)
                                 (when @fresh-cache
                                   (swap! info assoc :visr-internal-refresh true))
-                                (when-not (namespace (get @info :editor))
+                                (when-not (namespace @name)
                                   (reset! file-src source)
                                   (swap! info assoc :visr-internal-refresh true))
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
-                              (d/render [visr-hider db runtime tag info stx
+                              (d/render [visr-hider db runtime tag name info stx
                                          file-src refs mark editor-options
                                          codemirror-options]
                                         visr))
@@ -876,6 +862,7 @@
                                      {:mark mark
                                       :commit! commit!
                                       :visr visr
+                                      :name name
                                       :info info
                                       :file-src file-src
                                       :stx stx

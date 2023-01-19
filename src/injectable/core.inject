@@ -6,17 +6,20 @@
 (def css private/css)
 (def render-visr private/render-visr)
 (defmacro defvisr [name & props]
-  (let [{:keys [render
-                elaborate
-                function?
-                name+render
-                name+elaborate]} (private/parse-defvisr name props)]
+  (let [{:keys [render elaborate function? name+render name+elaborate
+                name+elaborate-alternate]} (private/parse-defvisr name props)]
     `(do (defn ~name+render
            ~render)
+         ~(and name+elaborate-alternate
+               (if function?
+                 `(defn ~name+elaborate-alternate
+                    ~elaborate)
+                 `(defmacro ~name+elaborate-alternate
+                    ~elaborate)))
          ~(if function?
             `(defn ~name+elaborate
                ~elaborate)
             `(defmacro ~name+elaborate
                ~elaborate)))))
 (defn empty-visr+render [this] [:div (:message @this)])
-(defmacro empty-visr+elaborate [this] (:message this))
+(defmacro empty-visr [this] (:message this))

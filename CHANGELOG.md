@@ -1,3 +1,12 @@
+# 0.3.0
+
+* Major change in the way interactive-syntax extensions are constructed.
+* Keeps backwards compatibility for now, will likely break in 0.4.0.
+* View displays _all_ of the extension, including the elaborator.
+* Removed extension name field.
+* Can use ^:editor instead of ^{:editor true}
+* Can use ^:visr instead of ^:editor
+
 # 0.2.2
 
 * Add (optional) state option to defvisr

@@ -75,6 +75,10 @@
   (symbol (str visr "+render")))
 
 (defn visr->elaborate [visr]
+  (symbol visr))
+
+;; Deprecated, should be removed
+(defn visr->elaborate-alternate [visr]
   (symbol (str visr "+elaborate")))
 
 (defn buffer-writes [main buff timeout]
@@ -111,6 +115,7 @@
                                 ((fn ~elaborate) ~this))
                               elaborate)
                  :name+render (visr->render name)
+                 :name+elaborate-alternate (visr->elaborate-alternate name)
                  :name+elaborate (visr->elaborate name)))
         (let [fst (first rst)]
           (when (seq? fst)
@@ -334,7 +339,7 @@
 (defn write-visr [visr state & [{:keys [show-visr show-text]}]]
   (let [show-visr (or show-visr false)
         show-text (or show-text false)]
-    (str "^{:editor " visr " :show-visr " show-visr " :show-text " show-text
+    (str "^{:visr " true " :show-visr " show-visr " :show-text " show-text
          "}(" (visr->elaborate visr) " " (str state) ")")))
 
 (def shadow-fs
