@@ -630,8 +630,8 @@
             show-code (r/cursor info [:show-text])
             show-bars (or show-bars (get-in @info [:show-hider-bars]))
             fmt-visr-text (fn []
-                            (str "^:visr";(stx->stx-str @info)
-                                 "\n(" @name "\n" (stx->stx-str @stx) ")"))]
+                            (str "^:visr\n";(stx->stx-str @info)
+                                 (stx->stx-str (list @name @stx))))]
         (when-not (contains? @info :show-visr)
           (reset! show-visr (contains? visr-defaults :show-visr)))
         (when-not (contains? @info :show-text)
