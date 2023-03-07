@@ -121,6 +121,7 @@
 (defn deps->env [{:keys [deps fs output] :as db} cb]
   (let [system js/System ;(new (.-constructor js/System))
         in-use-token (atom false)]
+    ;;(set! js/window.dependencies #js {})
     ((fn rec [denv dloaded djs durls deps]
        (set! js/window.visr_dynamic_load (partial dynamic-lookup durls))
        (if (empty? deps)
@@ -137,13 +138,17 @@
                (.register blob-url-registry in-use-token url)
                (if load?
                  (-> system (ocall :import url)
-                     (.then #(rec (assoc denv (munge name) (.-default %))
-                                  (conj dloaded (symbol name))
-                                  (assoc djs (str name)
-                                         {:global-exports {(symbol name)
-                                                           (munge name)}})
-                                  (assoc durls name url)
-                                  rest-deps))
+                     (.then (fn [d]
+                              (oset!+ js/window [:!dependencies
+                                                 (str "!" (munge name))]
+                                      (.-default d))
+                              (rec (assoc denv (munge name) (.-default d))
+                                   (conj dloaded (symbol name))
+                                   (assoc djs (str name)
+                                          {:global-exports {(symbol name)
+                                                            (munge name)}})
+                                   (assoc durls name url)
+                                   rest-deps)))
                      (.catch (fn [err]
                                (reset! output #queue
                                        [(str "Cannot load dependency " name ":")

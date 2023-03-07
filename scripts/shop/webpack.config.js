@@ -1,13 +1,14 @@
 const path = require('path');
 const webpack = require('webpack');
+const extraExternals = require('./extra-externals.js');
 
 module.exports = {
     mode: "production",
     //devtool: "inline-source-map",
-    externals: {
+    externals: Object.assign({
         "react": "React",
         "react-dom": "ReactDOM"
-    },
+    }, extraExternals),
     externalsType: "this",
     output: {
         library: {

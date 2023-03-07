@@ -3,6 +3,24 @@
 bezier-js:
 {package: "bezier-js" path: "dist/bezier.js"}
 
+blockly:
+{package: "blockly" path: "blockly.min.js"}
+
+blockly-blocks:
+{package: "blockly" path: "blocks.js" externals: {blockly: "blockly"}}
+
+blockly-core:
+{package: "blockly" path: "core.js"}
+
+blockly-javascript:
+{package: "blockly" path: "javascript.js" externals: {blockly: "blockly"}}
+
+blockly-lua:
+{package: "blockly" path: "lua.js" externals: {blockly: "blockly"}}
+
+blockly-python:
+{package: "blockly" path: "python.js" externals: {blockly: "blockly"}}
+
 file-type:
 {package: "file-type" path: "browser.js"}
 
@@ -47,6 +65,11 @@ re-resizable:
 
 react-bezier-curve-editor:
 {package: "react-bezier-curve-editor" path: "lib/index.js"}
+
+react-blockly:
+{package: "react-blockly" path: "dist/index.js"
+ externals: {blockly: "blockly_core"
+             blockly/blocks: "blockly_blocks"}}
 
 react-canvas-core:
 {package: "@projectstorm/react-diagrams" path: "dist/index.js"}

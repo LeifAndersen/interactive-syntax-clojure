@@ -3,7 +3,8 @@
 
 (require racket/runtime-path
          racket/cmdline
-         file/glob)
+         file/glob
+         json)
 
 (define npm (find-executable-path "npm"))
 (define npx (find-executable-path "npx"))
@@ -55,9 +56,16 @@
         (printf "Setting up environment...~n"))
       (copy-file webpack-config "webpack.config.js")
       (copy-file dynamic-loader "dynamic-loader.js")
+      (with-output-to-file "extra-externals.js"
+        (λ ()
+          (printf "module.exports = ~a;"
+                  (if (dict-has-key? d 'externals)
+                      (jsexpr->string (for/hash ([(k v) (in-dict (dict-ref d 'externals))])
+                                        (values k (list "dependencies" v))))
+                      "{}"))))
       (system* npm "install" "--save-dev" "-y" "webpack" "webpack-cli" "css-loader"
                "style-loader" "file-loader" "raw-loader" "babel-loader" "assert" 
-	       "buffer" "stream-browserify" "os-browserify" "path-browserify"
+               "buffer" "stream-browserify" "os-browserify" "path-browserify"
                "browserify-zlib" "crypto-browserify" "@babel/core"
                "@babel/preset-env" "@babel/preset-react")
       (when verbose
