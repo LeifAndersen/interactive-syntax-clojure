@@ -77,7 +77,7 @@
 (defn visr->elaborate [visr]
   (symbol (str visr "+elaborate")))
 
-(defn buffer-writes [main buff timeout]
+(defn buffer-writes [main buff timeout & [timeout-limit]]
   (fn [k r o n]
     (when-not (= o n)
       (when @timeout
@@ -87,7 +87,7 @@
                (fn []
                  (reset! timeout false)
                  (reset! main @buff))
-               1000)))))
+               (or timeout-limit 1000))))))
 
 (defn parse-defvisr [name stx]
   (let [this (gensym 'this)]
@@ -120,15 +120,19 @@
                             :state (for [[k v] (partition 2 (rest fst))] k)
                             :state-render-mixin
                             (apply concat
-                                   (for [[k v] (partition 2 (rest fst))]
-                                     `[t# (atom false)
-                                       k# (r/cursor ~this [~(keyword k)])
-                                       _# (when-not (contains? @~this ~(keyword k))
-                                            (reset! k# ~v))
-                                       ~k (atom @k#)
-                                       _# (add-watch ~k :capture
-                                                     (visr.private/buffer-writes
-                                                      k# ~k t#))])))
+                                   (for [[k val-shell] (partition 2 (rest fst))]
+                                     (let [{:keys [value timeout]
+                                            :or {value val-shell timeout 1000}}
+                                           val-shell]
+                                       `[t# (atom false)
+                                         k# (r/cursor ~this [~(keyword k)])
+                                         _# (when-not (contains? @~this
+                                                                 ~(keyword k))
+                                              (reset! k# ~value))
+                                         ~k (atom @k#)
+                                         _# (add-watch ~k :capture
+                                                       (visr.private/buffer-writes
+                                                        k# ~k t# ~timeout))]))))
                      (rest rst))
               #{'render :render}
               (recur (assoc props :render (rest fst) :full? false) (rest rst)),

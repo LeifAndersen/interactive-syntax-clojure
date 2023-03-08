@@ -1,3 +1,8 @@
+# 0.2.3
+
+* Add the ability to set the timeout for state variables
+* Dep builder can now refer to other deps
+
 # 0.2.2
 
 * Add (optional) state option to defvisr

@@ -4,7 +4,7 @@ bezier-js:
 {package: "bezier-js" path: "dist/bezier.js"}
 
 blockly:
-{package: "blockly" path: "blockly.min.js"}
+{package: "blockly" path: "index.js"}
 
 blockly-blocks:
 {package: "blockly" path: "blocks.js" externals: {blockly: "blockly"}}
@@ -68,8 +68,7 @@ react-bezier-curve-editor:
 
 react-blockly:
 {package: "react-blockly" path: "dist/index.js"
- externals: {blockly: "blockly_core"
-             blockly/blocks: "blockly_blocks"}}
+ externals: {blockly: "blockly"}}
 
 react-canvas-core:
 {package: "@projectstorm/react-diagrams" path: "dist/index.js"}

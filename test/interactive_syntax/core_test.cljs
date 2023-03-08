@@ -1898,6 +1898,122 @@
         :set [:output] #queue ["Outer Body"] :check
         :done #(done))))))
 
+(deftest test-state
+  (testing "Test that :state updates as expected"
+    (async
+     done
+     (let [{{:keys [run-functions]} :options :keys [input output running?] :as db}
+           (default-db :temp),
+           editor (atom nil),
+           resetting (atom nil),
+           buff "
+(ns test.core (:require [react-bootstrap :refer [Button]]))
+(defvisr Counter
+  (:state c 0)
+  (:render [this]
+    [:> Button {:aria-label \"Counter\"
+                :onClick #(swap! c inc)}
+      @c])
+  (:elaborate-fn [this] c))
+
+(println ^{:editor Counter :show-visr true}(Counter+elaborate {:c 4}))"
+           buff2 "
+(ns test.core (:require [react-bootstrap :refer [Button]]))
+(defvisr Counter
+  (:state c 0)
+  (:render [this]
+    [:> Button {:aria-label \"Counter\"
+                :onClick #(swap! c inc)}
+      @c])
+  (:elaborate-fn [this] c))
+
+(println ^{:editor Counter :show-visr true :show-text false}(Counter+elaborate {:c 5}))"
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting}]))]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue buff))
+        :set [:file-changed] true
+        :set [:input] buff :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] #queue ["4"] :check
+        :do #(.click rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByClassName "visr-body")
+                         (aget 0)
+                         (.getElementsByTagName "button")
+                         (aget 0)))
+        :wait-until not resetting
+        :wait 1000
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:input] buff2
+        :set [:output] #queue ["5"] :check
+        :done #(done))))))
+
+(deftest test-state-different-timeout
+  (testing "Test that :state updates as expected"
+    (async
+     done
+     (let [{{:keys [run-functions]} :options :keys [input output running?] :as db}
+           (default-db :temp),
+           editor (atom nil),
+           resetting (atom nil),
+           buff "
+(ns test.core (:require [react-bootstrap :refer [Button]]))
+(defvisr Counter
+  (:state c {:value 0 :timeout 3000})
+  (:render [this]
+    [:> Button {:aria-label \"Counter\"
+                :onClick #(swap! c inc)}
+      @c])
+  (:elaborate-fn [this] c))
+
+(println ^{:editor Counter :show-visr true}(Counter+elaborate {:c 4}))"
+           buff2 "
+(ns test.core (:require [react-bootstrap :refer [Button]]))
+(defvisr Counter
+  (:state c {:value 0 :timeout 3000})
+  (:render [this]
+    [:> Button {:aria-label \"Counter\"
+                :onClick #(swap! c inc)}
+      @c])
+  (:elaborate-fn [this] c))
+
+(println ^{:editor Counter :show-visr true :show-text false}(Counter+elaborate {:c 5}))"
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting}]))]
+       (test-do
+        db :check
+        :do #(-> @editor .getDoc (.setValue buff))
+        :set [:file-changed] true
+        :set [:input] buff :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] #queue ["4"] :check
+        :do #(.click rtl/fireEvent
+                     (-> js/document
+                         .-body
+                         (.getElementsByClassName "visr-body")
+                         (aget 0)
+                         (.getElementsByTagName "button")
+                         (aget 0)))
+        :wait-until not resetting
+        :wait 4000
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 4000
+        :set [:input] buff2
+        :set [:output] #queue ["5"] :check
+        :done #(done))))))
+
 (defn -main [& args]
   (run-tests-async 240000))
 
