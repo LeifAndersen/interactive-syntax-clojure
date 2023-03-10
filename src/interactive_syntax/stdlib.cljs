@@ -357,4 +357,4 @@
 (def empty-visr (write-visr "visr.core/empty-visr" "{}"))
 
 (def starter-visr (write-visr "visr.core/empty-visr"
-                            "{:message \"Endless Possibility\"}"))
+                              "{:message \"Endless Possibility\"}"))

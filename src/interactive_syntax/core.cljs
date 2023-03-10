@@ -1,6 +1,6 @@
 (ns interactive-syntax.core
   (:require-macros
-   [interactive-syntax.slurp :refer [slurp foo]])
+   [interactive-syntax.slurp :refer [slurp]])
   (:require
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
