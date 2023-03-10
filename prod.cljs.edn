@@ -12,4 +12,6 @@
  ;;:stable-names true
  ;;:pseudo-names true
  ;;:pretty-print true
- :optimizations :simple}
+ :optimizations :simple
+ :language-in :ecmascript-next
+ :language-out :ecmascript-next}
