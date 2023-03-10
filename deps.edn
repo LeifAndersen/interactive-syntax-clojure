@@ -12,14 +12,15 @@
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         alandipert/storage-atom {:mvn/version "2.0.1"}
         binaryage/oops {:mvn/version "0.7.1"}
-        garden/garden
-        {:git/url "https://github.com/noprompt/garden"
-         :sha "05590ecb5f6fa670856f3d1ab400aa4961047480"}
+        garden/garden {:git/url "https://github.com/noprompt/garden"
+                       :sha "05590ecb5f6fa670856f3d1ab400aa4961047480"}
         cljs-ajax/cljs-ajax {:mvn/version "0.8.4"}
         zprint/zprint {:mvn/version "1.2.4"}
         com.bhauman/figwheel-main {:mvn/version "0.2.18"}
         com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"
-                                         :exclusions [rewrite-cljs/rewrite-cljs]}}
+                                         :exclusions [rewrite-cljs/rewrite-cljs]}
+        thheller/shadow-cljs {:git/url "https://github.com/thheller/shadow-cljs"
+                              :sha "420b1c3e45b2e883409f3574b4ffaf5ca00a2f01"}}
  :aliases {:fig {:main-opts ["-m" "figwheel.main" "--build" "dev" "--repl"]}
            :test {:main-opts ["-m" "figwheel.main"
                               "--compile-opts" "test.cljs.edn"

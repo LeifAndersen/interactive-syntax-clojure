@@ -2,6 +2,7 @@
 
 * Add the ability to set the timeout for state variables
 * Dep builder can now refer to other deps
+* Add defclass for cljs
 
 # 0.2.2
 

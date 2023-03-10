@@ -6,7 +6,7 @@
    [cljs.core :as core]
    [cljs.analyzer]
    [cljs.analyzer.api]
-   [cljs.compiler]
+   [cljs.compiler :include-macros true]
    [cljs.env]
    [cljs.js]
    [cljs.pprint]
@@ -28,6 +28,7 @@
    [clojure.edn]
    [clojure.zip]
    [clojure.reflect]
+   [shadow.cljs.modern :include-macros true]
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
    [react]
@@ -203,6 +204,7 @@
    :URL js/URL
    :URLSearchParams js/URLSearchParams
    :Blob js/Blob
+   :HTMLElement js/HTMLElement
    :FinalizationRegistry js/FinalizationRegistry
    :WebAssembly js/WebAssembly
    :encodeURI js/encodeURI
@@ -261,6 +263,7 @@
                      :units garden.units
                      :util garden.util}
             :zprint {:core zprint.core}
+            :shadow {:cljs {:modern shadow.cljs.modern}}
             :ajax {:core ajax.core
                    :protocols ajax.protocols}
             :cognitect {:transit cognitect.transit}
@@ -277,7 +280,7 @@
                       'reagent.dom 'goog.object 'oops.core 'garden.core
                       'garden.color 'garden.compiler 'garden.compression
                       'garden.selectors 'garden.types 'garden.units 'garden.util
-                      'zprint.core 'ajax.core 'ajax.protocols
+                      'shadow.cljs.modern 'zprint.core 'ajax.core 'ajax.protocols
                       'alandipert.storage-atom 'cognitect.transit})
      :state-injections
      (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
@@ -327,6 +330,7 @@
             (state-injection 'garden.types (ns-publics 'garden.types))
             (state-injection 'garden.units (ns-publics 'garden.units))
             (state-injection 'garden.util (ns-publics 'garden.util))
+            (state-injection 'shadow.cljs.modern (ns-publics 'shadow.cljs.modern))
             (state-injection 'zprint.core (ns-publics 'zprint.core))
             (state-injection 'ajax.core (ns-publics 'ns.core))
             (state-injection 'ajax.protocols (ns-publics 'ajax.protocols))
@@ -344,7 +348,11 @@
 (def shadow-fs
   {"clojure/template.clj" (slurp "src/injectable/shadowfs/clojure/template.clj")
    "cljs/test.cljc" (slurp "src/injectable/shadowfs/cljs/test.cljc")
-   "cljs/test.cljs" (slurp "src/injectable/shadowfs/cljs/test.cljs")})
+   "cljs/test.cljs" (slurp "src/injectable/shadowfs/cljs/test.cljs")
+   "cljs/modern.cljc"
+   (slurp "src/injectable/shadowfs/cljs/modern.cljc"),
+   "cljs/modern.cljs"
+   (slurp "src/injectable/shadowfs/cljs/modern.cljs")})
 
 (def empty-visr (write-visr "visr.core/empty-visr" "{}"))
 

@@ -139,7 +139,6 @@
                (if load?
                  (-> system (ocall :import url)
                      (.then (fn [d]
-                              (js/console.log d)
                               (oset!+ js/window [:!dependencies
                                                  (str "!" (munge name))]
                                       (.-default d))

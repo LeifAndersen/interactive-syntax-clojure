@@ -3,3 +3,4 @@
 
 (defmacro slurp [file]
   (clojure.core/slurp file))
+

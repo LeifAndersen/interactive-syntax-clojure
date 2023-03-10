@@ -2014,6 +2014,45 @@
         :set [:output] #queue ["5"] :check
         :done #(done))))))
 
+(comment ; XXX Currently only works _without_ stopify sandbox
+(deftest test-defclass
+  (testing "Test the defclass macro"
+    (async
+     done
+     (let [{{:keys [run-functions]} :options :keys [input output running?] :as db}
+           (default-db :temp),
+           buff "
+(ns test.core
+  (:require [cljs.modern :include-macros true :refer [defclass]]))
+(defclass Foo
+  (constructor [this]
+    (super)
+    (println \"Built A\"))
+  Object
+  (method1 [this arg]
+    (println arg)))
+(-> (Foo.) (.method1 \"output\"))
+(defclass Bar
+  (extends Foo)
+  (constructor [this]
+    (super)
+    (println \"Built Bar\")))
+(-> (Bar.) (.method1 \"more output\"))
+"
+           output #queue ["Built A" "output" "Built A" "Built Bar" "more output"]
+           view (rtl/render (r/as-element [core/home-page db]))]
+       (test-do
+        db :check
+        :do #(reset! input buff)
+        :set [:input] buff :check
+        :do #(click-run view)
+        :wait-until not running?
+        :wait 1000
+        :set [:output] output :check
+        :done #(done))))))
+
+)
+
 (defn -main [& args]
   (run-tests-async 240000))
 
