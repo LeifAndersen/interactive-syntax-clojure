@@ -28,7 +28,6 @@
    [clojure.edn]
    [clojure.zip]
    [clojure.reflect]
-   [shadow.cljs.modern :include-macros true]
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
    [react]
@@ -263,7 +262,6 @@
                      :units garden.units
                      :util garden.util}
             :zprint {:core zprint.core}
-            :shadow {:cljs {:modern shadow.cljs.modern}}
             :ajax {:core ajax.core
                    :protocols ajax.protocols}
             :cognitect {:transit cognitect.transit}
@@ -280,7 +278,7 @@
                       'reagent.dom 'goog.object 'oops.core 'garden.core
                       'garden.color 'garden.compiler 'garden.compression
                       'garden.selectors 'garden.types 'garden.units 'garden.util
-                      'shadow.cljs.modern 'zprint.core 'ajax.core 'ajax.protocols
+                      'zprint.core 'ajax.core 'ajax.protocols
                       'alandipert.storage-atom 'cognitect.transit})
      :state-injections
      (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
@@ -330,7 +328,6 @@
             (state-injection 'garden.types (ns-publics 'garden.types))
             (state-injection 'garden.units (ns-publics 'garden.units))
             (state-injection 'garden.util (ns-publics 'garden.util))
-            (state-injection 'shadow.cljs.modern (ns-publics 'shadow.cljs.modern))
             (state-injection 'zprint.core (ns-publics 'zprint.core))
             (state-injection 'ajax.core (ns-publics 'ns.core))
             (state-injection 'ajax.protocols (ns-publics 'ajax.protocols))
@@ -350,9 +347,9 @@
    "cljs/test.cljc" (slurp "src/injectable/shadowfs/cljs/test.cljc")
    "cljs/test.cljs" (slurp "src/injectable/shadowfs/cljs/test.cljs")
    "cljs/modern.cljc"
-   (slurp "src/injectable/shadowfs/cljs/modern.cljc"),
+   (slurp "src/injectable/shadowfs/cljs/modern.cljci"),
    "cljs/modern.cljs"
-   (slurp "src/injectable/shadowfs/cljs/modern.cljs")})
+   (slurp "src/injectable/shadowfs/cljs/modern.cljsi")})
 
 (def empty-visr (write-visr "visr.core/empty-visr" "{}"))
 

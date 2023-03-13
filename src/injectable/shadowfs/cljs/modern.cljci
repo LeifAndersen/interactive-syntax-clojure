@@ -1,4 +1,4 @@
-(ns shadow.cljs.modern
+(ns cljs.modern
   (:require
     [cljs.analyzer :as ana]
     [cljs.compiler :as comp]
