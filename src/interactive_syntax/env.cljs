@@ -752,14 +752,21 @@
                                         (ocall "setValue"
                                                (stx->stx-str @stx))))}]]]]])]]))))
 
-(defn reset-editors! [source set-text editor instances operation cache queue
+(def reset-queue (clojure.core/atom #queue []))
+(defn reset-editors-busy? []
+  (not= (count @reset-queue) 0))
+(defn flush-reset-editors! []
+  (reset! reset-queue #queue []))
+
+(defn reset-editors! [source set-text editor instances cache
                       codemirror-options
                       {{:keys [show-editors visr-default sandbox]} :options
                        :keys [fs deps] :as db}
                       cb & [{visr-run-ref :visr-run
                              :as editor-options}]]
   (when (and @show-editors @editor)
-    (let [old-instances (atom @instances)
+    (let [queue reset-queue
+          old-instances (atom @instances)
           prog (indexing-push-back-reader source)
           eof (atom nil)
           fresh-cache (atom false)

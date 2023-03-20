@@ -127,18 +127,27 @@
                        timeout))
       :wait-until
       (let [[_ pred atm & rest] cmds]
-        (if (pred @atm)
-          (test-do-helper expected-state ui-state rest nil)
-          (add-watch atm ::temp
-                     (fn [k r o n]
-                       (when (pred n)
-                         (remove-watch atm ::temp)
-                         (test-do-helper expected-state ui-state rest nil))))))
+        (js/setTimeout
+         #(if (pred @atm)
+            (test-do-helper expected-state ui-state rest nil)
+            (add-watch atm ::temp
+                       (fn [k r o n]
+                         (when (pred n)
+                           (remove-watch atm ::temp)
+                           (test-do-helper expected-state ui-state rest nil)))))
+         100))
       :async
       (let [[_ proc & rest] cmds]
         (proc #(test-do-helper expected-state ui-state rest nil)))
       :done
-      ((second cmds))
+      ((fn rec [count]
+         (if (= count 10)
+           (let []
+             (env/flush-reset-editors!)
+             ((second cmds)))
+           (if (env/reset-editors-busy?)
+             (js/setTimeout #(rec (inc count)) 1000)
+             ((second cmds))))) 0)
       :do
       (let [p ((second cmds) prev)]
         (r/flush)
@@ -880,8 +889,11 @@
            (default-db :temp),
            editor (atom nil),
            repl (atom nil),
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))
+           resetting? (atom false),
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :repl repl
+                                            :editor-reset resetting?}]))
            interum "(println (+ 1 2))"
            uri (utils/module->uri test-dep)
            prog1 "
@@ -907,6 +919,9 @@
         :wait 1000
         :do #(reset! input prog1)
         :set [:input] prog1 :check
+        :wait 100
+        :wait-until not resetting?
+        :wait 100
         :do #(set! window.mod test-dep)
         :do #(click-run view)
         :wait 1000
@@ -960,6 +975,7 @@
         :do #(click-run view)
         :wait-until not running?
         :set [:output] #queue ["334"] :check
+        :wait 0
         :wait-until not resetting
         :wait 0
         :do #(.click rtl/fireEvent
@@ -1287,6 +1303,7 @@
             :as db}
            (default-db :temp),
            editor (atom nil),
+           resetting (atom false),
            repl (atom nil),
            prog1 "
 (ns test.user
@@ -1301,8 +1318,10 @@
   (:require [garden.selectors :refer [attr]]))
 (println attr)"
            out #queue["#object[garden$selectors$attr]"]
-           view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                              :repl repl}]))]
+           view (rtl/render (r/as-element [core/home-page db
+                                           {:editor editor
+                                            :editor-reset resetting
+                                            :repl repl}]))]
        (test-do
         db :check
         :do #(-> @editor .getDoc (.setValue prog1))
@@ -1340,6 +1359,8 @@
         :set [:input] ""
         :do #(click-run view)
         :wait-until not running?
+        :wait-until not resetting
+        :wait 1000
         :set [:output] ""
         :check
         :done #(done))))))
@@ -1351,9 +1372,10 @@
      (let [dep-db {1 {:name "react-hexgrid"}}
            editor (atom nil),
            repl (atom nil),
+           resetting (atom false),
            err-msg (atom ""),
            old-error js/console.error]
-       (set! console.error #(swap! err-msg (fn [old] (str old %))))
+       (set! js/console.error #(swap! err-msg (fn [old] (str old %))))
        (cb-thread
         #(default-clean-db :persist-test %)
         (fn [next {:keys [fs input output menu runner deps] :as db}]
@@ -1366,9 +1388,10 @@
         (fn [next {:keys [fs input output menu runner deps] :as db}]
           (is (= @err-msg ""))
           (reset! deps dep-db)
-          (let [view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                                   :repl repl}]))]
-            (set! console.)
+          (let [view (rtl/render (r/as-element [core/home-page db
+                                                {:editor editor
+                                                 :editor-reset resetting
+                                                 :repl repl}]))]
             (test-do
              db
              :set [:deps] dep-db :check
@@ -1381,6 +1404,7 @@
      done
      (let [dep-db {1 {:name "react-hexgrid"}}
            editor (atom nil),
+           resetting (atom nil)
            repl (atom nil)]
        (cb-thread
         #(default-clean-db :persist-test %)
@@ -1390,15 +1414,19 @@
                         #(next db %)))
         (fn [next {:keys [fs input output menu runner deps] :as db} err]
           (is (not err))
-          (let [view (rtl/render (r/as-element [core/home-page db {:editor editor
-                                                                   :repl repl}]))]
+          (let [view (rtl/render (r/as-element [core/home-page db
+                                                {:editor editor
+                                                 :editor-reset resetting
+                                                 :repl repl}]))]
             (test-do
              db
              :set [:deps] dep-db :check
+             :wait-until not resetting
              :wait 1000
              :do #(.click rtl/fireEvent (.getByText view strings/MENU))
              :do #(.click rtl/fireEvent (.getByText view strings/NEW-PROJECT))
              :do #(.click rtl/fireEvent (.getByText view strings/CONFIRM-WIPE))
+             :wait-until not resetting
              :wait 1000
              :do #(.click rtl/fireEvent (.getByText view strings/MENU))
              :do #(.click rtl/fireEvent (.getByText view strings/DEPENDENCIES))
@@ -2050,7 +2078,6 @@
         :wait 1000
         :set [:output] output :check
         :done #(done))))))
-
 )
 
 (defn -main [& args]
