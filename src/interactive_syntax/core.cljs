@@ -1179,7 +1179,7 @@
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! cache nil)
                             (reset! file-changed fc))))
-        reset-counter (clojure.core/atom 0)
+        reset-queue (clojure.core/atom #queue [])
         codemirror-options #(conj (env/codemirror-options db) print-options)]
     (add-watch current-file key watch-updater)
     (add-watch menu key watch-updater)
@@ -1205,17 +1205,15 @@
                    (reset! visrs {})
                    (when editor-reset-ref
                      (reset! editor-reset-ref true))
-                   (swap! reset-counter inc)
-                   (env/reset-editors! @input set-text edit visrs cache
-                                       (codemirror-options) db
-                                       (fn []
-                                         (swap! reset-counter dec)
-                                         (when (and (<= @reset-counter 0)
-                                                    editor-reset-ref)
-                                           (reset! editor-reset-ref false)))
+                   (env/reset-editors! @input set-text edit visrs nil cache
+                                       reset-queue (codemirror-options) db #()
                                        {:for-print for-print
                                         :hider-bars hider-bars
                                         :visr-run visr-run-ref}))))
+    (add-watch reset-queue ::set-running?
+               (fn [k r o n]
+                 (when (and editor-reset-ref (empty? n))
+                   (reset! editor-reset-ref false))))
     (reset! visr-commit!
             (doseq [[k v] @visrs]
               ((:commit! v))))
@@ -1253,17 +1251,11 @@
                     (reset! input value)
                     (when editor-reset-ref
                       (reset! editor-reset-ref true))
-                    (swap! reset-counter inc)
-                    (env/reset-editors! @input set-text edit visrs
-                                        cache (codemirror-options) db
-                                        (fn []
-                                          (swap! reset-counter dec)
-                                          (when (and editor-reset-ref
-                                                     (<= @reset-counter 0))
-                                            (reset! editor-reset-ref false)))
-                                        {:for-print for-print
-                                         :hider-bars hider-bars
-                                         :visr-run visr-run-ref}))
+                    (env/reset-editors! @input set-text edit visrs operation
+                                        cache reset-queue (codemirror-options) db
+                                        #() {:for-print for-print
+                                             :hider-bars hider-bars
+                                             :visr-run visr-run-ref}))
         :onCursor (fn [editor data]
                     (reset! cursor data))
         :onScroll (fn [editor data]
@@ -1297,16 +1289,13 @@
                             (reset! editor-ref e))
                           (when editor-reset-ref
                             (reset! editor-reset-ref true))
-                          (env/reset-editors!
-                           @input set-text edit visrs cache
-                           (codemirror-options) db
-                           (fn []
-                             (reset! mounted? true)
-                             (when editor-reset-ref
-                               (reset! editor-reset-ref false)))
-                           {:for-print for-print
-                            :hider-bars hider-bars
-                            :visr-run visr-run-ref}))}]
+                          (env/reset-editors! @input set-text edit visrs nil
+                                              cache reset-queue
+                                              (codemirror-options) db
+                                              #(reset! mounted? true)
+                                              {:for-print for-print
+                                               :hider-bars hider-bars
+                                               :visr-run visr-run-ref}))}]
        (when for-print
          [:style {:type "text/css" :media "print"}
           (css [:.CodeMirror-linenumber
