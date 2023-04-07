@@ -214,6 +214,7 @@
    :clearTimeout js/clearTimeout
    :setInterval js/setInterval
    :clearInterval js/clearInterval
+   :CanvasRenderingContext2D js/CanvasRenderingContext2D
    :Reflect js/Reflect
    :stopify js/stopify
    :$stopifyArray js/stopifyArray})

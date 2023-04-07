@@ -21,11 +21,11 @@ blockly-lua:
 blockly-python:
 {package: "blockly" path: "python.js" externals: {blockly: "blockly"}}
 
+canvas2svg:
+{package: "canvas2svg" path: "canvas2svg.js"}
+
 file-type:
 {package: "file-type" path: "browser.js"}
-
-iink-js:
-{package: "iink-js" path: "dist/iink.min.js"}
 
 highlightjs:
 {package: "highlight.js" path: "lib/index.js"}
@@ -35,6 +35,12 @@ highlightjs-css:
 
 highlightjs-github-css:
 {package: "highlight.js" path: "styles/github.css"}
+
+iink-js:
+{package: "iink-js" path: "dist/iink.min.js"}
+
+konva:
+{package: "konva" path: "lib/index.js"}
 
 luxon:
 {package: "luxon" path: "build/global/luxon.js"}
@@ -99,6 +105,11 @@ react-hexgrid:
 
 react-icons:
 {package: "react-icons" path: "lib/esm/index.js"}
+
+react-konva:
+{package: ["react-konva" "konva"]
+ full-path: "./node_modules/react-konva/lib/ReactKonva.js"
+ externals: {konva: "konva"}}
 
 react-player:
 {package: "react-player" path: "dist/ReactPlayer.js"}
