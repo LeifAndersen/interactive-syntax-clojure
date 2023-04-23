@@ -2,8 +2,7 @@
   (:require [interactive-syntax.core :as core]
             [interactive-syntax.fs :as fs]
             [interactive-syntax.db :as db]
-            [interactive-syntax.utils :refer [cb-thread]]
-            [reagent.dom :as d]
+            [interactive-syntax.utils :as utils :refer [cb-thread]]
             [cognitect.transit :as t]))
 
 ;;ignore println statements in prod
@@ -16,7 +15,7 @@
      #(fs/import-from-zip %2 zip (fn [] (% %2)))
      (fn [_ db]
        (reset! (:backing db) backing)
-       (d/render [part db] frame)))))
+       (utils/render [part db] frame)))))
 
 (set! js/window.VISrHome (partial lib-render core/home-page))
 (set! js/window.VISrEditor (partial lib-render core/editor-view))

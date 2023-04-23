@@ -7,7 +7,7 @@
         org.clojure/tools.reader
         {:git/url "https://github.com/LeifAndersen/tools.reader"
          :sha "efdbaf23247e5f7fa189f7b8691411569e7fbf8c"}
-        reagent/reagent {:mvn/version "1.1.0"
+        reagent/reagent {:mvn/version "1.2.0"
                          :exclusions [cljsjs/react cljsjs/react-dom]}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
         alandipert/storage-atom {:mvn/version "2.0.1"}

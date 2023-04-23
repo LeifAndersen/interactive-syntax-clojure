@@ -1,4 +1,8 @@
-(ns interactive-syntax.utils)
+(ns interactive-syntax.utils
+  (:require
+   ["react-dom/client" :refer [createRoot]]
+   [reagent.dom :as d]
+   [reagent.core :as r]))
 
 (defn module->uri [module & {:keys [mime]
                              :or {:mime "application/javascript"}}]
@@ -18,3 +22,11 @@
        (apply cb ret)
        (apply body #(rec (rest lst) %&) (first lst) ret)))
    lst ret))
+
+;; TODO, switch to proper createRoot use, rather than this jank.
+;;    start by switching to true
+(defn render [element node]
+  (if false
+    (let [node (createRoot node)]
+      (.render node (r/as-element element)))
+    (d/render element node)))

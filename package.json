@@ -1,6 +1,6 @@
 {
   "name": "interactive-syntax",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LeifAndersen/interactive-syntax-clojure.git"
@@ -12,8 +12,8 @@
   },
   "homepage": "https://visr.pl",
   "devDependencies": {
-    "@testing-library/react": "^11.2.2",
-    "@testing-library/user-event": "^13.1.9",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.4.3",
     "css-loader": "^5.2.4",
     "file-loader": "^6.2.0",
     "git-http-mock-server": "^2.0.0",
@@ -50,17 +50,18 @@
     "isomorphic-git": "^1.10.0",
     "jszip": "^3.7.1",
     "popper.js": "^1.16.1",
-    "react": "^17.0.2",
+    "react": "^18.2.0",
     "react-bootstrap": "^2.0.0-beta.4",
-    "react-codemirror2": "npm:@leifandersen/react-codemirror2@^7.2.1",
+    "react-codemirror2": "npm:@leifandersen/react-codemirror2@^7.2.1-2",
     "react-dnd": "^14.0.2",
     "react-dnd-html5-backend": "^14.0.0",
-    "react-dom": "^17.0.2",
+    "react-dom": "^18.2.0",
     "react-hotkeys": "^2.0.0",
-    "react-resize-detector": "^6.7.6",
+    "react-resize-detector": "^9.1.0",
     "react-split-pane": "^2.0.3",
-    "react-switch": "^6.0.0",
-    "react-to-print": "^2.14.4",
+    "react-switch": "^7.0.0",
+    "react-testing-library": "^8.0.1",
+    "react-to-print": "^2.14.12",
     "stream-browserify": "^2.0.2",
     "styled-components": "^4.4.1",
     "systemjs": "^6.12.6",
@@ -70,5 +71,8 @@
   "scripts": {
     "postinstall": "patch-package",
     "fig": "clojure -M:fig"
+  },
+  "overrides": {
+    "react": "$react"
   }
 }

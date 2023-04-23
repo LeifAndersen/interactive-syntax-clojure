@@ -1,9 +1,9 @@
 (ns interactive-syntax.env
   (:require
    [reagent.core :as r :refer [atom]]
-   [reagent.dom :as d]
    [react]
    [react-dom]
+   [interactive-syntax.utils :as utils]
    ;;[reagent-catch.core :as rc]
    [clojure.string :as string]
    [clojure.set :as set]
@@ -861,7 +861,7 @@
                                   (swap! info assoc :visr-internal-refresh true))
                                 (reset! info stxinfo)
                                 (reset! stx (second form)))
-                              (d/render [visr-hider db runtime tag info stx
+                              (utils/render [visr-hider db runtime tag info stx
                                          file-src refs mark editor-options
                                          codemirror-options]
                                         visr))

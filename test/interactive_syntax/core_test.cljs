@@ -58,8 +58,8 @@
   (.click rtl/fireEvent (first (.getAllByText view strings/RUN))))
 
 (defn default-clean-db [type cb]
-  (let [db (db/default-db type)]
-    (fs/wipe-project! db #(cb db))))
+  (cb-thread #(db/default-db type %)
+             #(fs/wipe-project! %2 (fn [] (cb %2)))))
 
 (use-fixtures :each
   {:after rtl/cleanup})
@@ -142,8 +142,13 @@
       :do
       (let [p ((second cmds) prev)]
         (r/flush)
-        (r/flush)
-        (recur (next (next cmds)) p)))))
+        (js/setTimeout
+         (fn []
+           (r/flush)
+           (js/setTimeout
+            #(test-do-helper expected-state ui-state (next (next cmds)) p)
+            0))
+         0)))))
 
 (defn test-do [ui-state & cmds]
   (test-do-helper (default-db :temp) ui-state cmds nil))
@@ -295,52 +300,52 @@
                     "(+ 1 2)\n"))
         :done #(done))))))
 
-
 (deftest file-title
   (testing "Make sure title matches current file, even accross save/load"
-    (let [{:keys [input menu current-file file-changed] :as db} (default-db :temp)
-          component (rtl/render (r/as-element [:div
-                                               [core/new-file-action db]
-                                               [core/button-row db]]))]
-      (is (= strings/UNTITLED
-             (-> component
-                 (.getAllByText strings/UNTITLED)
-                 first
-                 (.-innerHTML))))
-      (reset! file-changed true)
-      (r/flush)
-      (is (= (str strings/UNTITLED "*")
-             (-> component
-                 (.getAllByText (str strings/UNTITLED "*"))
-                 first
-                 (.-innerHTML))))
-      (reset! input "(+ 1 2)")
-      (reset! current-file "foo.cljs")
-      (r/flush)
-      (is (= "/foo.cljs*"
-             (-> component
-                 (.getAllByText "/foo.cljs*")
-                 first
-                 (.-innerHTML))))
-      (core/save-buffer db)
-      (r/flush)
-      (is (= @file-changed false))
-      (is (= "/foo.cljs"
-             (-> component
-                 (.getAllByText "/foo.cljs")
-                 first
-                 (.-innerHTML))))
-      (swap! menu conj :new)
-      (r/flush)
-      (r/flush)
-      (is (= @current-file nil))
-      (is (= @file-changed false))
-      (is (= @input ""))
-      (is (= strings/UNTITLED
-             (-> component
-                 (.getAllByText strings/UNTITLED)
-                 first
-                 (.-innerHTML)))))))
+    (async
+     done
+     (let [{:keys [input menu current-file file-changed] :as db} (default-db :temp)
+           component (rtl/render (r/as-element [:div
+                                                [core/new-file-action db]
+                                                [core/button-row db]]))]
+       (test-do
+        {}
+        :do #(is (= strings/UNTITLED
+                    (-> component
+                        (.getAllByText strings/UNTITLED)
+                        first
+                        (.-innerHTML))))
+        :do #(reset! file-changed true)
+        :do #(is (= (str strings/UNTITLED "*")
+                    (-> component
+                        (.getAllByText (str strings/UNTITLED "*"))
+                        first
+                        (.-innerHTML))))
+        :done #(done)
+        :do #(reset! input "(+ 1 2)")
+        :do #(reset! current-file "foo.cljs")
+        :do #(is (= "/foo.cljs*"
+                    (-> component
+                        (.getAllByText "/foo.cljs*")
+                        first
+                        (.-innerHTML))))
+        :do #(core/save-buffer db)
+        :do #(is (= @file-changed false))
+        :do #(is (= "/foo.cljs"
+                    (-> component
+                        (.getAllByText "/foo.cljs")
+                        first
+                        (.-innerHTML))))
+        :do #(swap! menu conj :new)
+        :do #(is (= @current-file nil))
+        :do #(is (= @file-changed false))
+        :do #(is (= @input ""))
+        :do #(is (= strings/UNTITLED
+                    (-> component
+                        (.getAllByText strings/UNTITLED)
+                        first
+                        (.-innerHTML))))
+        :done #(done))))))
 
 (deftest bad-input-buff
   (testing "Malformed string in input buffer"
@@ -1267,6 +1272,10 @@
            :do #(reset! current-file "x.cljs"),
            :set [:current-file] "x.cljs" :check
            :async #(fs.writeFile fpath orig-prog %)
+           :wait 1000
+           :do #(js/console.log fpath)
+           :do #(js/console.log (fs.readdirSync "/files"))
+           :do #(js/console.log fs)
            :do #(is (= (.toString (fs.readFileSync fpath)) orig-prog))
            :do #(.click rtl/fireEvent (first (.getAllByText view strings/LOAD)))
            :set [:menu] [:home [:confirm-save :load]]
@@ -2014,12 +2023,11 @@
         :set [:output] #queue ["5"] :check
         :done #(done))))))
 
-(comment ; XXX Currently only works _without_ stopify sandbox
 (deftest test-defclass
   (testing "Test the defclass macro"
     (async
      done
-     (let [{{:keys [run-functions]} :options :keys [input output running?] :as db}
+     (let [{{:keys [run-functions sandbox]} :options :keys [input output running?] :as db}
            (default-db :temp),
            buff "
 (ns test.core
@@ -2043,6 +2051,8 @@
            view (rtl/render (r/as-element [core/home-page db]))]
        (test-do
         db :check
+        :do #(reset! sandbox false) ;; TODO, currently only works without stopify
+        :set [:options :sandbox] false :check
         :do #(reset! input buff)
         :set [:input] buff :check
         :do #(click-run view)
@@ -2050,8 +2060,6 @@
         :wait 1000
         :set [:output] output :check
         :done #(done))))))
-
-)
 
 (defn -main [& args]
   (run-tests-async 240000))

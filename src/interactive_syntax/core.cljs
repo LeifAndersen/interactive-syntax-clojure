@@ -3,7 +3,6 @@
    [interactive-syntax.slurp :refer [slurp]])
   (:require
    [reagent.core :as r :refer [atom]]
-   [reagent.dom :as d]
    [clojure.string :as string]
    [cljs.pprint :refer [pprint]]
    [cljs.core.match :refer [match]]
@@ -1327,7 +1326,7 @@
                    (recur (+ line (-> i (.split #"\r\n|\r|\n") .-length)) rest),
                    (vector? i)
                    (let [element (.createElement js/document "div")]
-                     (d/render [env/styled-frame i] element)
+                     (utils/render [env/styled-frame i] element)
                      (swap! instances conj
                             (-> @edit (ocall "getDoc")
                                 (ocall "addLineWidget" (max 0 (dec line))
@@ -1649,7 +1648,7 @@
                "run-buffer"
                (env/eval-buffer db)
                nil))))
-       (cond for-print? (d/render
+       (cond for-print? (utils/render
                          [editor-view db
                           {:for-print for-print?
                            :print-options {:width (or print-width 1000)
@@ -1667,9 +1666,9 @@
                                            #js ["CodeMirror-linenumbers"]
                                            :foldGutter false}}]
                                   (.getElementById js/document "app")),
-             fullscreen? (d/render [editor-view db]
+             fullscreen? (utils/render [editor-view db]
                                    (.getElementById js/document "app")),
-             :else (d/render [home-page db (when embedded?
+             :else (utils/render [home-page db (when embedded?
                                              {:editor-reset editor-reset-ref})]
                              (.getElementById js/document "app")))))))
 
