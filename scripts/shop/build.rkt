@@ -35,9 +35,9 @@
 (make-directory* deps)
 
 (define (entry->package entry)
-  (if (string? entry)
-      entry
-      (format "~a@~a" (dict-ref entry 'name) (dict-ref entry 'version))))
+  (cond [(string? entry) entry]
+        [(= (dict-ref entry 'type) "git") (dict-ref entry 'name)]
+        [else (format "~a@~a" (dict-ref entry 'name) (dict-ref entry 'version))]))
 
 (define (entry->path entry)
   (if (string? entry) entry (dict-ref entry 'name)))
@@ -51,8 +51,7 @@
     (parameterize ([current-directory (make-temporary-file "tmp~a" 'directory)])
       (printf "Building: ~a~n" out)
       (when verbose
-        (printf "Build Directory Location: ~a~n" (current-directory)))
-      (when verbose
+        (printf "Build Directory Location: ~a~n" (current-directory))
         (printf "Setting up environment...~n"))
       (copy-file webpack-config "webpack.config.js")
       (copy-file dynamic-loader "dynamic-loader.js")
@@ -70,11 +69,16 @@
                "@babel/preset-env" "@babel/preset-react")
       (when verbose
         (printf "Downloading deps...~n"))
-      (cond
-        [(generic-set? (dict-ref d 'package false))
-         (for ([p (dict-ref d 'package)])
-           (system* npm "install" (entry->package p)))]
-        [else (system* npm "install" (entry->package (dict-ref d 'package)))])
+      (let loop ([d (dict-ref d 'package false)])
+        (cond
+          [(generic-set? d)
+           (for ([p d])
+             (loop p))]
+          [(dict? d)
+           (case (dict-ref d 'type)
+             [("git") (system* git "clone" (dict-ref d 'url))]
+             [else (system* npm "install" (entry->package d))])]
+          [else (system* npm "install" (entry->package d))]))
       (system* npx "webpack" path (format "--output-filename=~a.js" out))
       (for ([f (in-glob "dist/*")])
         (copy-file f (build-path deps (file-name-from-path f)) #t)))))

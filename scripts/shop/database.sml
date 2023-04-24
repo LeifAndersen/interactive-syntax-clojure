@@ -42,8 +42,12 @@ highlightjs-github-css:
 iink-js:
 {package: "iink-js" path: "dist/iink.min.js"}
 
+js-numbers:
+{package: "js-numbers"
+ path: "src/js-numbers.js"}
+
 konva:
-{package: "konva" path: "lib/index.js"}
+{package: "konva" path: "konva.js"}
 
 luxon:
 {package: "luxon" path: "build/global/luxon.js"}
@@ -112,7 +116,8 @@ react-icons:
 react-konva:
 {package: ["react-konva" "konva"]
  full-path: "./node_modules/react-konva/lib/ReactKonva.js"
- externals: {konva: "konva"}}
+ ;; externals: {konva: "konva"}
+ }
 
 react-player:
 {package: "react-player" path: "dist/ReactPlayer.js"}
