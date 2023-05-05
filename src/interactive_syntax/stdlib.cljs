@@ -28,6 +28,7 @@
    [clojure.edn]
    [clojure.zip]
    [clojure.reflect]
+   [clojure.data.xml]
    [reagent.core :as r :refer [atom]]
    [reagent.dom :as d]
    [react]
@@ -176,7 +177,7 @@
    :clojure {:walk clojure.walk
              :string clojure.string
              :set clojure.set
-             :data clojure.data
+             :data clojure.data ;; data.xml does not need to be added here
              :edn clojure.edn
              :zip clojure.zip
              :reflect clojure.reflect}
@@ -275,12 +276,12 @@
                       'cljs.tagged-literals 'cljs.test 'cljs.tools.reader
                       'cljs.math 'cljs.repl 'clojure.walk 'clojure.string
                       'clojure.set 'clojure.data 'clojure.edn 'clojure.zip
-                      'clojure.reflect 'visr.utils 'visr.private 'reagent.core
-                      'reagent.dom 'goog.object 'oops.core 'garden.core
-                      'garden.color 'garden.compiler 'garden.compression
-                      'garden.selectors 'garden.types 'garden.units 'garden.util
-                      'zprint.core 'ajax.core 'ajax.protocols
-                      'alandipert.storage-atom 'cognitect.transit})
+                      'clojure.reflect 'clojure.data.xml 'visr.utils
+                      'visr.private 'reagent.core 'reagent.dom 'goog.object
+                      'oops.core 'garden.core 'garden.color 'garden.compiler
+                      'garden.compression 'garden.selectors 'garden.types
+                      'garden.units 'garden.util 'zprint.core 'ajax.core
+                      'ajax.protocols 'alandipert.storage-atom 'cognitect.transit})
      :state-injections
      (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
             (state-injection 'visr.private
@@ -316,6 +317,7 @@
             (state-injection 'clojure.edn (ns-publics 'clojure.edn))
             (state-injection 'clojure.zip (ns-publics 'clojure.zip))
             (state-injection 'clojure.reflect (ns-publics 'clojure.reflect))
+            (state-injection 'clojure.data.xml (ns-publics 'clojure.data.xml))
             (state-injection 'reagent.dom (ns-publics 'reagent.dom))
             (state-injection 'reagent.core (ns-publics 'reagent.core))
             ;(state-injection 'goog.object (ns-publics 'goog.object))

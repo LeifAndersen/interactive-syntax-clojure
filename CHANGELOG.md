@@ -1,6 +1,7 @@
 # 0.2.4
 
 * Update to react 18
+* Add data.xml support
 
 # 0.2.3
 

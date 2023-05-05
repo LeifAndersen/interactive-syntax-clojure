@@ -7,6 +7,7 @@
         org.clojure/tools.reader
         {:git/url "https://github.com/LeifAndersen/tools.reader"
          :sha "efdbaf23247e5f7fa189f7b8691411569e7fbf8c"}
+        org.clojure/data.xml {:mvn/version "0.2.0-alpha8"}
         reagent/reagent {:mvn/version "1.2.0"
                          :exclusions [cljsjs/react cljsjs/react-dom]}
         com.cognitect/transit-cljs {:mvn/version "0.8.264"}
