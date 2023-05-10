@@ -30,6 +30,10 @@ d3:
 file-type:
 {package: "file-type" path: "browser.js"}
 
+
+graphviz-react:
+{package: "graphviz-react" path: "lib/Graphviz.js"}
+
 highlightjs:
 {package: "highlight.js" path: "lib/index.js"}
 
