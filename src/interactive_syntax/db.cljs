@@ -10,6 +10,7 @@
             ["isomorphic-git/http/web" :as isohttp]
             [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                                oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
+            [interactive-syntax.editor :as editor]
             [browserfs]))
 
 (def package (t/read (t/reader :json) (slurp "package.json")))
@@ -215,6 +216,7 @@
                                    ::options
                                    ::deps
                                    ::menu
+                                   ::cache
                                    ::auth]))
 
 (defn current-buffer [{:keys [buffers current]
@@ -336,7 +338,8 @@
               :split (->DBAtom backed-db [:current :split])
               :cm-ref (clojure.core/atom nil) ; <- really gross, can we remove?
               :scroll (clojure.core/atom nil)
-              :cursor (clojure.core/atom nil)}
+              :cursor (clojure.core/atom nil)
+              :cache (editor/make-reset-editors-cache)}
          cb (fn [ret]
               (cb-thread
                #(git-init ret %)

@@ -8,6 +8,7 @@
    [cljs.core.match :refer [match]]
    [oops.core :refer [oget oset! ocall oapply ocall! oapply!
                       oget+ oset!+ ocall+ oapply+ ocall!+ oapply!+]]
+   [interactive-syntax.editor :as editor]
    [interactive-syntax.db :as db :refer [files-root default-db Buffer]]
    [interactive-syntax.utils :as utils :refer [cb-thread cb-loop]]
    [interactive-syntax.strings :as strings]
@@ -485,7 +486,8 @@
 ;; File Dialogs
 
 (defn save-buffer [{:keys [fs menu current-folder current-file input
-                           file-changed visr-commit! cm-ref scroll cursor]
+                           file-changed visr-commit! cm-ref scroll cache
+                           cursor]
                     :as db}
                    & [cb]]
   (let [c @cursor s @scroll]
@@ -1154,7 +1156,7 @@
    221 "close bracket" 222 "quote"})
 
 (defn editor-view [{:keys [menu input output options backing file-changed deps
-                           current-file fs visr-commit! insert-visr! cursor
+                           current-file fs visr-commit! insert-visr! cursor cache
                            scroll]
                     :as db}
                    & [{editor-ref :editor
@@ -1165,7 +1167,6 @@
                        editor-reset-ref :editor-reset
                        visr-run-ref :visr-run}]]
   (let [edit (atom nil)
-        cache (env/make-reset-editors-cache)
         visrs (atom {})
         key (random-uuid)
         set-text (fn [txt]
@@ -1180,9 +1181,8 @@
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
                             (set! js/window.edit @edit)
+                            (editor/make-reset-editors-cache cache)
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
-                            ;; TODO, this should probably be uncommented?
-                            ;; (env/make-reset-editors-cache cache)
                             (reset! file-changed fc))))
         codemirror-options #(conj (env/codemirror-options db) print-options)]
     (add-watch current-file key watch-updater)
@@ -1225,7 +1225,7 @@
             #(let [doc (ocall @edit :getDoc)
                    pos (ocall doc :getCursor)]
                (ocall doc :replaceRange stdlib/starter-visr pos)))
-    (fn [{:keys [menu input options file-changed current-file cursor scroll
+    (fn [{:keys [menu input options file-changed current-file cursor scroll cache
                  cm-ref]
           :as db}
          & [{editor-ref :editor

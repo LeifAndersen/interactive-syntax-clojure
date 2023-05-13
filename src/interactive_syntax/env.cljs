@@ -26,6 +26,7 @@
    [interactive-syntax.stdlib :as stdlib]
    [interactive-syntax.strings :as strings]
    [interactive-syntax.fakegoog :as fakegoog]
+   [interactive-syntax.editor :as editor]
    [garden.core :as garden :refer [css]]
    ["@stopify/higher-order-functions" :as hof]
    ["@stopify/hygiene" :as stopify-hygiene]
@@ -752,13 +753,7 @@
                                         (ocall "setValue"
                                                (stx->stx-str @stx))))}]]]]])]]))))
 
-(defn make-reset-editors-cache [& [cache]]
-  (let [c {:cache nil
-           :queue #queue []}]
-    (if cache
-      (reset! cache c)
-      (atom c))))
-
+(def make-reset-editors-cache editor/make-reset-editors-cache)
 (defn reset-editors! [source set-text editor instances cache
                       codemirror-options
                       {{:keys [show-editors visr-default sandbox]} :options
