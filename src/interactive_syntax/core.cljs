@@ -496,6 +496,7 @@
       (@visr-commit!))
     (ocall fs :writeFile (js/path.join @current-folder @current-file) @input
            (fn [err res]
+             (editor/make-reset-editors-cache cache)
              (reset! file-changed false)
              (swap! menu pop)
              (if-let [cm @cm-ref]
@@ -1181,7 +1182,6 @@
                         (when (and @edit (not= o n))
                           (let [fc @file-changed]
                             (set! js/window.edit @edit)
-                            (editor/make-reset-editors-cache cache)
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
                             (reset! file-changed fc))))
         codemirror-options #(conj (env/codemirror-options db) print-options)]

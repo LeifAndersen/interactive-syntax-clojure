@@ -1691,6 +1691,7 @@
         :set [:input] use2 :check
         :done #(done))))))
 
+
 (deftest visr-in-mod-change
   (testing "Ensure editor updates when its surrounding module changes"
     (async
@@ -1771,6 +1772,7 @@
                     "World"))
         :done #(done))))))
 
+
 (deftest runtime-error
   (testing "Ensure printout when runtime error occurs"
     (async
@@ -1806,6 +1808,7 @@
         :wait 0
         :set [:output] res :check
         :done #(done))))))
+
 
 (deftest visrs-reset-on-file-change
   (testing "Ensure visrs are removed when the file changes"
@@ -1853,6 +1856,7 @@
         :wait-until not resetting
         :do #(is (= (count (.queryAllByLabelText view strings/VISUAL)) 0))
         :done #(done))))))
+
 
 (deftest test-main-functions
   (testing "Ensure default called functions match run-functions"
@@ -2067,6 +2071,7 @@
         :wait 1000
         :set [:output] output :check
         :done #(done))))))
+
 
 (defn -main [& args]
   (run-tests-async 240000))
