@@ -11,9 +11,12 @@
 
 (defn cb-thread [& funcs]
   ((fn rec [funcs ret]
-     (if (empty? funcs)
-       ret
-       (apply (first funcs) #(rec (rest funcs) %&) ret)))
+     (cond
+       (empty? funcs) ret
+       (= (first funcs) :do)
+       (let [ret (apply (second funcs) ret)]
+         (rec (rest (rest funcs)) (list ret))),
+       :else (apply (first funcs) #(rec (rest funcs) %&) ret)))
    funcs nil))
 
 (defn cb-loop [lst body cb & ret]

@@ -2,6 +2,7 @@
 
 * Update to react 18
 * Add data.xml support
+* Initial steps taken to make reset-editors! function componentized
 
 # 0.2.3
 

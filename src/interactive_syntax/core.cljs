@@ -277,9 +277,10 @@
        [:> (oget Modal :Footer)
         [:> Button {:variant "danger"
                     :on-click #(cb-thread
-                                #(do (swap! menu conj :hold) (%))
+                                :do #(swap! menu conj :hold)
                                 #(git/pull db @selected %)
-                                #(do (swap! menu pop) (swap! menu pop)))}
+                                :do #(swap! menu pop)
+                                :do #(swap! menu pop))}
          strings/PULL]
         [:> Button {:variant "secondary"
                     :on-click #(swap! menu pop)}
@@ -307,9 +308,10 @@
               name]))]]]
        [:> (oget Modal :Footer)
         [:> Button {:on-click #(cb-thread
-                                #(do (swap! menu conj :hold) (%))
+                                :do #(swap! menu conj :hold)
                                 #(git/push db @selected %)
-                                #(do (swap! menu pop) (swap! menu pop)))}
+                                :do #(swap! menu pop)
+                                :do #(swap! menu pop))}
          strings/PUSH]
         [:> Button {:variant "secondary"
                     :on-click #(swap! menu pop)}
@@ -644,13 +646,16 @@
                          (when (condp = style
                                  :simple (not= @text "")
                                  :upload @file)
-                           (choice-callback @text @file)
-                           (swap! menu #(let [item (peek %)
-                                              rest (pop %)]
-                                          (if (and (coll? item)
-                                                   (= (count item) 2))
-                                            (conj rest (second item))
-                                            rest)))))
+                           (cb-thread
+                            :do #(swap! menu conj :hold)
+                            #(choice-callback @text @file %)
+                            :do #(swap! menu pop)
+                            #(swap! menu #(let [item (peek %)
+                                                rest (pop %)]
+                                            (if (and (coll? item)
+                                                     (= (count item) 2))
+                                              (conj rest (second item))
+                                              rest))))))
         ref (or ref #js {:current nil})]
     (when list-ref
       (reset! list-ref dir-list)) ; don't deref dir-list here
@@ -832,7 +837,7 @@
    [:> (oget Modal :Header) {:close-button true}
     [:h3 strings/ADD-RESOURCE]]
    [file-browser db strings/ADD-lower :upload
-    (fn [optname files]
+    (fn [optname files cb]
       (cb-loop (oget files :target.files)
                #(let [name (if (= optname "")
                              (oget %2 :name)
@@ -843,7 +848,7 @@
                                       (js/path.join @file-browser-folder name)
                                       v %)))
                       (.catch js/console.error)))
-               #()))]])
+               cb))]])
 
 (defn save-dialog [{:keys [menu
                            file-browser-folder
@@ -859,10 +864,10 @@
      [:> (oget Modal :Header) {:close-button true}
       [:h3 strings/SAVE]]
      [file-browser db strings/SAVE :simple
-      (fn [file]
+      (fn [file _ cb]
         (reset! current-folder @file-browser-folder)
         (reset! current-file file)
-        (save-buffer db))
+        (save-buffer db cb))
       {:file-browser fb-ref
        :file-browser-list fb-list-ref}]]))
 
@@ -880,10 +885,10 @@
     [:h3 strings/LOAD]]
    [:> (oget Modal :Body)
     [file-browser db strings/LOAD :simple
-     (fn [file]
+     (fn [file _ cb]
        (reset! current-folder @file-browser-folder)
        (reset! current-file file)
-       (load-buffer db))
+       (load-buffer db cb))
      {:file-browser fb-ref
       :file-browser-list fb-list-ref}]]])
 
@@ -1160,7 +1165,7 @@
                        editor-reset-ref :editor-reset
                        visr-run-ref :visr-run}]]
   (let [edit (atom nil)
-        cache (atom nil)
+        cache (env/make-reset-editors-cache)
         visrs (atom {})
         key (random-uuid)
         set-text (fn [txt]
@@ -1176,9 +1181,9 @@
                           (let [fc @file-changed]
                             (set! js/window.edit @edit)
                             (-> @edit (ocall :getDoc) (ocall :setValue @input))
-                            (reset! cache nil)
+                            ;; TODO, this should probably be uncommented?
+                            ;; (env/make-reset-editors-cache cache)
                             (reset! file-changed fc))))
-        reset-queue (clojure.core/atom #queue [])
         codemirror-options #(conj (env/codemirror-options db) print-options)]
     (add-watch current-file key watch-updater)
     (add-watch menu key watch-updater)
@@ -1198,20 +1203,20 @@
     (add-watch deps key
                (fn [k r o n]
                  (when-not (= o n)
-                   (reset! cache nil)
+                   (env/make-reset-editors-cache cache)
                    (doseq [[k v] @visrs]
                      (ocall @(:mark v) :clear))
                    (reset! visrs {})
                    (when editor-reset-ref
                      (reset! editor-reset-ref true))
-                   (env/reset-editors! @input set-text edit visrs nil cache
-                                       reset-queue (codemirror-options) db #()
+                   (env/reset-editors! @input set-text edit visrs cache
+                                       (codemirror-options) db #()
                                        {:for-print for-print
                                         :hider-bars hider-bars
                                         :visr-run visr-run-ref}))))
-    (add-watch reset-queue ::set-running?
+    (add-watch cache ::set-running?
                (fn [k r o n]
-                 (when (and editor-reset-ref (empty? n))
+                 (when (and editor-reset-ref (empty? (:queue n)))
                    (reset! editor-reset-ref false))))
     (reset! visr-commit!
             (doseq [[k v] @visrs]
@@ -1250,8 +1255,8 @@
                     (reset! input value)
                     (when editor-reset-ref
                       (reset! editor-reset-ref true))
-                    (env/reset-editors! @input set-text edit visrs operation
-                                        cache reset-queue (codemirror-options) db
+                    (env/reset-editors! @input set-text edit visrs
+                                        cache (codemirror-options) db
                                         #() {:for-print for-print
                                              :hider-bars hider-bars
                                              :visr-run visr-run-ref}))
@@ -1288,9 +1293,8 @@
                             (reset! editor-ref e))
                           (when editor-reset-ref
                             (reset! editor-reset-ref true))
-                          (env/reset-editors! @input set-text edit visrs nil
-                                              cache reset-queue
-                                              (codemirror-options) db
+                          (env/reset-editors! @input set-text edit visrs
+                                              cache (codemirror-options) db
                                               #(reset! mounted? true)
                                               {:for-print for-print
                                                :hider-bars hider-bars
@@ -1308,6 +1312,7 @@
                     :as db}
                    & [repl-ref]]
   (let [edit (atom nil)
+        cache (env/make-reset-editors-cache)
         instances (atom [])
         watch-updater
         (fn [k r o n]
