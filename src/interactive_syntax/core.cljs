@@ -66,8 +66,9 @@
 ;; Dialogs
 (defn splash-dialog [{:keys [menu version]}]
   [:> Modal {:show (= (peek @menu) :splash)
+             :on-hide #(swap! menu pop)
              :size "xl"}
-   [:> Modal.Header
+   [:> Modal.Header {:close-button :true}
     [:> Modal.Title
      [:h3 "Welcome to VISr for ClojureScript! (v" db/version-short ")"]]]
    [:> Modal.Body
