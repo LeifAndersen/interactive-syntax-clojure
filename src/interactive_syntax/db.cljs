@@ -15,7 +15,8 @@
 
 (def package (t/read (t/reader :json) (slurp "package.json")))
 
-(def version (str (get package "version") "-SNAPSHOT-"
+(def version-short (get package "version"))
+(def version (str version-short "-SNAPSHOT-"
                   (slurp "src/injectable/date.inject")))
 (def files-root "/files")
 (def deps-root "/deps")

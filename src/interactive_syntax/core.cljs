@@ -68,31 +68,55 @@
   [:> Modal {:show (= (peek @menu) :splash)
              :size "xl"}
    [:> Modal.Header
-    [:h1 "VISr for ClojureScript Prototype"]]
+    [:> Modal.Title
+     [:h3 "Welcome to VISr for ClojureScript! (v" db/version-short ")"]]]
    [:> Modal.Body
+    [:h3 "Q: What is Hybrid Textual-Visual Syntax?"]
+    [:div {:style {:text-align "center"}}
+     [:iframe {:width 560 :height 315
+               :src "https://www.youtube-nocookie.com/embed/8htgAxJuK5c"
+               :title "Adding Interactive Visual Syntax to Textual Code"
+               :frameborder 0
+               :allow "picture-in-picture; web-share; clipboard-write"
+               :allowfullscreen true}]]
+    [:h3 "Q: How do I get started?"]
+    [:p "Take a look at " [:a {:href "https://blog.visr.pl/posts/intro/"
+                                 :target "_blank" :rel "noopener"}
+                             "this blog post"]"."]
+    [:h3 "Q: More advanced topics?"]
+    [:p "You can find more advanced topics on:"
+     [:ul
+      [:li [:a {:href "https://blog.visr.pl/"
+                :target "_blank" :rel "noopener"}
+            "The VISr Blog"]]
+      [:li [:a {:href "https://www2.ccs.neu.edu/racket/pubs/#dissertation-andersen"
+                :target "_blank" :rel "noopener"}
+            "Leif Andersen's Dissertation"]]
+      [:li [:a {:href "https://dl.acm.org/doi/abs/10.1145/3428290"
+               :target "_blank" :rel "noopener"}
+            "This Original Paper"]]
+      [:li [:a {:href "https://study.visr.pl"
+                :target "_blank" :rel "noopener"}
+            "A Small Survey"]]]]
+    [:h3 "Q: How can I participate?"]
+    [:p
+     [:div "Contributions and bug reports welcome on "
+      [:a {:href "https://github.com/LeifAndersen/interactive-syntax-clojure"
+           :target "_blank" :rel "noopener"}
+       "this project's GitHub page"] "."]]
+    [:h3 "Q: What's new?"]
+    [:p "Checkout "
+     [:a {:href "https://github.com/LeifAndersen/interactive-syntax-clojure/blob/main/CHANGELOG.md"
+          :target "_blank" :rel "noopener"}
+      "the changelog"] "."]
     [:ul
      [:li "This is an early prototype of VISr for ClojureScript."]
      [:li "If the prototype crashes, you can reset browser's local"
           " storage to completely reset it."]
-     [:li "This page was built on:"
-      [:div {:style {:text-align "center"}}
-       [:h1 [:code (slurp "src/injectable/date.inject")]]]]
-     [:li "More information on interactive-syntax:"
-      "[" [:a {:href "https://dl.acm.org/doi/abs/10.1145/3428290"
-               :target "_blank" :rel "noopener"}
-           "Paper"] "]"
-      "[" [:a {:href "https://www.youtube.com/watch?v=8htgAxJuK5c"
-               :target "_blank" :rel "noopener"}
-           "Video"] "]"]
-     [:li "Contributions and bug reports welcome on "
-      [:a {:href "https://github.com/LeifAndersen/interactive-syntax-clojure"
-           :target "_blank" :rel "noopener"}
-       "this project's GitHub page"] "."]
+     [:li "This page was built on: " [:code (slurp "src/injectable/date.inject")]]
      [:li "This dialog will reappear when new versions are released,"
-      " or you can view it again in " [:code "Project > About"] "."]
-     [:li [:a {:href "https://blog.visr.pl/posts/intro/"}
-           "Click here for a tutorial on this prototype."]]]
-    [:> Button {:on-click #(swap! menu pop)} "I understand..."]]])
+      " or you can view it again in " [:code "Project > About"] "."]]
+    [:> Button {:on-click #(swap! menu pop)} "Get Started!"]]])
 
 (defn import-dialog [{:keys [fs menu] :as db}]
   (let [file (atom nil)
