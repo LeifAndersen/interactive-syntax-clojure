@@ -33,3 +33,6 @@
     (let [node (createRoot node)]
       (.render node (r/as-element element)))
     (d/render element node)))
+
+(defn swap-orientation [orientation]
+  (if (= orientation "horizontal") "vertical" "horizontal"))

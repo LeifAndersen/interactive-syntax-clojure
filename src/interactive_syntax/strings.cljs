@@ -39,6 +39,7 @@
 (def RUN "Run")
 (def PAUSE "Pause")
 (def STOP "Stop")
+(def FULLSCREEN "Fullscreen")
 
 (def OPTIONS-MENU "Options Menu")
 (def SPLIT "Split")

@@ -756,7 +756,7 @@
 (def make-reset-editors-cache editor/make-reset-editors-cache)
 (defn reset-editors! [source set-text editor instances cache
                       codemirror-options
-                      {{:keys [show-editors visr-default sandbox]} :options
+                      {{:keys [show-editors sandbox]} :options
                        :keys [fs deps] :as db}
                       cb & [{visr-run-ref :visr-run
                              :as editor-options}]]

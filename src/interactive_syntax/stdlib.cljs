@@ -90,6 +90,18 @@
                  (reset! main @buff))
                (or timeout-limit 1000))))))
 
+(defn with-view [{:keys [app-pane]
+                  :as db}
+                 cb & extras]
+  (reset! app-pane true)
+  (js/setTimeout (fn []
+                   (when (some (partial = :fullscreen) extras)
+                     (-> js/document
+                         (.getElementById "internalAppContainer")
+                         (.requestFullscreen)))
+                   (cb (.getElementById js/document "internalApp"))) 0)
+  nil)
+
 (defn parse-defvisr [name stx]
   (let [this (gensym 'this)]
     (loop [props {}
@@ -250,6 +262,7 @@
                         :buffer_writes buffer-writes
                         :parse_defvisr parse-defvisr
                         :render_visr (partial render-visr db)
+                        :with_view (partial with-view db)
                         :css css}}
             :reagent {:core reagent.core
                       :dom reagent.dom}
@@ -290,6 +303,7 @@
                               'css 'visr.private/css
                               'render-visr 'visr.private/render-visr
                               'parse-defvisr 'visr.private/parse-defvisr
+                              'with-view 'visr.private/with-view
                               'buffer-writes 'visr.private/buffer-writes})
             (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
             (state-injection 'cljs.analyzer.api (ns-publics 'cljs.analyzer.api))

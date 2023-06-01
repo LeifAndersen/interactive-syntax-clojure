@@ -179,7 +179,8 @@
                                  ::split
                                  ::ns
                                  ::mode
-                                 ::repl]))
+                                 ::repl
+                                 ::app-pane]))
 
 (s/def ::buffers (s/+ ::buffer))
 (s/def ::current nat-int?)
@@ -258,6 +259,7 @@
              :persist-test ""
              :temp "")
     :output ""
+    :app-pane false
     :mode false
     :split "50%"
     :cursor nil
@@ -325,6 +327,7 @@
               :auth (->DBAtom backed-db [:auth])
               :input (->DBAtom backed-db [:current :input])
               :output (atom "") ;;(->DBAtom backed-db [:current :output])
+              :app-pane (atom false) ;; (->DBAtom backed-db [:current :app-pane])
               :buffer-mode (->DBAtom backed-db [:current :mode])
               :ns (->DBAtom backed-db [:current :ns])
               :repl (atom [])

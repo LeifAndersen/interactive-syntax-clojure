@@ -1047,7 +1047,8 @@
                           runner
                           running?
                           insert-visr!
-                          fs]
+                          fs
+                          app-pane]
                    :as db}]
   (let [new-file (if @file-changed
                    #(swap! menu conj [:confirm-save :new])
@@ -1077,7 +1078,12 @@
         print-buffer #(swap! menu conj :print)
         run+pause (fn []
                     (reset! output #queue [])
-                    (env/eval-buffer db))]
+                    (env/eval-buffer db))
+        stop (fn []
+               (reset! app-pane false))
+        fullscreen (fn []
+                     (-> js/document (.getElementById "internalAppContainer")
+                         (.requestFullscreen)))]
     [:div
      [:div {:class-name "d-block d-md-none"}
       [:> Row {:class-name "align-items-center flex-nowrap"
@@ -1118,12 +1124,16 @@
                 :style {:padding-right 0}}
         [:> Dropdown {:as ButtonGroup
                       :size "sm"}
+         (when @app-pane
+           [:> Button {:on-click fullscreen
+                       :variant "warning"}
+            strings/FULLSCREEN])
          [:> Button {:variant (if @running? "warning" "success")
                      :on-click run+pause}
           (if @running? strings/PAUSE strings/RUN)]
          [:> (oget Dropdown :Toggle) {:split true}]
          [:> (oget Dropdown :Menu)
-          [:> (oget Dropdown :Item) strings/STOP]
+          [:> (oget Dropdown :Item) {:on-click stop} strings/STOP]
           [:> (oget Dropdown :Item) {:on-click do-insert-visr}
            strings/INSERT-VISR]]]]]]
      [:div {:className "d-none d-md-block"}
@@ -1160,13 +1170,18 @@
        [:> Col {:xs "auto"
                 :style {:paddingRight 0}}
         [:> ButtonGroup
+         (when @app-pane
+           [:> Button {:on-click fullscreen
+                       :variant "warning"}
+            strings/FULLSCREEN])
          [:> Button {:on-click do-insert-visr
                      :variant "info"}
           strings/INSERT-VISR]
          [:> Button {:on-click run+pause
                      :variant (if @running? "warning" "success")}
           (if @running? strings/PAUSE strings/RUN)]
-         [:> Button {:variant "danger"} strings/STOP]]]]]]))
+         [:> Button {:on-click stop
+                     :variant "danger"} strings/STOP]]]]]]))
 
 (def exclude-autocomplete-keys
   {8 "backspace", 9 "tab", 13 "enter", 16 "shift", 17 "ctrl",
@@ -1443,7 +1458,7 @@
 ;; Views
 
 (defn home-page [{{:keys [orientation]} :options
-                  :keys [fs buffers output version menu split]
+                  :keys [fs buffers output version menu split app-pane]
                   :as db}
                  & [{editor-ref :editor
                      editor-reset-ref :editor-reset
@@ -1516,11 +1531,21 @@
         [:> SplitPane {:split @orientation
                        :on-change #(reset! split (aget % 0))}
          [:> Pane {:initialSize @split
-                   :style [:height "100%"]}
+                   :style {:height "100%"}}
           [editor-view db {:editor-reset editor-reset-ref
                            :editor editor-ref
                            :visr-run visr-run-ref}]]
-         [result-view db repl-ref]]]
+         (if @app-pane
+           [:> SplitPane {:split (utils/swap-orientation @orientation)}
+            [:> Pane {:initialSize 1}
+             [result-view db repl-ref]]
+            [:div {:id "internalAppContainer"
+                   :style {:height "100%"
+                           :width "100%"
+                           :background-color "white"}}
+             [:div {:id "internalApp"}
+              "Open Your Heart!"]]]
+           [result-view db repl-ref])]]
        [:div {:style {:flex "1 1 auto"
                       :overflow "auto"
                       :height "100%"

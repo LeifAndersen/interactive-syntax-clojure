@@ -1,3 +1,7 @@
+# 0.2.5
+
+* Add `with-view`, to open up a run-time html view
+
 # 0.2.4
 
 * Update to react 18
