@@ -1077,6 +1077,7 @@
                           (@insert-visr!))
         print-buffer #(swap! menu conj :print)
         run+pause (fn []
+                    (reset! app-pane false)
                     (reset! output #queue [])
                     (env/eval-buffer db))
         stop (fn []
