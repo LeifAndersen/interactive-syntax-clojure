@@ -199,6 +199,7 @@
    :window js/window
    :alert js/alert
    :String js/String
+   :JSON js/JSON
    :Object js/Object
    :Function js/Function
    :Array js/Array
