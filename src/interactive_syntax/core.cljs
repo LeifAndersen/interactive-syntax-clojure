@@ -1542,7 +1542,7 @@
              [result-view db repl-ref]]
             [:div {:id "internalAppContainer"
                    :style {:height "100%"
-                           :width "100%"}
+                           :width "100%"
                            :background-color "white"}}
              [:div {:id "internalApp"}
               [:h2 "Live and Learn!"]]]]
