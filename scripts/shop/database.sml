@@ -24,6 +24,9 @@ blockly-python:
 canvas2svg:
 {package: "canvas2svg" path: "canvas2svg.js"}
 
+craftjs:
+{package: "@craftjs/core" path: "dist/esm/index.js"}
+
 d3:
 {package: "d3" path: "dist/d3.js"}
 
