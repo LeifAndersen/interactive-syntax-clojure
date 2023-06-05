@@ -1543,9 +1543,9 @@
             [:div {:id "internalAppContainer"
                    :style {:height "100%"
                            :width "100%"
-                           :background-color "white"}}
+                           :background-color "black"}}
              [:div {:id "internalApp"}
-              "Open Your Heart!"]]]
+              [:h2 {:style {:color "white"}} "Live and Learn!"]]]]
            [result-view db repl-ref])]]
        [:div {:style {:flex "1 1 auto"
                       :overflow "auto"
