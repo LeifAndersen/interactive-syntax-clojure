@@ -1212,7 +1212,7 @@
                        editor-reset-ref :editor-reset
                        visr-run-ref :visr-run
                        visual-syntax :visual-syntax
-                       :or {:visual-syntax true}}]]
+                       :or {visual-syntax true}}]]
   (let [edit (atom nil)
         visrs (atom {})
         key (random-uuid)
@@ -1274,7 +1274,7 @@
                (ocall doc :replaceRange stdlib/starter-visr pos)))
     (fn [{:keys [menu input options file-changed current-file cursor scroll cache
                  cm-ref]
-          :or {:visual-syntax true}
+          :or {visual-syntax true}
           :as db}
          & [{editor-ref :editor
              for-print :for-print
@@ -1363,7 +1363,7 @@
                     :as db}
                    & [{repl-ref :editor
                        visual-syntax :visual-syntax
-                       :or {:visual-syntax true}}]]
+                       :or {visual-syntax true}}]]
   (let [edit (atom nil)
         cache (env/make-reset-editors-cache)
         instances (atom [])
@@ -1408,7 +1408,7 @@
         :as db}
          & [{repl-ref :editor
              visual-syntax :visual-syntax
-             :or {:visual-syntax true}}]]
+             :or {visual-syntax true}}]]
       [:> cm/UnControlled
        {:value (string/join "\n" (filter string? @output))
         :options (conj (env/codemirror-options db)
@@ -1479,7 +1479,7 @@
                      repl-ref :repl
                      visr-run-ref :visr-run
                      visual-syntax :visual-syntax
-                     :or {:visual-syntax true}
+                     :or {visual-syntax true}
                      :as opts}]]
   (let [search (js/URLSearchParams. js/window.location.search)]
     (chonky/setChonkyDefaults
