@@ -1210,7 +1210,8 @@
                        {:keys [hider-bars]
                         :as print-options} :print-options
                        editor-reset-ref :editor-reset
-                       visr-run-ref :visr-run}]]
+                       visr-run-ref :visr-run
+                       visual-syntax :visual-syntax}]]
   (let [edit (atom nil)
         visrs (atom {})
         key (random-uuid)
@@ -1253,11 +1254,12 @@
                    (reset! visrs {})
                    (when editor-reset-ref
                      (reset! editor-reset-ref true))
-                   (env/reset-editors! @input set-text edit visrs cache
-                                       (codemirror-options) db #()
-                                       {:for-print for-print
-                                        :hider-bars hider-bars
-                                        :visr-run visr-run-ref}))))
+                   (when visual-syntax
+                     (env/reset-editors! @input set-text edit visrs cache
+                                         (codemirror-options) db #()
+                                         {:for-print for-print
+                                          :hider-bars hider-bars
+                                          :visr-run visr-run-ref})))))
     (add-watch cache ::set-running?
                (fn [k r o n]
                  (when (and editor-reset-ref (empty? (:queue n)))
@@ -1280,6 +1282,7 @@
               hider-bars :hider-bars
               :theme "neat"
               :as print-options} :print-options
+             visual-syntax :visual-syntax
              editor-reset-ref :editor-reset
              visr-run-ref :visr-run}]]
       @current-file
@@ -1299,11 +1302,12 @@
                     (reset! input value)
                     (when editor-reset-ref
                       (reset! editor-reset-ref true))
-                    (env/reset-editors! @input set-text edit visrs
-                                        cache (codemirror-options) db
-                                        #() {:for-print for-print
-                                             :hider-bars hider-bars
-                                             :visr-run visr-run-ref}))
+                    (when visual-syntax
+                      (env/reset-editors! @input set-text edit visrs
+                                          cache (codemirror-options) db
+                                          #() {:for-print for-print
+                                               :hider-bars hider-bars
+                                               :visr-run visr-run-ref})))
         :onCursor (fn [editor data]
                     (reset! cursor data))
         :onScroll (fn [editor data]
@@ -1337,12 +1341,13 @@
                             (reset! editor-ref e))
                           (when editor-reset-ref
                             (reset! editor-reset-ref true))
-                          (env/reset-editors! @input set-text edit visrs
-                                              cache (codemirror-options) db
-                                              #(reset! mounted? true)
-                                              {:for-print for-print
-                                               :hider-bars hider-bars
-                                               :visr-run visr-run-ref}))}]
+                          (when visual-syntax
+                            (env/reset-editors! @input set-text edit visrs
+                                                cache (codemirror-options) db
+                                                #(reset! mounted? true)
+                                                {:for-print for-print
+                                                 :hider-bars hider-bars
+                                                 :visr-run visr-run-ref})))}]
        (when for-print
          [:style {:type "text/css" :media "print"}
           (css [:.CodeMirror-linenumber
@@ -1354,7 +1359,8 @@
 
 (defn result-view [{:keys [output options]
                     :as db}
-                   & [repl-ref]]
+                   & [{repl-ref :editor
+                       visual-syntax :visual-syntax}]]
   (let [edit (atom nil)
         cache (env/make-reset-editors-cache)
         instances (atom [])
@@ -1397,7 +1403,8 @@
     (add-watch output ::result-view watch-updater)
     (fn [{:keys [output options]
         :as db}
-       & [repl-ref]]
+         & [{repl-ref :editor
+             visual-syntax :visual-syntax}]]
       [:> cm/UnControlled
        {:value (string/join "\n" (filter string? @output))
         :options (conj (env/codemirror-options db)
@@ -1467,6 +1474,7 @@
                      editor-reset-ref :editor-reset
                      repl-ref :repl
                      visr-run-ref :visr-run
+                     visual-syntax :visual-syntax
                      :as opts}]]
   (let [search (js/URLSearchParams. js/window.location.search)]
     (chonky/setChonkyDefaults
@@ -1537,13 +1545,16 @@
                    :style {:height "100%"}}
           [editor-view db {:editor-reset editor-reset-ref
                            :editor editor-ref
-                           :visr-run visr-run-ref}]]
+                           :visr-run visr-run-ref
+                           :visual-syntax visual-syntax}]]
          (if @app-pane
            [:> SplitPane {:split (utils/swap-orientation @orientation)}
             [:> Pane {:initialSize 1}
-             [result-view db repl-ref]]
+             [result-view db {:editor repl-ref
+                              :visual-syntax visual-syntax}]]
             @app-pane]
-           [result-view db repl-ref])]]
+           [result-view db {:editor repl-ref
+                            :visual-syntax visual-syntax}])]]
        [:div {:style {:flex "1 1 auto"
                       :overflow "auto"
                       :height "100%"
@@ -1555,7 +1566,8 @@
           [:> SplitPane {:split @orientation}
            [editor-view db {:editor-reset editor-reset-ref
                             :editor editor-ref
-                            :visr-run visr-run-ref}]
+                            :visr-run visr-run-ref
+                            :visual-syntax visual-syntax}]
            [result-view db repl-ref]]]]])]))
 
 ;; -------------------------
@@ -1718,12 +1730,15 @@
                                            :gutters
                                            #js ["CodeMirror-linenumbers"]
                                            :foldGutter false}}]
-                                  (.getElementById js/document "app")),
+                         (.getElementById js/document "app")),
              fullscreen? (utils/render [editor-view db]
-                                   (.getElementById js/document "app")),
-             :else (utils/render [home-page db (when embedded?
-                                             {:editor-reset editor-reset-ref})]
-                             (.getElementById js/document "app")))))))
+                                       (.getElementById js/document "app")),
+             :else (utils/render
+                    [home-page db
+                     (if embedded?
+                       {:editor-reset editor-reset-ref}
+                       {:visual-syntax (not= visual-syntax "false")})]
+                    (.getElementById js/document "app")))))))
 
 (defn init! [& [opts]]
   (mount-root opts))
