@@ -90,16 +90,17 @@
                  (reset! main @buff))
                (or timeout-limit 1000))))))
 
-(defn with-view [{:keys [app-pane]
-                  :as db}
-                 cb & extras]
-  (reset! app-pane true)
-  (js/setTimeout (fn []
-                   (when (some (partial = :fullscreen) extras)
-                     (-> js/document
-                         (.getElementById "internalAppContainer")
-                         (.requestFullscreen)))
-                   (cb (.getElementById js/document "internalApp"))) 0)
+(defn draw-view [{:keys [app-pane]
+             :as db}
+            app & extras]
+  (reset! app-pane app)
+  (add-watch app-pane ::ready
+             (fn [k r o n]
+               (when-not (or (= o n) (boolean? n))
+                 (when (some (partial = :fullscreen) extras)
+                   (-> @app-pane
+                       (.requestFullscreen)))
+                 (remove-watch r k))))
   nil)
 
 (defn parse-defvisr [name stx]
@@ -257,13 +258,13 @@
            (sandbox-env)
            (:env builtins)
            {:visr
-            {:utils {:fs fs}
+            {:utils {:fs fs
+                     :draw_view (partial draw-view db)}
              :private$ {:print (partial wrap-printer core/print db)
                         :println (partial wrap-printer core/println db)
                         :buffer_writes buffer-writes
                         :parse_defvisr parse-defvisr
                         :render_visr (partial render-visr db)
-                        :with_view (partial with-view db)
                         :css css}}
             :reagent {:core reagent.core
                       :dom reagent.dom}
@@ -297,14 +298,14 @@
                       'garden.units 'garden.util 'zprint.core 'ajax.core
                       'ajax.protocols 'alandipert.storage-atom 'cognitect.transit})
      :state-injections
-     (merge (state-injection 'visr.utils {'fs 'visr.utils/fs})
+     (merge (state-injection 'visr.utils {'fs 'visr.utils/fs
+                                          'draw-view 'visr.utils/draw-view})
             (state-injection 'visr.private
                              {'print 'visr.private/print
                               'println 'visr.private/println
                               'css 'visr.private/css
                               'render-visr 'visr.private/render-visr
                               'parse-defvisr 'visr.private/parse-defvisr
-                              'with-view 'visr.private/with-view
                               'buffer-writes 'visr.private/buffer-writes})
             (state-injection 'cljs.analyzer (ns-publics 'cljs.analyzer))
             (state-injection 'cljs.analyzer.api (ns-publics 'cljs.analyzer.api))

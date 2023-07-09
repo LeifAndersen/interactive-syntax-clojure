@@ -1,6 +1,6 @@
 # 0.2.5
 
-* Add `with-view`, to open up a run-time html view
+* Add `draw-view`, to open up a run-time html view
 
 # 0.2.4
 

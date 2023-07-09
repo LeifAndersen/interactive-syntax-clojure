@@ -33,7 +33,6 @@ d3:
 file-type:
 {package: "file-type" path: "browser.js"}
 
-
 graphviz-react:
 {package: "graphviz-react" path: "lib/Graphviz.js"}
 
@@ -52,6 +51,9 @@ iink-js:
 js-numbers:
 {package: "js-numbers"
  path: "src/js-numbers.js"}
+
+ka-table:
+{package: "ka-table" path: "index.js"}
 
 konva:
 {package: "konva" path: "konva.js"}
@@ -95,6 +97,9 @@ react-canvas-core:
 
 react-color:
 {package: "react-color" path: "lib/index.js"}
+
+react-data-grid:
+{package: "react-data-grid" path: "lib/bundle.js"}
 
 react-diagrams:
 {package: "@projectstorm/react-diagrams" path: "dist/index.js"}

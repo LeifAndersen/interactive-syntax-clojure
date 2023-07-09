@@ -5,7 +5,6 @@
 (def println private/println)
 (def css private/css)
 (def render-visr private/render-visr)
-(def with-view private/with-view)
 (defmacro defvisr [name & props]
   (let [{:keys [render
                 elaborate

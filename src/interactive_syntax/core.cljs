@@ -28,6 +28,7 @@
                             Dropdown DropdownButton Tabs Tab
                             Row Col Form Container Modal
                             Table Spinner Alert]]
+   [react-frame-component :refer [FrameContextConsumer]]
    [react-hotkeys :refer [GlobalHotKeys]]
    [codemirror]
    [file-saver :refer [saveAs]]
@@ -61,6 +62,7 @@
 (def ^:private SplitPane (.-default react-split-pane))
 (def ^:private Switch (.-default react-switch))
 (def ^:private ReactToPrint (.-default react-to-print))
+(def ^:private Frame (.-default react-frame-component))
 
 ;; -------------------------
 ;; Dialogs
@@ -1083,8 +1085,9 @@
         stop (fn []
                (reset! app-pane false))
         fullscreen (fn []
-                     (-> js/document (.getElementById "internalAppContainer")
-                         (.requestFullscreen)))]
+                     (when-not (boolean? @app-pane)
+                       (-> @app-pane
+                           (.requestFullscreen))))]
     [:div
      [:div {:class-name "d-block d-md-none"}
       [:> Row {:class-name "align-items-center flex-nowrap"
@@ -1454,7 +1457,6 @@
                                           :gutters #js ["CodeMirror-linenumbers"]
                                           :foldGutter false}}]]]])))
 
-
 ;; -------------------------
 ;; Views
 
@@ -1540,12 +1542,7 @@
            [:> SplitPane {:split (utils/swap-orientation @orientation)}
             [:> Pane {:initialSize 1}
              [result-view db repl-ref]]
-            [:div {:id "internalAppContainer"
-                   :style {:height "100%"
-                           :width "100%"
-                           :background-color "white"}}
-             [:div {:id "internalApp"}
-              [:h2 "Live and Learn!"]]]]
+            @app-pane]
            [result-view db repl-ref])]]
        [:div {:style {:flex "1 1 auto"
                       :overflow "auto"
