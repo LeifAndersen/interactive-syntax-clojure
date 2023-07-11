@@ -30,6 +30,9 @@ craftjs:
 d3:
 {package: "d3" path: "dist/d3.js"}
 
+digitaljs:
+{package: "digitaljs" path: "dist/main.js"}
+
 file-type:
 {package: "file-type" path: "browser.js"}
 
@@ -100,6 +103,9 @@ react-color:
 
 react-data-grid:
 {package: "react-data-grid" path: "lib/bundle.js"}
+
+react-data-grid-css:
+{package: "react-data-grid" path: "lib/styles.css"}
 
 react-diagrams:
 {package: "@projectstorm/react-diagrams" path: "dist/index.js"}

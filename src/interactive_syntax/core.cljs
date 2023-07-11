@@ -1274,7 +1274,6 @@
                (ocall doc :replaceRange stdlib/starter-visr pos)))
     (fn [{:keys [menu input options file-changed current-file cursor scroll cache
                  cm-ref]
-          :or {visual-syntax true}
           :as db}
          & [{editor-ref :editor
              for-print :for-print
@@ -1286,7 +1285,8 @@
               :as print-options} :print-options
              visual-syntax :visual-syntax
              editor-reset-ref :editor-reset
-             visr-run-ref :visr-run}]]
+             visr-run-ref :visr-run
+             :or {visual-syntax true}}]]
       @current-file
       @menu
       [:div
