@@ -64,6 +64,9 @@ konva:
 luxon:
 {package: "luxon" path: "build/global/luxon.js"}
 
+lz-string:
+{package: "lz-string" path: "libs/lz-string.min.js"}
+
 mathjs:
 {package: "mathjs" path: "lib/browser/math.js"}
 
