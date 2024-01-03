@@ -1599,6 +1599,7 @@
         visual-syntax (.get search "visual-syntax")
         print-width (.get search "print-width")
         print-height (.get search "print-height")
+        sandbox (.get search "sandbox")
         debug (or debug (.get search "debug"))
         msg-counter (atom 1)]
     (cb-thread
@@ -1623,6 +1624,7 @@
         (fs/state->serializable %2 (fn [res] (% %2 res)))
         (% %2))
      (fn [next {{db-font-size :font-size
+                 db-sandbox :sandbox
                  :keys [show-editors]} :options
                 :keys [fs menu input backing file-changed]
                 :as db} & [serialized-state]]
@@ -1662,6 +1664,8 @@
                                   "*"))]
            (when buffer-text
              (reset! input buffer-text))
+           (when (= sandbox "false")
+             (reset! db-sandbox false))
            (when font-size
              (reset! db-font-size font-size))
            (when (= visual-syntax "false")
