@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>VISr for ClojureScript</title>
+    <meta name="description" content="An IDE for Visual and Interactive-Syntax realized for Clojurescript">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <div id="app">
+        <h1>VISr for ClojureScript is Loading...</h1>
+        <progress id="progress" value="0" max="100"></progress>
+    </div>
+    <script>
+     var req = new XMLHttpRequest();
+     var prog = document.getElementById("progress");
+     req.addEventListener("progress", function(event) {
+       var progress;
+       if (event.lengthComputable) {
+         progress = event.total / 100;
+       } else {
+         progress = 150000;
+       }
+       var percentComplete = event.loaded / progress;
+       prog.setAttribute("value", percentComplete);
+       prog.innerHTML = percentComplete + "%";
+     }, false);
+     req.addEventListener("load", function(event) {
+       var e = event.target;
+       var s = document.createElement("script");
+       s.innerHTML = e.responseText;
+       document.documentElement.appendChild(s);
+       s.addEventListener("load", function() {});
+     }, false);
+     req.open("GET", "target/public/cljs-out/prod/main_bundle.js");
+     req.send();
+    </script>
+  </body>
+</html>

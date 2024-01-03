@@ -1,0 +1,32 @@
+/*
+object-assign
+(c) Sindre Sorhus
+@license MIT
+*/
+
+/*!
+	 * The buffer module from node.js, for the browser.
+	 *
+	 * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+	 * @license  MIT
+	 */
+
+/*!
+ * The buffer module from node.js, for the browser.
+ *
+ * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @license  MIT
+ */
+
+/*! https://mths.be/fromcodepoint v0.2.1 by @mathias */
+
+/*! https://mths.be/jsesc v1.3.0 by @mathias */
+
+/**
+ * A trie dictionary storage model
+ *
+ * @author     James Brumond
+ * @version    0.2.1
+ * @copyright  Copyright 2011 James Brumond
+ * @license    Dual licensed under MIT and GPL
+ */

@@ -1,0 +1,4 @@
+-m
+figwheel.main
+--build-once
+prod

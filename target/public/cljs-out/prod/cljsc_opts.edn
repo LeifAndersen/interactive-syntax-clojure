@@ -1,0 +1,1 @@
+{:output-dir "target/public/cljs-out/prod", :closure-defines #:cljs.core{*global* "window"}, :language-out :ecmascript-next, :optimizations :simple, :aot-cache false, :output-to "target/public/cljs-out/prod/main.js", :asset-path "/cljs-out/prod", :target :bundle, :main interactive-syntax.prod, :language-in :ecmascript-next}
