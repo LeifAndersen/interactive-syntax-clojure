@@ -204,3 +204,6 @@ videojs-css:
 
 vis-network-css:
 {package: "vis-network" path: "dist/dist/vis-network.min.css"}
+
+react-colorful:
+{package: "react-colorful" path: "dist/index.js"}
